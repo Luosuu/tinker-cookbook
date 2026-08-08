@@ -124,6 +124,10 @@ class Qwen3Renderer(Renderer):
     """
 
     supports_streaming = True
+    # Subclasses that write the empty block into the header own it; see
+    # `Qwen3DisableThinkingRenderer.render_message`.
+    writes_empty_block_in_header = False
+
     # The 2507-Instruct variants below do not use the `<think>` tag at all, so they must
     # not be given the block the template writes around a produced turn.
     frames_thinking = True
@@ -235,22 +239,31 @@ class Qwen3Renderer(Renderer):
                     rendered_parts.append(p["text"].lstrip("\n") if after_block else p["text"])
                     after_block = False
             output_content = "".join(rendered_parts)
-            # The template opens the block on the turn being produced whether or not it
-            # reasoned, so a turn with no thinking part still gets an empty one.
-            if frames and not any(p["type"] == "thinking" for p in parts):
-                output_content = _frame_thinking("") + output_content.lstrip("\n")
+            has_reasoning = any(p["type"] == "thinking" for p in parts)
         elif self._frames_produced_turn(message, ctx) and "</think>" in content:
             # An inline block in string content is normalized the way the template
             # normalizes it, so `<think>\n\n</think>\nx` and `<think>\n\n</think>\n\nx`
             # both render as the latter rather than passing through as written.
             reasoning, _, rest = content.partition("</think>")
             output_content = _frame_thinking(reasoning.rpartition("<think>")[2]) + rest.lstrip("\n")
+            has_reasoning = True
         else:
             # String content - pass through as-is.
             # Note: strip_thinking_from_history only works with list-based content.
             # For stripping to work on historical messages, use structured content
             # with ThinkingPart separated from text (as returned by parse_response).
             output_content = content
+            has_reasoning = False
+
+        # The template opens the block on the turn being produced whether or not it
+        # reasoned, so a turn that did not reason still gets an empty one -- whatever
+        # shape its content arrived in.
+        if (
+            not has_reasoning
+            and not self.writes_empty_block_in_header
+            and self._frames_produced_turn(message, ctx)
+        ):
+            output_content = _frame_thinking("") + output_content.lstrip("\n")
 
         # Handle tool response wrapping
         if message["role"] == "tool":
@@ -515,6 +528,8 @@ class Qwen3DisableThinkingRenderer(Qwen3Renderer):
     Use this renderer when you want to train or sample from Qwen3 models in
     "non-thinking" mode while maintaining compatibility with the OpenAI endpoint.
     """
+
+    writes_empty_block_in_header = True
 
     def render_message(self, message: Message, ctx: RenderContext) -> RenderedMessage:
         """Render a message, prepending an empty thinking block to the last assistant message.
