@@ -258,13 +258,16 @@ class Qwen3Renderer(Renderer):
 
         # Handle tool_calls field
         if "tool_calls" in message:
-            # Add leading newline to match HF template behavior
-            output_content += "\n" + "\n".join(
+            # The template separates the calls from the text before them, and from each
+            # other, but writes nothing before the first when there is no text:
+            # `{%- if (loop.first and content) or (not loop.first) %}{{- \'\\n\' }}`.
+            calls = "\n".join(
                 [
                     f"<tool_call>\n{json.dumps(_tool_call_payload(tool_call))}\n</tool_call>"
                     for tool_call in message["tool_calls"]
                 ]
             )
+            output_content += ("\n" if output_content else "") + calls
         output_content += "<|im_end|>"
         header = tinker.types.EncodedTextChunk(
             tokens=self.tokenizer.encode(header_str, add_special_tokens=False)
