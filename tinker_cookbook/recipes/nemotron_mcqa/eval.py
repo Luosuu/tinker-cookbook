@@ -6,7 +6,7 @@ checkpoint, on identical questions. Apples-to-apples measurement of whether
 training improved the model.
 
 Usage:
-    uv run python -m tinker_cookbook.recipes.search_tool.nemotron_eval \
+    uv run python -m tinker_cookbook.recipes.nemotron_mcqa.eval \
         checkpoints='["tinker://.../sampler_weights/000001", "..."]' \
         provider=serper n_val=50
 
@@ -23,13 +23,13 @@ import chz
 import tinker
 
 from tinker_cookbook.completers import TinkerTokenCompleter
-from tinker_cookbook.recipes.search_tool.nemotron_common import (
+from tinker_cookbook.recipes.nemotron_mcqa.common import (
     DEFAULT_SPLIT_DATASET,
     load_dotenv,
     repo_root_dotenv,
     require_provider_key,
 )
-from tinker_cookbook.recipes.search_tool.nemotron_env import (
+from tinker_cookbook.recipes.nemotron_mcqa.env import (
     NemotronDatum,
     build_nemotron_env,
     load_nemotron,
@@ -95,7 +95,7 @@ async def eval_checkpoint(
     val: list[NemotronDatum],
     service_client: tinker.ServiceClient,
     cfg: Config,
-) -> dict[str, float]:
+) -> dict[str, str | float]:
     if model_path is None:
         sampling_client = await service_client.create_sampling_client_async(
             base_model=cfg.base_model
