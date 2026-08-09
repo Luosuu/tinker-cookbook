@@ -19,25 +19,21 @@ from __future__ import annotations
 import asyncio
 import os
 from datetime import datetime
-from pathlib import Path
 
 import chz
 
 from tinker_cookbook import cli_utils, model_info
-from tinker_cookbook.recipes.search_tool.nemotron_env import NemotronDatasetBuilder
+from tinker_cookbook.recipes.search_tool.nemotron_common import (
+    DEFAULT_SPLIT_DATASET,
+    load_dotenv,
+    repo_root_dotenv,
+    require_provider_key,
+)
+from tinker_cookbook.recipes.search_tool.nemotron_env import (
+    NemotronDatasetBuilder,
+    NemotronValEvaluatorBuilder,
+)
 from tinker_cookbook.rl import train
-
-
-def _load_dotenv(path: Path) -> None:
-    """Minimal .env loader (no python-dotenv dependency)."""
-    if not path.exists():
-        return
-    for line in path.read_text().splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, val = line.split("=", 1)
-        os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
 
 
 @chz.chz
@@ -53,9 +49,17 @@ class CLIConfig:
     group_size: int = 8
     max_tokens: int = 8192
     seed: int = 0
-    eval_every: int = 0
+    # eval_every=None -> defaults to save_every so validation runs at every
+    # checkpoint. Set 0 to disable, or a positive int to override.
+    eval_every: int | None = None
     save_every: int = 20
     max_steps: int | None = None
+
+    # Data (persisted train/validation split repo)
+    dataset_name: str = DEFAULT_SPLIT_DATASET
+
+    # Web search/browse provider: serper | tavily | parallel
+    provider: str = "serper"
 
     # Rollout / tools
     max_turns: int = 16
@@ -64,33 +68,44 @@ class CLIConfig:
     n_results: int = 5
     browse_chars: int = 8000
     format_coef: float = 0.1
-    n_examples: int | None = None  # cap dataset size (smoke tests)
+    n_examples: int | None = None  # cap train split size (smoke tests)
+
+    # Validation (held-out eval run every eval_every steps, i.e. at each checkpoint)
+    n_val: int | None = None  # None -> whole validation split; 0 disables eval
 
     # Logging
     log_path: str | None = None
     wandb_project: str | None = None
     wandb_name: str | None = None
-    weave_project: str | None = None  # None -> use wandb_project; set to enable Weave rollout traces
+    # Weave rollout-trajectory tracing (opt-in, independent of wandb metrics).
+    # Enable with trace_weave=True; traces land in weave_project, defaulting to
+    # wandb_project when that is set. Requires WANDB_API_KEY.
+    trace_weave: bool = False
+    weave_project: str | None = None
     behavior_if_log_dir_exists: cli_utils.LogdirBehavior = "ask"
 
     base_url: str | None = None
 
 
 async def cli_main(cli_config: CLIConfig) -> None:
-    _load_dotenv(Path(__file__).resolve().parents[3] / ".env")
-    if not os.environ.get("SERPER_API_KEY"):
-        raise SystemExit("SERPER_API_KEY not set (checked env and repo-root .env).")
+    load_dotenv(repo_root_dotenv())
+    # Validate the selected provider's key (serper/tavily/parallel) is present.
+    require_provider_key(cli_config.provider)
     if not os.environ.get("TINKER_API_KEY"):
         raise SystemExit("TINKER_API_KEY not set (checked env and repo-root .env).")
 
-    # Weave: trace rollout trajectories into the same wandb project. Requires
-    # WANDB_API_KEY. weave.init() must run before any @weave.op() fires, i.e.
-    # before training starts. If it is not called, the reward op is inert.
-    weave_project = cli_config.weave_project or cli_config.wandb_project
-    trace_weave = weave_project is not None
+    # Weave: opt-in rollout-trajectory tracing, independent of wandb metrics.
+    # weave.init() must run before any @weave.op() fires (i.e. before training);
+    # if it is not called, the reward's trace op is inert.
+    trace_weave = cli_config.trace_weave
     if trace_weave:
+        weave_project = cli_config.weave_project or cli_config.wandb_project
+        if weave_project is None:
+            raise SystemExit(
+                "trace_weave=True requires weave_project (or wandb_project) to be set."
+            )
         if not os.environ.get("WANDB_API_KEY"):
-            raise SystemExit("weave tracing requested but WANDB_API_KEY is not set.")
+            raise SystemExit("trace_weave=True requires WANDB_API_KEY to be set.")
         import weave
 
         weave.init(weave_project)
@@ -104,6 +119,9 @@ async def cli_main(cli_config: CLIConfig) -> None:
         batch_size=cli_config.batch_size,
         group_size=cli_config.group_size,
         renderer_name=renderer_name,
+        dataset_name=cli_config.dataset_name,
+        split="train",
+        provider=cli_config.provider,
         max_turns=cli_config.max_turns,
         max_tool_calls=cli_config.max_tool_calls,
         max_trajectory_tokens=cli_config.max_trajectory_tokens,
@@ -126,6 +144,34 @@ async def cli_main(cli_config: CLIConfig) -> None:
 
     cli_utils.check_log_dir(log_path, behavior_if_exists=cli_config.behavior_if_log_dir_exists)
 
+    # eval_every defaults to save_every so validation runs at every checkpoint.
+    eval_every = (
+        cli_config.eval_every if cli_config.eval_every is not None else cli_config.save_every
+    )
+
+    # Validation reads the persisted `validation` split (disjoint by construction),
+    # so no seed-reconstruction of held-out questions is needed. n_val=None uses
+    # the whole validation split.
+    evaluator_builders = []
+    if eval_every > 0 and cli_config.n_val != 0:
+        evaluator_builders.append(
+            NemotronValEvaluatorBuilder(
+                model_name=cli_config.model_name,
+                renderer_name=renderer_name,
+                dataset_name=cli_config.dataset_name,
+                n_val=cli_config.n_val,
+                provider=cli_config.provider,
+                max_turns=cli_config.max_turns,
+                max_tool_calls=cli_config.max_tool_calls,
+                max_trajectory_tokens=cli_config.max_trajectory_tokens,
+                max_tokens=cli_config.max_tokens,
+                n_results=cli_config.n_results,
+                browse_chars=cli_config.browse_chars,
+                format_coef=cli_config.format_coef,
+                trace_weave=trace_weave,
+            )
+        )
+
     config = train.Config(
         model_name=cli_config.model_name,
         recipe_name="recipe_nemotron_mcqa",
@@ -134,7 +180,8 @@ async def cli_main(cli_config: CLIConfig) -> None:
         dataset_builder=builder,
         learning_rate=cli_config.learning_rate,
         max_tokens=cli_config.max_tokens,
-        eval_every=cli_config.eval_every,
+        eval_every=eval_every,
+        evaluator_builders=evaluator_builders,
         save_every=cli_config.save_every,
         wandb_project=cli_config.wandb_project,
         wandb_name=wandb_name,
