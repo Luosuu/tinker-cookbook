@@ -8,7 +8,7 @@ training and eval draw from a persisted, reproducible partition instead of
 reconstructing "held-out" questions via matching RNG seeds.
 
 Usage:
-    uv run python -m tinker_cookbook.recipes.search_tool.make_split \
+    uv run python -m tinker_cookbook.recipes.nemotron_mcqa.make_split \
         repo_id=luosuu/nemotron-web-search-mcqa-split \
         n_val=200 seed=12345 private=False
 
@@ -23,7 +23,7 @@ import os
 import chz
 from datasets import Dataset, DatasetDict, load_dataset
 
-from tinker_cookbook.recipes.search_tool.nemotron_common import (
+from tinker_cookbook.recipes.nemotron_mcqa.common import (
     DEFAULT_SPLIT_DATASET,
     load_dotenv,
     repo_root_dotenv,

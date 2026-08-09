@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from tinker_cookbook.recipes.search_tool.search_providers import provider_env_var
+from tinker_cookbook.recipes.nemotron_mcqa.search_providers import provider_env_var
 
 # Default persisted train/validation split repo. Override with `dataset_name=`
 # on the CLI to point at your own split (see make_split.py to create one).

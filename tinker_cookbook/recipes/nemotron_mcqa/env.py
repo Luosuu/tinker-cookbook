@@ -26,8 +26,8 @@ from datasets import Dataset, load_dataset
 from tinker_cookbook import model_info, tokenizer_utils
 from tinker_cookbook.completers import TinkerTokenCompleter
 from tinker_cookbook.eval.evaluators import SamplingClientEvaluator
-from tinker_cookbook.recipes.search_tool.nemotron_common import DEFAULT_SPLIT_DATASET
-from tinker_cookbook.recipes.search_tool.search_providers import (
+from tinker_cookbook.recipes.nemotron_mcqa.common import DEFAULT_SPLIT_DATASET
+from tinker_cookbook.recipes.nemotron_mcqa.search_providers import (
     SearchProvider,
     get_provider,
 )
@@ -296,7 +296,7 @@ def load_nemotron(
     ds = cast(Dataset, load_dataset(dataset_name, split=split))
     out: list[NemotronDatum] = []
     for row in ds:
-        out.append(_row_to_datum(row))
+        out.append(_row_to_datum(cast("dict[str, Any]", row)))
         if limit is not None and len(out) >= limit:
             break
     return out

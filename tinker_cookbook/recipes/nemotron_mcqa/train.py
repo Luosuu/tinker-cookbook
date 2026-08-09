@@ -4,11 +4,11 @@ Trains Inkling-Small with Serper search+browse tools and a \\boxed{LETTER}
 reward, using the cookbook's synchronous RL loop.
 
 Example (smoke test, 2 tiny steps):
-    uv run python -m tinker_cookbook.recipes.search_tool.nemotron_train \
+    uv run python -m tinker_cookbook.recipes.nemotron_mcqa.train \
         batch_size=4 group_size=4 max_steps=2 n_examples=64 eval_every=0
 
 Example (real run):
-    uv run python -m tinker_cookbook.recipes.search_tool.nemotron_train \
+    uv run python -m tinker_cookbook.recipes.nemotron_mcqa.train \
         batch_size=128 group_size=8 learning_rate=2e-5 wandb_project=nemotron_mcqa
 
 Requires SERPER_API_KEY and TINKER_API_KEY (loaded from repo-root .env if present).
@@ -23,13 +23,13 @@ from datetime import datetime
 import chz
 
 from tinker_cookbook import cli_utils, model_info
-from tinker_cookbook.recipes.search_tool.nemotron_common import (
+from tinker_cookbook.recipes.nemotron_mcqa.common import (
     DEFAULT_SPLIT_DATASET,
     load_dotenv,
     repo_root_dotenv,
     require_provider_key,
 )
-from tinker_cookbook.recipes.search_tool.nemotron_env import (
+from tinker_cookbook.recipes.nemotron_mcqa.env import (
     NemotronDatasetBuilder,
     NemotronValEvaluatorBuilder,
 )
