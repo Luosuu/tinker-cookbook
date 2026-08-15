@@ -56,6 +56,7 @@ class EvalConfig:
     checkpoint_url: str | None = None
     base_url: str | None = None
     renderer_name: str | None = None
+    thinking_effort: float | None = None
 
 
 @dataclass
@@ -105,6 +106,12 @@ async def evaluate_task(
             initial_messages=_initial_messages(task, renderer, bash_tool),
             reward_fn=reward_fn,
             max_turns=config.max_turns,
+            model_name=config.model_name,
+            generation_prompt_kwargs=(
+                {"effort": config.thinking_effort}
+                if config.thinking_effort is not None
+                else None
+            ),
         )
 
         trajectory = await do_single_rollout(policy, env)

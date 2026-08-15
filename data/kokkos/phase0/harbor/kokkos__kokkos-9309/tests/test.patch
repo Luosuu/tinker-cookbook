@@ -1,0 +1,80 @@
+diff --git a/core/unit_test/KokkosExecutionEnvironmentNeverInitializedFixture.hpp b/core/unit_test/KokkosExecutionEnvironmentNeverInitializedFixture.hpp
+index 73d32f44e0c..c4b406b70af 100644
+--- a/core/unit_test/KokkosExecutionEnvironmentNeverInitializedFixture.hpp
++++ b/core/unit_test/KokkosExecutionEnvironmentNeverInitializedFixture.hpp
+@@ -7,7 +7,7 @@
+ #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+ import kokkos.core;
+ #else
+-#include <Kokkos_Core.hpp>
++#include <Kokkos_InitializeFinalize.hpp>
+ #endif
+ 
+ /**
+diff --git a/core/unit_test/TestInitializeFinalize.cpp b/core/unit_test/TestInitializeFinalize.cpp
+index 822a4a75dd0..13a665be5cb 100644
+--- a/core/unit_test/TestInitializeFinalize.cpp
++++ b/core/unit_test/TestInitializeFinalize.cpp
+@@ -5,7 +5,7 @@
+ #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+ import kokkos.core;
+ #else
+-#include <Kokkos_Core.hpp>
++#include <Kokkos_InitializeFinalize.hpp>
+ #endif
+ 
+ #include <gtest/gtest.h>
+diff --git a/core/unit_test/TestKokkosHelpCausesNormalProgramTermination.cpp b/core/unit_test/TestKokkosHelpCausesNormalProgramTermination.cpp
+index 708d3f72a33..755f00cc022 100644
+--- a/core/unit_test/TestKokkosHelpCausesNormalProgramTermination.cpp
++++ b/core/unit_test/TestKokkosHelpCausesNormalProgramTermination.cpp
+@@ -7,11 +7,13 @@
+ #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+ import kokkos.core;
+ #else
+-#include <Kokkos_Core.hpp>
++#include <Kokkos_InitializeFinalize.hpp>
+ #endif
+ 
+ #include "KokkosExecutionEnvironmentNeverInitializedFixture.hpp"
+ 
++#include <cstdlib>
++
+ namespace {
+ 
+ using KokkosHelpCausesNormalProgramTermination_DeathTest =
+@@ -33,7 +35,7 @@ TEST_F(KokkosHelpCausesNormalProgramTermination_DeathTest,
+   EXPECT_EXIT(
+       {
+         Kokkos::initialize(argc, const_cast<char **>(argv));
+-        Kokkos::abort("better exit before getting there");
++        std::abort();  // should have exited and not reach that line
+       },
+       ::testing::ExitedWithCode(EXIT_SUCCESS), "");
+ 
+diff --git a/core/unit_test/TestPushFinalizeHook.cpp b/core/unit_test/TestPushFinalizeHook.cpp
+index 82b212c1872..f3d69c41daf 100644
+--- a/core/unit_test/TestPushFinalizeHook.cpp
++++ b/core/unit_test/TestPushFinalizeHook.cpp
+@@ -5,7 +5,7 @@
+ #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+ import kokkos.core;
+ #else
+-#include <Kokkos_Core.hpp>
++#include <Kokkos_InitializeFinalize.hpp>
+ #endif
+ 
+ #include <gtest/gtest.h>
+diff --git a/core/unit_test/TestScopeGuard.cpp b/core/unit_test/TestScopeGuard.cpp
+index 7d6c80f6870..7904f4b1f74 100644
+--- a/core/unit_test/TestScopeGuard.cpp
++++ b/core/unit_test/TestScopeGuard.cpp
+@@ -7,7 +7,7 @@
+ #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
+ import kokkos.core;
+ #else
+-#include <Kokkos_Core.hpp>
++#include <Kokkos_ScopeGuard.hpp>
+ #endif
+ 
+ #include "KokkosExecutionEnvironmentNeverInitializedFixture.hpp"

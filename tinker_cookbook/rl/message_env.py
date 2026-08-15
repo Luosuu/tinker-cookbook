@@ -11,7 +11,9 @@ from __future__ import annotations
 import asyncio
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from typing import Any
 
 import tinker
 
@@ -100,6 +102,7 @@ class EnvFromMessageEnv(types.Env):
         terminate_on_length: bool = True,
         parse_error_policy: ParseErrorPolicy | None = None,
         rollout_limits: RolloutLimits | None = None,
+        generation_prompt_kwargs: Mapping[str, Any] | None = None,
     ):
         self.renderer = renderer
         self.message_env = message_env
@@ -110,6 +113,7 @@ class EnvFromMessageEnv(types.Env):
         self.context_overflow_reward = context_overflow_reward
         self.terminate_on_length = terminate_on_length
         self.parse_error_policy = parse_error_policy
+        self.generation_prompt_kwargs = dict(generation_prompt_kwargs or {})
         # Budgets this env wants a rollout runner to enforce. The runner reads
         # this when it is given no limits of its own (run_rollout's fallback),
         # so envs built from a RolloutConfig keep their token budgets in the
@@ -129,7 +133,10 @@ class EnvFromMessageEnv(types.Env):
         loop, running it synchronously starves other coroutines. HuggingFace
         tokenizers release the GIL, so threads give true parallelism.
         """
-        return await asyncio.to_thread(self.renderer.build_generation_prompt, messages, **kwargs)
+        render_kwargs = {**self.generation_prompt_kwargs, **kwargs}
+        return await asyncio.to_thread(
+            self.renderer.build_generation_prompt, messages, **render_kwargs
+        )
 
     def _exceeds_context_limit(self, observation_length: int) -> bool:
         """Check if the observation + generation budget exceeds the context limit."""

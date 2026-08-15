@@ -34,6 +34,7 @@ We provide the following examples:
 - **[VLM image classification](./vlm_classifier/)**: train vision-language models as image classifiers.
 - **[Audio](./audio/)**: fine-tune audio-input models with SFT and RL — speech recognition, speaking-style classification, and medical-vocabulary domain adaptation.
 - **[Harbor RL](./harbor_rl/)**: RL training on Harbor-formatted tasks (e.g., Terminal-Bench) with sandboxed code execution.
+- **[Kokkos coding RL](./kokkos_rl/)**: mine and validate SWE-style C++ tasks from Kokkos PR history, then export hidden-test Harbor tasks.
 - **[Self-Distillation Fine-Tuning (SDFT)](./sdft/)**: self-distillation via top-K forward KL loss without a separate teacher deployment.
 - **[True Thinking Score (TTS)](./true_thinking_score/)**: quantify the faithfulness of chain-of-thought reasoning to the model's final answer.
 

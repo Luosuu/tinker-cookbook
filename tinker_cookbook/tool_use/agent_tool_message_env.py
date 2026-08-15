@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
+from typing import Any
 
 from tinker_cookbook.renderers import Renderer
 from tinker_cookbook.renderers.base import (
@@ -375,6 +376,7 @@ def build_agent_tool_env(
     context_overflow_reward: float = -0.1,
     terminate_on_length: bool | None = None,
     parse_error_policy: ParseErrorPolicy | None = None,
+    generation_prompt_kwargs: Mapping[str, Any] | None = None,
 ) -> EnvFromMessageEnv:
     """Convenience method to build an EnvFromMessageEnv for tool-using agents.
 
@@ -454,6 +456,10 @@ def build_agent_tool_env(
             message up to ``max_consecutive`` times. Default ``None`` keeps
             those one-shot semantics. A rollout runner configured with a policy also
             sets this via ``set_parse_error_policy``.
+        generation_prompt_kwargs: Extra keyword arguments passed to every
+            ``renderer.build_generation_prompt`` call. This is used for
+            renderer-specific conditioning such as Inkling's explicit
+            ``effort`` value.
 
     Returns:
         An EnvFromMessageEnv ready for RL training.
@@ -505,4 +511,5 @@ def build_agent_tool_env(
         terminate_on_length=terminate_on_length,
         parse_error_policy=parse_error_policy,
         rollout_limits=cfg.limits if cfg is not None else None,
+        generation_prompt_kwargs=generation_prompt_kwargs,
     )

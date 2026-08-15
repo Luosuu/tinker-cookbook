@@ -122,6 +122,35 @@ class TestInitialObservation:
             # First positional arg should be the renderer method
             assert mock_to_thread.call_args[0][0] is renderer.build_generation_prompt
 
+    def test_passes_generation_prompt_kwargs_on_every_render(self):
+        renderer = _make_renderer()
+        initial_msgs: list[Message] = [{"role": "user", "content": "hi"}]
+        next_msgs: list[Message] = [
+            *initial_msgs,
+            {"role": "assistant", "content": "working"},
+        ]
+        msg_env = StubMessageEnv(
+            initial_messages=initial_msgs,
+            step_result=MessageStepResult(
+                reward=0,
+                episode_done=False,
+                next_messages=next_msgs,
+            ),
+        )
+        env = EnvFromMessageEnv(
+            renderer=renderer,
+            message_env=msg_env,
+            generation_prompt_kwargs={"effort": 0.9},
+        )
+
+        asyncio.run(env.initial_observation())
+        asyncio.run(env.step([1, 2, 3]))
+
+        assert renderer.build_generation_prompt.call_args_list == [
+            ((initial_msgs,), {"effort": 0.9}),
+            ((next_msgs,), {"effort": 0.9}),
+        ]
+
 
 class TestStepParseFailure:
     def test_parse_failure_returns_failed_reward(self):

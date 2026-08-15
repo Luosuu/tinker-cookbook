@@ -59,7 +59,11 @@ class HarborTask:
 
 def load_harbor_tasks(dataset: str) -> list[HarborTask]:
     """Load Harbor tasks from ~/.cache/harbor/tasks/<dataset>/."""
-    tasks_dir = HARBOR_CACHE_DIR / dataset
+    return load_harbor_tasks_from_dir(HARBOR_CACHE_DIR / dataset)
+
+
+def load_harbor_tasks_from_dir(tasks_dir: Path) -> list[HarborTask]:
+    """Load Harbor tasks directly from a directory containing task folders."""
     tasks: list[HarborTask] = []
     for task_dir in sorted(tasks_dir.iterdir()):
         if not task_dir.is_dir():
@@ -108,6 +112,7 @@ class HarborEnvGroupBuilder(EnvGroupBuilder):
         context_overflow_reward: float = -0.1,
         sandbox_factory: SandboxFactory | None = None,
         reward_fn: RewardFn | None = None,
+        thinking_effort: float | None = None,
     ):
         self.task = task
         self.model_name = model_name
@@ -122,6 +127,7 @@ class HarborEnvGroupBuilder(EnvGroupBuilder):
         self.context_overflow_reward = context_overflow_reward
         self.sandbox_factory = sandbox_factory or default_sandbox_factory
         self.reward_fn = reward_fn
+        self.thinking_effort = thinking_effort
         self._sandboxes: list[SandboxInterface] = []
 
     async def make_envs(self) -> Sequence[Env]:
@@ -159,6 +165,12 @@ class HarborEnvGroupBuilder(EnvGroupBuilder):
                     max_trajectory_tokens=self.max_trajectory_tokens,
                     max_generation_tokens=self.max_generation_tokens,
                     context_overflow_reward=self.context_overflow_reward,
+                    model_name=self.model_name,
+                    generation_prompt_kwargs=(
+                        {"effort": self.thinking_effort}
+                        if self.thinking_effort is not None
+                        else None
+                    ),
                 )
             )
         return envs
@@ -213,6 +225,7 @@ class HarborDatasetBuilder(RLDatasetBuilder):
     context_overflow_reward: float = -0.1
     sandbox_factory: SandboxFactory | None = None
     reward_fn: RewardFn | None = None
+    thinking_effort: float | None = None
 
     def _make_env_group_builders(self, group_size: int) -> list[HarborEnvGroupBuilder]:
         return [
@@ -230,6 +243,7 @@ class HarborDatasetBuilder(RLDatasetBuilder):
                 context_overflow_reward=self.context_overflow_reward,
                 sandbox_factory=self.sandbox_factory,
                 reward_fn=self.reward_fn,
+                thinking_effort=self.thinking_effort,
             )
             for task in self.tasks
         ]
