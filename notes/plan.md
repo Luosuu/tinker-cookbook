@@ -61,8 +61,11 @@ Experiment design:
 
 1. Use the long-context Tinker variants: `openai/gpt-oss-120b:peft:131072` and
    `thinkingmachines/Inkling-Small:peft:262144`.
-2. Use temperature 1.0, at most 20 agent turns, and at most 16,384 sampled tokens
-   per turn. Pin Inkling thinking effort to 0.9.
+2. Use temperature 1.0, at most 40 agent turns, at most 80 tool calls, at most
+   65,536 sampled tokens over the trajectory, and at most 16,384 sampled tokens
+   per turn. Pin Inkling thinking effort to 0.9. The limits were raised from the
+   initial 20-turn smoke after Inkling reached the grader while still completing
+   a coherent multi-file fix; the sampled-token cap continues to bound cost.
 3. Run one rollout per model-task pair through a fresh Modal sandbox.
 4. Record binary hidden-test reward, task errors, elapsed time, turns, and full
    trajectory text.
