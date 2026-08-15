@@ -28,6 +28,9 @@ class CLIConfig:
     command_timeout: int = 180
     grader_timeout: int = 180
     max_tasks: int | None = None
+    max_trajectory_tokens: int = 112 * 1024
+    max_sampled_tokens: int = 64 * 1024
+    max_tool_calls: int = 40
 
     base_url: str | None = None
     renderer_name: str | None = None
@@ -60,6 +63,9 @@ async def main(cli_config: CLIConfig) -> None:
         base_url=cli_config.base_url,
         renderer_name=cli_config.renderer_name,
         thinking_effort=cli_config.thinking_effort,
+        max_trajectory_tokens=cli_config.max_trajectory_tokens,
+        max_sampled_tokens=cli_config.max_sampled_tokens,
+        max_tool_calls=cli_config.max_tool_calls,
     )
     print(
         f"Running {len(tasks)} Kokkos tasks with model={eval_config.model_name}, "

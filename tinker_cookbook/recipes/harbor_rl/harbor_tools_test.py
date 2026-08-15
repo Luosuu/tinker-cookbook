@@ -22,6 +22,7 @@ class FakeSandbox:
         self.files: dict[str, str] = {}
         self.executable_files: set[str] = set()
         self.commands_run: list[str] = []
+        self.command_workdirs: list[str | None] = []
         self._command_results: dict[str, SandboxResult] = {}
         self._default_result = SandboxResult(stdout="", stderr="", exit_code=0)
 
@@ -43,6 +44,7 @@ class FakeSandbox:
         max_output_bytes: int | None = None,
     ) -> SandboxResult:
         self.commands_run.append(command)
+        self.command_workdirs.append(workdir)
         if command in self._command_results:
             return self._command_results[command]
         return self._default_result
@@ -175,6 +177,7 @@ class TestHarborBashTool:
         assert output["exit_code"] == 0
         assert output["stdout"] == "hello\n"
         assert output["stderr"] == ""
+        assert sandbox.command_workdirs == [None]
 
     def test_bash_tool_truncation(self) -> None:
         long_stdout = "x" * (MAX_OUTPUT_CHARS + 100)

@@ -32,6 +32,8 @@ from tinker_cookbook.recipes.harbor_rl.harbor_env import (
 from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborBashTool, HarborReward
 from tinker_cookbook.renderers import get_renderer
 from tinker_cookbook.renderers.base import Renderer
+from tinker_cookbook.rl.rollout_limits import RolloutLimits
+from tinker_cookbook.rl.rollout_presets import RolloutConfig, agentic
 from tinker_cookbook.rl.rollouts import do_single_rollout
 from tinker_cookbook.tool_use import build_agent_tool_env
 from tinker_cookbook.utils.git_rev import recipe_user_metadata
@@ -57,6 +59,9 @@ class EvalConfig:
     base_url: str | None = None
     renderer_name: str | None = None
     thinking_effort: float | None = None
+    max_trajectory_tokens: int = 112 * 1024
+    max_sampled_tokens: int = 64 * 1024
+    max_tool_calls: int = 40
 
 
 @dataclass
@@ -100,13 +105,26 @@ async def evaluate_task(
             grader_timeout=config.grader_timeout,
         )
 
+        base_rollout_config = agentic()
+        rollout_config = RolloutConfig(
+            limits=RolloutLimits(
+                max_turns=config.max_turns,
+                max_trajectory_tokens=config.max_trajectory_tokens,
+                max_sampled_tokens=config.max_sampled_tokens,
+                max_tool_calls=config.max_tool_calls,
+            ),
+            parse_errors=base_rollout_config.parse_errors,
+            termination=base_rollout_config.termination,
+            tool_execution=base_rollout_config.tool_execution,
+        )
+
         env = build_agent_tool_env(
             renderer=renderer,
             tools=[bash_tool.bash],
             initial_messages=_initial_messages(task, renderer, bash_tool),
             reward_fn=reward_fn,
             max_turns=config.max_turns,
-            model_name=config.model_name,
+            rollout_config=rollout_config,
             generation_prompt_kwargs=(
                 {"effort": config.thinking_effort}
                 if config.thinking_effort is not None

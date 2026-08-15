@@ -37,7 +37,10 @@ class HarborBashTool:
         Use this to run shell commands, install packages, edit files, etc.
         """
         result = await self._sandbox.run_command(
-            command, workdir="/", timeout=self._command_timeout, max_output_bytes=MAX_OUTPUT_CHARS
+            command,
+            workdir=None,
+            timeout=self._command_timeout,
+            max_output_bytes=MAX_OUTPUT_CHARS,
         )
         stdout = result.stdout[:MAX_OUTPUT_CHARS]
         stderr = result.stderr[:MAX_OUTPUT_CHARS]
