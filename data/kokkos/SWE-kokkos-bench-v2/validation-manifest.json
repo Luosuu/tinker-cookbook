@@ -1,0 +1,1509 @@
+{
+  "dataset": "luosuu/SWE-kokkos-bench",
+  "instance_count": 100,
+  "instances": [
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-6289",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-6289__cjxDprN/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-6289__zSD3wj3/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:c1dd714345cad2471962d4ad78fda2422719e2c7bf46f63a19192b0eba597150",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:c1dd714345cad2471962d4ad78fda2422719e2c7bf46f63a19192b0eba597150"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-6375",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-6375__yXvNPiM/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-6375__cYmCPtB/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:3979d166645cffffce13efac38365c735702c536a2efa2e2f4ff847a2b86d2d7",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:3979d166645cffffce13efac38365c735702c536a2efa2e2f4ff847a2b86d2d7"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-6943",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-6943__TvD8xja/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-6943__bLMXmBe/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:ec3f1804587718a1e4171c93f81cca597405731e9cf8dfc7b49e3621f38c1a23",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:ec3f1804587718a1e4171c93f81cca597405731e9cf8dfc7b49e3621f38c1a23"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7030",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7030__cYnsM7w/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7030__K79JkFy/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:608b2828a579226dc684809354e05041aceaad9fdbb049922ae21d3a5cc7e97c",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:608b2828a579226dc684809354e05041aceaad9fdbb049922ae21d3a5cc7e97c"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7040",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7040__mUV3fUn/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7040__JmHRXBn/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:7035343c8601ab10f603cc106ed200f6b69c2060918b31e7087361288f1a7e4b",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:7035343c8601ab10f603cc106ed200f6b69c2060918b31e7087361288f1a7e4b"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7043",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7043__dBbyXdR/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7043__hiXG6fx/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:c1db2be05b10de678fa778d84b3a9be54f9e03d5f46afa4460dd611aafe25cac",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:c1db2be05b10de678fa778d84b3a9be54f9e03d5f46afa4460dd611aafe25cac"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7074",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7074__ngs7A6V/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7074__TdwWygC/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:ee18c8b3f010e9a9d053fe4af0e2c357d4544796ee2d9d696c914b5cb9ea79a2",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:ee18c8b3f010e9a9d053fe4af0e2c357d4544796ee2d9d696c914b5cb9ea79a2"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7088",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7088__7x98HKt/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7088__iwFjcEg/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:462fb2f719b57bcb56ecf4d597c1bd34161c4fb64b95d4514258ae3cd00ffa9f",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:462fb2f719b57bcb56ecf4d597c1bd34161c4fb64b95d4514258ae3cd00ffa9f"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7089",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7089__pQx7LYp/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7089__wsuAnYt/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:f9f91ad03eff863931fac2210add6689867a0351ef17b86fe7ca72349047f2e2",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:f9f91ad03eff863931fac2210add6689867a0351ef17b86fe7ca72349047f2e2"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7148",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7148__3j8S5KY/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7148__qcF8U3d/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:77ab790ba5bfd1cbeaf32bd09bcaa05aa6c9d43ca55019bc5d0854b5a8ae9f32",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:77ab790ba5bfd1cbeaf32bd09bcaa05aa6c9d43ca55019bc5d0854b5a8ae9f32"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7151",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7151__zHwcyqr/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7151__ddz7UDT/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:c741901e8516a085ca36483f2248fdd3e87ebf1e6259a72d1910e59b5dcec586",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:c741901e8516a085ca36483f2248fdd3e87ebf1e6259a72d1910e59b5dcec586"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7172",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7172__sryL5zZ/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7172__TQqfobj/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:0c9e743b38feeb0a9d483e0b63910067ca580db5848bfb621b37f8403676423f",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:0c9e743b38feeb0a9d483e0b63910067ca580db5848bfb621b37f8403676423f"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7242",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7242__ToQBTaE/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7242__SBewECY/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:b78532bec8f72c76342540900245779481b82f4a4a3bc5b48f77435285932ba1",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:b78532bec8f72c76342540900245779481b82f4a4a3bc5b48f77435285932ba1"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7244",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7244__VY2qEX7/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7244__TdQ6gaJ/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:1d7d2b087d9ba2abe9ccecac6cbda97af61149abfe5202f781bb16416fabb9d1",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:1d7d2b087d9ba2abe9ccecac6cbda97af61149abfe5202f781bb16416fabb9d1"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7247",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7247__rf6BPVy/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7247__jA8ToYY/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:22ffbba48520331ac2913977a2845507b4f6b346b3448f5807e5cbea16b53e22",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:22ffbba48520331ac2913977a2845507b4f6b346b3448f5807e5cbea16b53e22"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7248",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7248__2vEPYFY/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7248__zA4n35b/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:a1371ad5fdbef4380341bd74682aaa7e41e4142e87ab7c5bf69484db909a1791",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:a1371ad5fdbef4380341bd74682aaa7e41e4142e87ab7c5bf69484db909a1791"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7250",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7250__TGRr4Lm/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7250__4peuTXv/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:e2048880625024f2c37c418186f7d950d65990ac86537c6272eacbd9f5150a9d",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:e2048880625024f2c37c418186f7d950d65990ac86537c6272eacbd9f5150a9d"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7293",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7293__Bd2wt6N/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7293__JhRLPrU/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:faa3e11f89e4db5bdd65ef9005294c46ab7c8ddc68cd29188865ca9641a07404",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:faa3e11f89e4db5bdd65ef9005294c46ab7c8ddc68cd29188865ca9641a07404"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7308",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7308__KtDzhTU/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7308__EcfkLvx/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:65976cbc5a88ebcf2364dada1d4ebd265311f7c5bbc80aa7f66d3af0cb7aa6c1",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:65976cbc5a88ebcf2364dada1d4ebd265311f7c5bbc80aa7f66d3af0cb7aa6c1"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7327",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7327__SFoteUi/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7327__k2X2Len/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:eb57998193e27d71c367cfcd7ff07d5c15ce21f7a9cf05ee99caa55aee5f5510",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:eb57998193e27d71c367cfcd7ff07d5c15ce21f7a9cf05ee99caa55aee5f5510"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7334",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7334__MAh37Vy/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7334__NAXPKPX/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:20952e1f12bc51c834b0ae2951b2e09294d8c36b2d66ae3acf3e2ab0e102c054",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:20952e1f12bc51c834b0ae2951b2e09294d8c36b2d66ae3acf3e2ab0e102c054"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7374",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7374__Ug8ZyHN/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7374__MLZAYWk/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:7023f0d32b3dc94199245ecd059e1eb062494d9ed624f408f6b8f5f87b7e8991",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:7023f0d32b3dc94199245ecd059e1eb062494d9ed624f408f6b8f5f87b7e8991"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7428",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7428__swUgYLb/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7428__WXwJTTW/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:fc57afc7eb3753928d16e2673dd66649ae921c88c2e838289ddf9cf5c06af134",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:fc57afc7eb3753928d16e2673dd66649ae921c88c2e838289ddf9cf5c06af134"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-7441",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-7441__oopHKsj/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-7441__bfdzMfk/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:b331c1533855275c0f69ba50a7b72af26ccc02b0655d35b3958dcab8ea1ba5f3",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:4c639c635f5949782762330e036c2bfdb3f98284b25a21181525525a6e59b034"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7458",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7458__rWZfGTo/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7458__WoMByQH/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:271e6c5ac2986665fd58baa91a62da2bf1b7cd987d55e3f2662d09ae76c7c44c",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:271e6c5ac2986665fd58baa91a62da2bf1b7cd987d55e3f2662d09ae76c7c44c"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7467",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7467__DevhAbo/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7467__bhmp3Xn/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:021691420c094a4605dc49f60cb8f9c5ec7a21a08f1957b75781f2c78b747b5b",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:021691420c094a4605dc49f60cb8f9c5ec7a21a08f1957b75781f2c78b747b5b"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7485",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7485__ipAFmXn/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7485__xWbtahm/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:e6396eafb03dcae8b075436abae9d1cde57241ae811a2181e9997b17a977e9bc",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:e6396eafb03dcae8b075436abae9d1cde57241ae811a2181e9997b17a977e9bc"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7517",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7517__7BVXST6/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7517__M8dMejW/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:c068816d784dd4531fc043b5f611daccb2728a6425d74f98480d4281e476e761",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:c068816d784dd4531fc043b5f611daccb2728a6425d74f98480d4281e476e761"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7601",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7601__Gsukzks/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7601__q6uxnxy/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:6cd473b65fc86db53ae9db0dcf6ec120b13b0adb08a56c1feb7f918d499f906b",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:6cd473b65fc86db53ae9db0dcf6ec120b13b0adb08a56c1feb7f918d499f906b"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7605",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7605__bQBejcA/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7605__grDCpmb/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:692f35dce31f34901d131830160eaa614a160ed9cb3902b614658dd5b71d1847",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:692f35dce31f34901d131830160eaa614a160ed9cb3902b614658dd5b71d1847"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7629",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7629__QhVhAyc/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7629__yFt2M5H/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:0e26c58479ea7efb150075f52c836f15abee2b0c6640373d9fbc87ff31672583",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:0e26c58479ea7efb150075f52c836f15abee2b0c6640373d9fbc87ff31672583"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7653",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7653__KSUzxhH/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7653__oyW56rx/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:20cdd1d26d11924d8df48adf4b008ccfe57ab0ca2778ebbdd0716058cfd0c351",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:20cdd1d26d11924d8df48adf4b008ccfe57ab0ca2778ebbdd0716058cfd0c351"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7675",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7675__CyqRWup/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7675__wgLaePy/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:f789abb970eba7f869f2ff93e7b0dd764478bc217582195188b0038aa26711a6",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:f789abb970eba7f869f2ff93e7b0dd764478bc217582195188b0038aa26711a6"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7676",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7676__rf87BJH/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7676__qfMc7Gv/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:18dc43fda105ba05311a9b2ac8170920022a5318b933de79b372174b9e4ea0d1",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:18dc43fda105ba05311a9b2ac8170920022a5318b933de79b372174b9e4ea0d1"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7769",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7769__3QGZfGi/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7769__E9R7LMe/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:34f012f0615183ad2f3f3c40d40e1b23a3dd309f473bd60a37848f1d82ca5a7b",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:34f012f0615183ad2f3f3c40d40e1b23a3dd309f473bd60a37848f1d82ca5a7b"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-7984",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-7984__NvohGxx/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-7984__9MRLrsi/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:f3e12d49d659c875297c3c508e334a7fdbe610edbf7b8dcfb35abbac94e60e9e",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:f3e12d49d659c875297c3c508e334a7fdbe610edbf7b8dcfb35abbac94e60e9e"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8039",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8039__outaxtb/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8039__JHtjXFc/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:320a800d216b184a0dfad33216660e64c4e77a3206fc4ce4f6e25be28f431e8e",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:320a800d216b184a0dfad33216660e64c4e77a3206fc4ce4f6e25be28f431e8e"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8098",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8098__aFddEYZ/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8098__VyXbcxW/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:77c94b4e1463f14577409791d542934105a2a3bc70ca9eff9ac27a283d966382",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:77c94b4e1463f14577409791d542934105a2a3bc70ca9eff9ac27a283d966382"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8131",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8131__hwKAbMy/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8131__bxC6QgH/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:053049ed54ea3867be491fad9e32e6c67cd069f09f4371e792987dbf14c743f0",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:053049ed54ea3867be491fad9e32e6c67cd069f09f4371e792987dbf14c743f0"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-8164",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/increment3-nop-modal-v2/kokkos__kokkos-8164__6qvrTir/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/increment3-oracle-modal-v2/kokkos__kokkos-8164__7NXyDCG/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:9fb5f7d10eb2d01d96749c899be3c21052b436d44a25eda7cd1b9a83b753cfde",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:26e55bd1e1bb7137d73dc0818cf3e13353c022b26c28bd811709bc7e6de32a72"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8182",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8182__jrM4NEP/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8182__9V5eMZP/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:8e8e82e001fa16801ebe58d06ec682316a0ca81ca36cc1025c02ff0c4889c750",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:8e8e82e001fa16801ebe58d06ec682316a0ca81ca36cc1025c02ff0c4889c750"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8190",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8190__v3kSxha/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8190__s73Vww8/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:88003c56aaee178a360920e5a8c3ec229ed6897648cd5e6e308a25ee762c17e0",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:88003c56aaee178a360920e5a8c3ec229ed6897648cd5e6e308a25ee762c17e0"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8202",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8202__MjTAjat/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8202__a9a2iyx/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:92e23dfcc982807ea6233ec5328253048d994d0e2c982672eb4cadccc4190cfa",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:92e23dfcc982807ea6233ec5328253048d994d0e2c982672eb4cadccc4190cfa"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8221",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8221__SU7fp22/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8221__MeDEXdQ/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:3aa7f45e8e91591baba08f4f51736f692531ea40049694010ba6c92424756f79",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:3aa7f45e8e91591baba08f4f51736f692531ea40049694010ba6c92424756f79"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8289",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8289__USDyrDq/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8289__7RDUUvg/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:62a21198856422aea84755e5842fdf8ddc86eb52f8d8abce3f5f29345f6a05b9",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:62a21198856422aea84755e5842fdf8ddc86eb52f8d8abce3f5f29345f6a05b9"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8358",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8358__YjWvyxY/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8358__NxmomWf/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:9d537810b42bf63630b9436e112d6953e9051698ad152f751bdbd93de5842de6",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:9d537810b42bf63630b9436e112d6953e9051698ad152f751bdbd93de5842de6"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8364",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8364__DFfecz4/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8364__QBuTKHC/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:370c7953431f2b45540aea0b452356290589235aa6cf48118fd686ad069f43c6",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:370c7953431f2b45540aea0b452356290589235aa6cf48118fd686ad069f43c6"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8370",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8370__AAjmcw4/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8370__DfHYQf3/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:75b68fe13d1e5b9a93823bf5777625e5089a08995a0393fbbc0dff6bd6f6d055",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:75b68fe13d1e5b9a93823bf5777625e5089a08995a0393fbbc0dff6bd6f6d055"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8399",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8399__dwZckcu/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8399__ag4Zecq/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:b9f804598e76df21fd3626c33e6dad57bd7422a83fde07af77e7c1fa63787b75",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:b9f804598e76df21fd3626c33e6dad57bd7422a83fde07af77e7c1fa63787b75"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8481",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8481__Lw7zUD7/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8481__HLqn4g2/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:42bc1246e408aff2619ebce596a37c3b7935ef74ffbca8eb05250f96dba77174",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:42bc1246e408aff2619ebce596a37c3b7935ef74ffbca8eb05250f96dba77174"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8486",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/fixes/swe-kokkos-v2-8486-nop-fixed/kokkos__kokkos-8486__TWfusEj/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/fixes/swe-kokkos-v2-8486-oracle-fixed/kokkos__kokkos-8486__tV46ANN/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:2b00948c979cfc6bc9ae15811e46ebe2f2feaf3154e63f659c78c32fd5727231",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:2b00948c979cfc6bc9ae15811e46ebe2f2feaf3154e63f659c78c32fd5727231"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8494",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8494__YpKDNb5/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8494__aNhkoUJ/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:8b98cb9864e124365936dd79ae885018b178d9ccf385c41a25890da900438493",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:8b98cb9864e124365936dd79ae885018b178d9ccf385c41a25890da900438493"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8509",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8509__7kVWAH7/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8509__B5s8K9t/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:efe09fe2218d0f203cfb8d8cca619f7243e86062fc7bcfb046f46aa1d19b2106",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:efe09fe2218d0f203cfb8d8cca619f7243e86062fc7bcfb046f46aa1d19b2106"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8559",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8559__zKU4kaw/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8559__C9yhVxN/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:d7e4e9c14b78456f63f254768dc14bc73d5b4151967371ebf210223aa3be8bb2",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:d7e4e9c14b78456f63f254768dc14bc73d5b4151967371ebf210223aa3be8bb2"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8577",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8577__Ls47oZc/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8577__7D9M3Mr/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:2326c99d6b37174428ca8b7a72032d4a0edf6c1f9ae64005e7fe302244837fb5",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:2326c99d6b37174428ca8b7a72032d4a0edf6c1f9ae64005e7fe302244837fb5"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8582",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8582__B9qf6my/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8582__a3fzJbj/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:ced8b52590ccc2efede5372c930ddeddfc062435aaae3eff1dd4a2633fd86036",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:ced8b52590ccc2efede5372c930ddeddfc062435aaae3eff1dd4a2633fd86036"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8594",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8594__himh5Bd/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8594__66H2sEe/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:a239ac99f4203d8ec733a44215b7003dfd402bb762fe65da301e8cd07759cf67",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:a239ac99f4203d8ec733a44215b7003dfd402bb762fe65da301e8cd07759cf67"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8612",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8612__Rpmcq6s/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8612__awZzREj/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:21b183df469ab1afcebae71cdb4c232b83a720468d37560f0cea5cd031af321a",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:21b183df469ab1afcebae71cdb4c232b83a720468d37560f0cea5cd031af321a"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8692",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8692__94dnxFk/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8692__tjnrwqe/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:057bd7d4b8b7b7fb1739721aee6f4dce1a386aba4ccd423688a59340d83c7395",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:057bd7d4b8b7b7fb1739721aee6f4dce1a386aba4ccd423688a59340d83c7395"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8712",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8712__ShNa9zc/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8712__MoFM2jX/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:8470e44076fcd6aa703f8fd078d8907cea209f252da17fed4fde47fed25f8c92",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:8470e44076fcd6aa703f8fd078d8907cea209f252da17fed4fde47fed25f8c92"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8715",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8715__JUfPrMq/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8715__f2YCNUK/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:2198f5561235a7afca29dee83f37ec500aa27be99cca550023344d901965cd4c",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:2198f5561235a7afca29dee83f37ec500aa27be99cca550023344d901965cd4c"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8741",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8741__69LdMzU/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8741__RLsrTz9/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:e6922620cc80d038a09653200ae26c9d4ee6c526b043a41559002fbd5f87d268",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:e6922620cc80d038a09653200ae26c9d4ee6c526b043a41559002fbd5f87d268"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8761",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8761__RttgLcp/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8761__j3ujL2N/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:0e9cdca72ae74c1cd881bc5f211735683b7628d454e5b93bfb6aa729ac1c6e1e",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:0e9cdca72ae74c1cd881bc5f211735683b7628d454e5b93bfb6aa729ac1c6e1e"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8789",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8789__B7kCUxN/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8789__uYQdaSA/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:6204115df63711d4669ea1c1d4a9de346a8b0e1a61fb0f5aff46eabdbf95154a",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:6204115df63711d4669ea1c1d4a9de346a8b0e1a61fb0f5aff46eabdbf95154a"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8792",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8792__9N8ZZBw/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8792__BrouLyT/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:f87e9bb5c9e2e169b91da9cff4885f91fd7a4c0293cc1319fb98c2d6d9c280d9",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:f87e9bb5c9e2e169b91da9cff4885f91fd7a4c0293cc1319fb98c2d6d9c280d9"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8819",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8819__FLyfNfN/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8819__C6LFgF4/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:efd0ea4272b2116c9a6d0d00ef33e93d5a2379cceee259d91366b1efdaad92e4",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:efd0ea4272b2116c9a6d0d00ef33e93d5a2379cceee259d91366b1efdaad92e4"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8827",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8827__rgLiksJ/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8827__SdgQi9X/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:0c18c4659f4446fe4039fa4141f1b2470c7e2ae936682810df5bfa99b1e28a20",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:0c18c4659f4446fe4039fa4141f1b2470c7e2ae936682810df5bfa99b1e28a20"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8838",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8838__bLU8pDD/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8838__kd6Mnfu/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:8867474f1b727666756e1983be82362dfc521106be0820928dfc7d6d95226a9c",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:8867474f1b727666756e1983be82362dfc521106be0820928dfc7d6d95226a9c"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8891",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8891__fdBUTsB/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8891__zAKwkan/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:08e55485eddad3e4a2759ae4d3b904163f5bd962c0c88fdc82fa88fe68aa12ba",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:08e55485eddad3e4a2759ae4d3b904163f5bd962c0c88fdc82fa88fe68aa12ba"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8904",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8904__Lm9rSk5/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8904__QAXc6ep/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:6d99114aa6246f3052c7bfcc8455fb468e21d299a079477ca0cc09543cb74d31",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:6d99114aa6246f3052c7bfcc8455fb468e21d299a079477ca0cc09543cb74d31"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8927",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8927__BsK7NwV/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8927__HBBuw6Z/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:b054004b1a0f25b30cb1032c044fc305d4ea4d5fe19d6e11f40d674bac40d77c",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:b054004b1a0f25b30cb1032c044fc305d4ea4d5fe19d6e11f40d674bac40d77c"
+    },
+    {
+      "construction_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl",
+      "instance_id": "kokkos__kokkos-8928",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-nop/swe-kokkos-v2-new70-nop/kokkos__kokkos-8928__h5ec4H7/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/v2-validation/new70-oracle/swe-kokkos-v2-new70-oracle/kokkos__kokkos-8928__ZgDySPg/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:83fd250e8374fd0a91a8f421d55136c7c999c84a1f51eca2b4c747b1f6f6cc68",
+      "release_group": "v2-addition",
+      "validation_digest": "sha256:83fd250e8374fd0a91a8f421d55136c7c999c84a1f51eca2b4c747b1f6f6cc68"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-8967",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/increment3-nop-modal-v2/kokkos__kokkos-8967__xWzg2H4/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/increment3-oracle-modal-v2/kokkos__kokkos-8967__4AM4QtA/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:1b6aed878805794a745df9278d3d2cdfb1a4beee26293e00f356870ada367f79",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:a9189f32df1cbdac8f1f2209a30fd4817a8211aa352a01ba62640e1f9365ad27"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-8989",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/increment3-nop-modal-v2/kokkos__kokkos-8989__VnCLxCZ/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/increment3-oracle-modal-v2/kokkos__kokkos-8989__2EAsZZe/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:ea4a79df8d52fb214b75d0187ccadbbf546114f4a5463ee4726b767b2f4850e6",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:21c844519911d6e2eafe1627dbeffaf05bc842ddd957e8d8a13d342e3d3b8e41"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-9027",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-9027__rX7izwX/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-9027__Xovg5UF/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:071d1574146466319f85a29fa0ec5c3f985a654a263a1e6548ce68b4749ebf35",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:8fc7944e37187556ca715af6fecd15005b289276304b7bfcc004e8e4440c1ac9"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-9050",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-9050__cNqZJhB/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-9050__fqqYZ2Q/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:340a88dc7ae79f78025f4f7b06c3dad1bb80b8854b4f338feb4d7b073c26c81d",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:5779ad505bc53d30b6c33378b176e22cfd6119737688a830389c5b0aad7a2dff"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-9055",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-9055__H6yToZB/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-9055__f56NHbc/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:a861682d8c487242a0bc3f9a19e6874602120c0493aca1baee9dc58d18e21a24",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:23d78abdc12987436aeb1b3a4a78e9dadb42e47fd21b6c57785f3cd2ff3dc387"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-9128",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-9128__kfRsjyE/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-9128__tFFBrr5/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:84d7384c52c8502be04df480fae65fc2b4743ac5f4d46a0f0509ecb6e526706a",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:b4f94fd5277a29bb3da486098046246c0da6425bd6c4f2327c9451a1079817b1"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-9147",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-9147__mqkTASX/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-9147__ysX5DxG/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:c8d4b89cf2f60dc4876962023ad7c18ea4284827c64525e1ed8ebc0b8408b772",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:846009b1bae8f32f11f7c6fcd394794117c417ef12ba47b409f242e823671fcf"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-9159",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-9159__5S9NckC/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-9159__fR7wCbb/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:b23284f2c7899dc65d51240f5c070afc7d52f08a29965e80e89294631bb57508",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:6b56b7a871a98d754ad73e01daeb768957211e8cc6338f7e6562b18156deba1d"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-9185",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-9185__hFMh3h9/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-9185__jSL3v6R/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:5a9b3d830d2781fe0ded8e01c523e80b5a58415ab61f207987a8cf45e8ec7ecb",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:7b9e1f2d4e5e12793a7b3b79a30007aabed8216a3a2253918bc732c6445a5d38"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-9239",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-9239__ziLj8fF/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-9239__45JWPhR/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:8f12c9034a6031e3d9504ce767b3a8f9d3c326aff458e3d13744032786034a92",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:c0ca753651e16d19500304484135719bc88de533babde4b68ec68807280de4c0"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-9260",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-9260__DKqnWVn/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-9260__hLZxK8z/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:780d26691fab45cb4b21f65774e50fd1140f51747b9640e9b2e775c7014f2dd3",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:4126d8449c31ae407c0ad5949454b9c4b5ef2ae65d70e8b1c487725ccd9a3c66"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-9276",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-9276__EfKTPBm/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-9276__mKiJ6TJ/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:d88ad2e3b694233f0e8fb10efa7f1f0d8000eea29d20fbf33921eb4e503e5511",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:6033dc8580ab68c50dd34101299a618012a2d7d7c73fb354cd6d6b4cbbdd5a3a"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-9303",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-9303__vmZXfx9/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-9303__ZacapeB/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:7fc6f0971043be6d6b8b841738941355b8d3c725f2e7799ee6e3709ed05636fa",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:c202708c7849d1b2a2ae0d986c8414ca0b2af2441bf1a277c5e895485ec71492"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-9309",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-9309__vQwbUyN/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-9309__FjcRyaR/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:49db7725e28944f2f52cfc958619d83428229cc5c33c0a19b177696096a898db",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:3df82d51c976d947a633fe645d0b0b127dd99a9707185c6051411377c81f21ef"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-9328",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-9328__MtMpqee/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-9328__zsYcFos/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:da54df5ad6cc25580b8a7381f8b34284ae4142bcc64964cb13c3f7078a00b6e2",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:23ec8c048b2eecb32d9387ea8e99ea8afd4150789406cfa96be0ea71522395b2"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-9344",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-9344__obCtG2C/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-9344__jcpBh6P/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:46267cd96537f66a25cdf3779a11d1d24bf4e6c725e0d843f6434abfeb0f3a24",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:41f2e19919171fc7f0a947e9df99b1f02f37c2c6b2833186c7f599d25f0aea84"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-9408",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-9408__zbRKCz2/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-9408__fDA5yyC/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:1a33654327730bd0fe7ad443c2455f6c384ea224c0e4b78e25c94e013a2d0ecd",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:70eb0326cf87c83fd603455c7967f09a2432b427aef5c2615735bd1f6e3e066e"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-9414",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-9414__jwwxdmP/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-9414__KiWy5Ay/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:e6d8d521f3e48927aebf57f62f8228e53be6d9c255e3343aa3f87a1cd6296746",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:3b69874f7f15f3554ec9958be52a17cbb74ff1517f614e23f48659a57d0ffff5"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-kernels-2864",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/increment5-nop-modal/kokkos__kokkos-kernels-2864__q5pJizH/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/increment5-oracle-modal/kokkos__kokkos-kernels-2864__c6btqpB/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:346deadcc86d4125ca0214d5c0fd8809307aedbe533ec22526ba65edfa5f34ed",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:fae2fb43c0e74acd00889b6ec366221e450367ebeef181d8b5e6115973541dc4"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-kernels-2935",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/increment5-nop-modal/kokkos__kokkos-kernels-2935__xfysyim/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/increment5-oracle-modal/kokkos__kokkos-kernels-2935__7viLfJj/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:356f56b474fb10971860d25c9e301e97a8e7f64b1ecc4e7940519f16df7fc1b8",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:17d92e87d337a55611e7873e9e4dd19fd65e7ff888cf73f1a02b0148da18e17a"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-kernels-3049",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/increment5-nop-modal/kokkos__kokkos-kernels-3049__bLnGGHS/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/increment5-oracle-modal/kokkos__kokkos-kernels-3049__j9QKRAM/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:b0e6acde339bed19914c19303a1d7c7a920dbae0b9d43b04326cc1cf19362a4c",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:042b3a9bbdb445bac0eb62daf451addb658976a5138c5a385784ccb9f33945b6"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-kernels-3088",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/increment5-nop-modal/kokkos__kokkos-kernels-3088__DiiWaVT/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/increment5-oracle-modal/kokkos__kokkos-kernels-3088__jxDDDjE/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:bc829ef687824d445a9ef85051882cd2cdecbbbaa90fb5454dd5050094ce649c",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:58c2138afb2d0385b3f77d6366f683baaaba3bbf2cb7fc000c7c4101e4e4efaa"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-kernels-3089",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/increment5-nop-modal/kokkos__kokkos-kernels-3089__ZMJLL7u/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/increment5-oracle-modal/kokkos__kokkos-kernels-3089__kQgC9D4/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:abc7864c2b74db035197c8d2574f9bbd9180b8be03e4c190a86ace9ce416edfd",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:8f1709a20cff465966f46cf4ca1a6422d6b3214ec7b82893cc3353baf56e2201"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-kernels-3130",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-kernels-3130__CJmydw3/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-kernels-3130__j5wWA5r/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:b69ec7d9644780e12352f3b6816dbb4c6e04b14f30afff6e1a7f54d4e0f30503",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:ef23419117920be9b932cd9fe42f0e8ea2c872aeef88c67921bfb9083711bc63"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-kernels-3138",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-kernels-3138__JnQR5Zn/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-kernels-3138__EVkaL9y/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:2e0c2a64ab417672bd95d917cf0924252025a2db7d7af0819d7399d8cc4db8d2",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:573de5c88053ccad77948dee38f6491b07423d65c004c25a5b3aef0f03697176"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__kokkos-kernels-3217",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__kokkos-kernels-3217__3H6kiDr/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__kokkos-kernels-3217__VNjLtN2/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:8ef0150468d691af554086e5f66ccf6cf59e393e57f4c24a7a07c844fc2de71c",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:0a5c42d4efb2204da800d32b1b606ba59ea853e331d04c86da4b8b78efbed960"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__pykokkos-422",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__pykokkos-422__UMwo6w9/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__pykokkos-422__WfE4qVK/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:d5b3d16a8fe80388556b88551f4a5833303de49717e1ac8410e5b28cd69a38dd",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:c343163f172bf03338878aa12fc96217612294651eeead578892c6a8f549d1f2"
+    },
+    {
+      "construction_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl",
+      "instance_id": "kokkos__pykokkos-424",
+      "nop": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-nop-modal/kokkos__pykokkos-424__yPPvkP6/result.json",
+        "reward": 0.0
+      },
+      "oracle": {
+        "result": "notes/experiments/SWE-kokkos-bench/package-validation/final22-oracle-modal/kokkos__pykokkos-424__DTwoVsj/result.json",
+        "reward": 1.0
+      },
+      "registry_digest": "sha256:b83bd9b67a38480efb5978ec3427161b405601d7b5d237b89a893eb1f2e3a222",
+      "release_group": "v1-unchanged",
+      "validation_digest": "sha256:1012d97507945dc0e6af389d6484bbc2a6cb9d2f29b24f8314e4427f849e2f11"
+    }
+  ],
+  "nop_rejected": 100,
+  "oracle_passed": 100,
+  "version": "2.0.0"
+}

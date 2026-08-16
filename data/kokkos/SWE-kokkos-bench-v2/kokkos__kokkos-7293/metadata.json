@@ -1,0 +1,67 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "PASS_TO_PASS": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "base_commit": "c2a342b26a026c25b8526003c659491f2e33f7f2",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "changed_files": [
+    {
+      "additions": 30,
+      "deletions": 2,
+      "filename": "core/src/Kokkos_Array.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 96,
+      "deletions": 0,
+      "filename": "core/unit_test/TestArray.cpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/Kokkos_Array.hpp b/core/src/Kokkos_Array.hpp\nindex 4d19ea94d04..493536b53be 100644\n--- a/core/src/Kokkos_Array.hpp\n+++ b/core/src/Kokkos_Array.hpp\n@@ -195,8 +195,10 @@ struct Array<T, 0> {\n     return *reinterpret_cast<const_pointer>(-1);\n   }\n \n-  KOKKOS_INLINE_FUNCTION pointer data() { return nullptr; }\n-  KOKKOS_INLINE_FUNCTION const_pointer data() const { return nullptr; }\n+  KOKKOS_INLINE_FUNCTION constexpr pointer data() { return nullptr; }\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer data() const {\n+    return nullptr;\n+  }\n \n   friend KOKKOS_FUNCTION constexpr bool operator==(Array const&,\n                                                    Array const&) noexcept {\n@@ -435,6 +437,32 @@ KOKKOS_FUNCTION constexpr T const&& get(Array<T, N> const&& a) noexcept {\n }  // namespace Kokkos\n //</editor-fold>\n \n+//<editor-fold desc=\"Support for range-based for loop\">\n+namespace Kokkos {\n+\n+template <class T, std::size_t N>\n+KOKKOS_FUNCTION constexpr T const* begin(Array<T, N> const& a) noexcept {\n+  return a.data();\n+}\n+\n+template <class T, std::size_t N>\n+KOKKOS_FUNCTION constexpr T* begin(Array<T, N>& a) noexcept {\n+  return a.data();\n+}\n+\n+template <class T, std::size_t N>\n+KOKKOS_FUNCTION constexpr T const* end(Array<T, N> const& a) noexcept {\n+  return a.data() + a.size();\n+}\n+\n+template <class T, std::size_t N>\n+KOKKOS_FUNCTION constexpr T* end(Array<T, N>& a) noexcept {\n+  return a.data() + a.size();\n+}\n+\n+}  // namespace Kokkos\n+//</editor-fold>\n+\n #ifdef KOKKOS_IMPL_PUBLIC_INCLUDE_NOTDEFINED_ARRAY\n #undef KOKKOS_IMPL_PUBLIC_INCLUDE\n #undef KOKKOS_IMPL_PUBLIC_INCLUDE_NOTDEFINED_ARRAY\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+  "created_at": "2024-09-05T19:56:06Z",
+  "era": "cpp17",
+  "f2p_commands": [
+    "cmake --build build --target Kokkos_CoreTestCompileOnly --parallel"
+  ],
+  "fail_to_pass": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-7293",
+  "labels": [
+    "Enhancement",
+    "Kokkos-Core"
+  ],
+  "linked_issues": [],
+  "merge_commit": "383ecf6a9017c2379bd803d02af48479fe41fe8f",
+  "merged_at": "2024-09-05T19:56:06Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/7293",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "cmake --build build --target Kokkos_CoreTestCompileOnly --parallel"
+  ],
+  "pass_to_pass": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "patch": "diff --git a/core/src/Kokkos_Array.hpp b/core/src/Kokkos_Array.hpp\nindex 4d19ea94d04..493536b53be 100644\n--- a/core/src/Kokkos_Array.hpp\n+++ b/core/src/Kokkos_Array.hpp\n@@ -195,8 +195,10 @@ struct Array<T, 0> {\n     return *reinterpret_cast<const_pointer>(-1);\n   }\n \n-  KOKKOS_INLINE_FUNCTION pointer data() { return nullptr; }\n-  KOKKOS_INLINE_FUNCTION const_pointer data() const { return nullptr; }\n+  KOKKOS_INLINE_FUNCTION constexpr pointer data() { return nullptr; }\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer data() const {\n+    return nullptr;\n+  }\n \n   friend KOKKOS_FUNCTION constexpr bool operator==(Array const&,\n                                                    Array const&) noexcept {\n@@ -435,6 +437,32 @@ KOKKOS_FUNCTION constexpr T const&& get(Array<T, N> const&& a) noexcept {\n }  // namespace Kokkos\n //</editor-fold>\n \n+//<editor-fold desc=\"Support for range-based for loop\">\n+namespace Kokkos {\n+\n+template <class T, std::size_t N>\n+KOKKOS_FUNCTION constexpr T const* begin(Array<T, N> const& a) noexcept {\n+  return a.data();\n+}\n+\n+template <class T, std::size_t N>\n+KOKKOS_FUNCTION constexpr T* begin(Array<T, N>& a) noexcept {\n+  return a.data();\n+}\n+\n+template <class T, std::size_t N>\n+KOKKOS_FUNCTION constexpr T const* end(Array<T, N> const& a) noexcept {\n+  return a.data() + a.size();\n+}\n+\n+template <class T, std::size_t N>\n+KOKKOS_FUNCTION constexpr T* end(Array<T, N>& a) noexcept {\n+  return a.data() + a.size();\n+}\n+\n+}  // namespace Kokkos\n+//</editor-fold>\n+\n #ifdef KOKKOS_IMPL_PUBLIC_INCLUDE_NOTDEFINED_ARRAY\n #undef KOKKOS_IMPL_PUBLIC_INCLUDE\n #undef KOKKOS_IMPL_PUBLIC_INCLUDE_NOTDEFINED_ARRAY\ndiff --git a/core/unit_test/TestArray.cpp b/core/unit_test/TestArray.cpp\nindex cb713a17826..a5dca1bd8e2 100644\n--- a/core/unit_test/TestArray.cpp\n+++ b/core/unit_test/TestArray.cpp\n@@ -187,6 +187,102 @@ constexpr bool test_to_array() {\n \n static_assert(test_to_array());\n \n+// making sure we cover both const and non-const cases by having a function that\n+// writes to an array and another one that reads from it\n+// also checking that it supports host device annotations\n+template <class T, size_t N>\n+KOKKOS_FUNCTION constexpr void iota(Kokkos::Array<T, N>& a, T value) {\n+  for (auto& e : a) {\n+    e = value++;\n+  }\n+}\n+\n+template <class T, size_t N>\n+KOKKOS_FUNCTION constexpr T accumulate(Kokkos::Array<T, N> const& a, T init) {\n+  T acc = init;\n+  for (auto const& e : a) {\n+    acc = acc + e;\n+  }\n+  return acc;\n+}\n+\n+constexpr bool test_range_based_for_loop() {\n+  // making sure zero-sized arrays are supported\n+  constexpr Kokkos::Array<int, 0> a0 = [] {\n+    Kokkos::Array<int, 0> a{};\n+    iota(a, 1);\n+    return a;\n+  }();\n+  static_assert(accumulate(a0, 0) == 0);\n+\n+  constexpr Kokkos::Array<int, 1> a1 = [] {\n+    Kokkos::Array<int, 1> a{};\n+    iota(a, 1);\n+    return a;\n+  }();\n+  static_assert(accumulate(a1, 0) == 1);\n+\n+  constexpr Kokkos::Array<int, 2> a2 = [] {\n+    Kokkos::Array<int, 2> a{};\n+    iota(a, 1);\n+    return a;\n+  }();\n+  static_assert(accumulate(a2, 0) == 3);\n+\n+  constexpr Kokkos::Array<int, 3> a3 = [] {\n+    Kokkos::Array<int, 3> a{};\n+    iota(a, 1);\n+    return a;\n+  }();\n+  static_assert(accumulate(a3, 0) == 6);\n+\n+  return true;\n+}\n+\n+static_assert(test_range_based_for_loop());\n+\n+constexpr bool test_begin_end() {\n+  constexpr Kokkos::Array<float, 0> a0{};\n+  static_assert(begin(a0) == nullptr);\n+  static_assert(end(a0) == nullptr);\n+\n+  constexpr Kokkos::Array<float, 1> a1{};\n+  static_assert(begin(a1) == &a1[0]);\n+  static_assert(end(a1) == &a1[0] + a1.size());\n+\n+  Kokkos::Array<double, 0> n0{};\n+  static_assert(std::is_same_v<decltype(begin(n0)), double*>);\n+  static_assert(std::is_same_v<decltype(end(n0)), double*>);\n+  static_assert(std::is_same_v<double*, decltype(n0)::pointer>);\n+  static_assert(noexcept(begin(n0)));\n+  static_assert(noexcept(end(n0)));\n+\n+  Kokkos::Array<double, 0> const c0{};\n+  static_assert(std::is_same_v<decltype(begin(c0)), double const*>);\n+  static_assert(std::is_same_v<decltype(end(c0)), double const*>);\n+  static_assert(std::is_same_v<double const*, decltype(c0)::const_pointer>);\n+  static_assert(noexcept(begin(c0)));\n+  static_assert(noexcept(end(c0)));\n+\n+  Kokkos::Array<double, 1> n1{};\n+  static_assert(std::is_same_v<decltype(begin(n1)), double*>);\n+  static_assert(std::is_same_v<decltype(end(n1)), double*>);\n+  static_assert(std::is_same_v<double*, decltype(n1)::pointer>);\n+  static_assert(noexcept(begin(n1)));\n+  static_assert(noexcept(end(n1)));\n+\n+  Kokkos::Array<double, 1> const c1{};\n+  static_assert(std::is_same_v<decltype(begin(c1)), double const*>);\n+  static_assert(std::is_same_v<decltype(end(c1)), double const*>);\n+  static_assert(std::is_same_v<double const*, decltype(c1)::const_pointer>);\n+  static_assert(noexcept(begin(c1)));\n+  static_assert(noexcept(end(c1)));\n+\n+  return true;\n+}\n+\n+static_assert(test_begin_end());\n+\n constexpr bool test_array_equality_comparable() {\n   using C0 = Kokkos::Array<char, 0>;\n   using C2 = Kokkos::Array<char, 2>;\n",
+  "pr_number": 7293,
+  "problem_statement": "This is enabled by introducing `begin()` and `end()` free functions that take const and non-const  `Array` and return pointers to elements.\r\n\r\nWhether or not to introduce them as member function can be decided elsewhere.\r\nWe would still need the free functions as the `std::` functions would lack the `__host__ __device__` annotations.",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/TestArray.cpp b/core/unit_test/TestArray.cpp\nindex cb713a17826..a5dca1bd8e2 100644\n--- a/core/unit_test/TestArray.cpp\n+++ b/core/unit_test/TestArray.cpp\n@@ -187,6 +187,102 @@ constexpr bool test_to_array() {\n \n static_assert(test_to_array());\n \n+// making sure we cover both const and non-const cases by having a function that\n+// writes to an array and another one that reads from it\n+// also checking that it supports host device annotations\n+template <class T, size_t N>\n+KOKKOS_FUNCTION constexpr void iota(Kokkos::Array<T, N>& a, T value) {\n+  for (auto& e : a) {\n+    e = value++;\n+  }\n+}\n+\n+template <class T, size_t N>\n+KOKKOS_FUNCTION constexpr T accumulate(Kokkos::Array<T, N> const& a, T init) {\n+  T acc = init;\n+  for (auto const& e : a) {\n+    acc = acc + e;\n+  }\n+  return acc;\n+}\n+\n+constexpr bool test_range_based_for_loop() {\n+  // making sure zero-sized arrays are supported\n+  constexpr Kokkos::Array<int, 0> a0 = [] {\n+    Kokkos::Array<int, 0> a{};\n+    iota(a, 1);\n+    return a;\n+  }();\n+  static_assert(accumulate(a0, 0) == 0);\n+\n+  constexpr Kokkos::Array<int, 1> a1 = [] {\n+    Kokkos::Array<int, 1> a{};\n+    iota(a, 1);\n+    return a;\n+  }();\n+  static_assert(accumulate(a1, 0) == 1);\n+\n+  constexpr Kokkos::Array<int, 2> a2 = [] {\n+    Kokkos::Array<int, 2> a{};\n+    iota(a, 1);\n+    return a;\n+  }();\n+  static_assert(accumulate(a2, 0) == 3);\n+\n+  constexpr Kokkos::Array<int, 3> a3 = [] {\n+    Kokkos::Array<int, 3> a{};\n+    iota(a, 1);\n+    return a;\n+  }();\n+  static_assert(accumulate(a3, 0) == 6);\n+\n+  return true;\n+}\n+\n+static_assert(test_range_based_for_loop());\n+\n+constexpr bool test_begin_end() {\n+  constexpr Kokkos::Array<float, 0> a0{};\n+  static_assert(begin(a0) == nullptr);\n+  static_assert(end(a0) == nullptr);\n+\n+  constexpr Kokkos::Array<float, 1> a1{};\n+  static_assert(begin(a1) == &a1[0]);\n+  static_assert(end(a1) == &a1[0] + a1.size());\n+\n+  Kokkos::Array<double, 0> n0{};\n+  static_assert(std::is_same_v<decltype(begin(n0)), double*>);\n+  static_assert(std::is_same_v<decltype(end(n0)), double*>);\n+  static_assert(std::is_same_v<double*, decltype(n0)::pointer>);\n+  static_assert(noexcept(begin(n0)));\n+  static_assert(noexcept(end(n0)));\n+\n+  Kokkos::Array<double, 0> const c0{};\n+  static_assert(std::is_same_v<decltype(begin(c0)), double const*>);\n+  static_assert(std::is_same_v<decltype(end(c0)), double const*>);\n+  static_assert(std::is_same_v<double const*, decltype(c0)::const_pointer>);\n+  static_assert(noexcept(begin(c0)));\n+  static_assert(noexcept(end(c0)));\n+\n+  Kokkos::Array<double, 1> n1{};\n+  static_assert(std::is_same_v<decltype(begin(n1)), double*>);\n+  static_assert(std::is_same_v<decltype(end(n1)), double*>);\n+  static_assert(std::is_same_v<double*, decltype(n1)::pointer>);\n+  static_assert(noexcept(begin(n1)));\n+  static_assert(noexcept(end(n1)));\n+\n+  Kokkos::Array<double, 1> const c1{};\n+  static_assert(std::is_same_v<decltype(begin(c1)), double const*>);\n+  static_assert(std::is_same_v<decltype(end(c1)), double const*>);\n+  static_assert(std::is_same_v<double const*, decltype(c1)::const_pointer>);\n+  static_assert(noexcept(begin(c1)));\n+  static_assert(noexcept(end(c1)));\n+\n+  return true;\n+}\n+\n+static_assert(test_begin_end());\n+\n constexpr bool test_array_equality_comparable() {\n   using C0 = Kokkos::Array<char, 0>;\n   using C2 = Kokkos::Array<char, 2>;\n",
+  "title": "Add range-based for loop support for `Array<T, N>`",
+  "version": "cpp17"
+}

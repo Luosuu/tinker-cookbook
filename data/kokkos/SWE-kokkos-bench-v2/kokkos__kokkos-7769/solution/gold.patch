@@ -1,0 +1,308 @@
+diff --git a/.clang-tidy b/.clang-tidy
+index 6f7b92db071..842ab9f5eab 100644
+--- a/.clang-tidy
++++ b/.clang-tidy
+@@ -13,7 +13,6 @@ Checks: >
+   -bugprone-narrowing-conversions,
+   -bugprone-non-zero-enum-to-bool-conversion,
+   -bugprone-reserved-identifier,
+-  -bugprone-return-const-ref-from-parameter,
+   -bugprone-signed-char-misuse,
+   -bugprone-sizeof-expression,
+   -bugprone-suspicious-include,
+diff --git a/algorithms/src/std_algorithms/impl/Kokkos_ExclusiveScan.hpp b/algorithms/src/std_algorithms/impl/Kokkos_ExclusiveScan.hpp
+index 6da992b4bbe..08e04810f67 100644
+--- a/algorithms/src/std_algorithms/impl/Kokkos_ExclusiveScan.hpp
++++ b/algorithms/src/std_algorithms/impl/Kokkos_ExclusiveScan.hpp
+@@ -103,7 +103,7 @@ OutputIteratorType exclusive_scan_custom_op_exespace_impl(
+ 
+   // aliases
+   using index_type    = typename InputIteratorType::difference_type;
+-  using unary_op_type = StdNumericScanIdentityReferenceUnaryFunctor<ValueType>;
++  using unary_op_type = StdNumericScanIdentityReferenceUnaryFunctor;
+   using func_type     = TransformExclusiveScanFunctorWithValueWrapper<
+       ExecutionSpace, index_type, ValueType, InputIteratorType,
+       OutputIteratorType, BinaryOpType, unary_op_type>;
+@@ -177,7 +177,7 @@ KOKKOS_FUNCTION OutputIteratorType exclusive_scan_custom_op_team_impl(
+ 
+   // aliases
+   using exe_space     = typename TeamHandleType::execution_space;
+-  using unary_op_type = StdNumericScanIdentityReferenceUnaryFunctor<ValueType>;
++  using unary_op_type = StdNumericScanIdentityReferenceUnaryFunctor;
+   using index_type    = typename InputIteratorType::difference_type;
+   using func_type     = TransformExclusiveScanFunctorWithoutValueWrapper<
+       exe_space, index_type, ValueType, InputIteratorType, OutputIteratorType,
+diff --git a/algorithms/src/std_algorithms/impl/Kokkos_IdentityReferenceUnaryFunctor.hpp b/algorithms/src/std_algorithms/impl/Kokkos_IdentityReferenceUnaryFunctor.hpp
+index 252511c5d0c..928508fdfb3 100644
+--- a/algorithms/src/std_algorithms/impl/Kokkos_IdentityReferenceUnaryFunctor.hpp
++++ b/algorithms/src/std_algorithms/impl/Kokkos_IdentityReferenceUnaryFunctor.hpp
+@@ -23,10 +23,11 @@ namespace Kokkos {
+ namespace Experimental {
+ namespace Impl {
+ 
+-template <class ValueType>
+ struct StdNumericScanIdentityReferenceUnaryFunctor {
+-  KOKKOS_FUNCTION
+-  constexpr const ValueType& operator()(const ValueType& a) const { return a; }
++  template <class T>
++  KOKKOS_FUNCTION constexpr T&& operator()(T&& t) const {
++    return static_cast<T&&>(t);
++  }
+ };
+ 
+ }  // namespace Impl
+diff --git a/algorithms/src/std_algorithms/impl/Kokkos_InclusiveScan.hpp b/algorithms/src/std_algorithms/impl/Kokkos_InclusiveScan.hpp
+index 0b4acec0feb..c633f629a2e 100644
+--- a/algorithms/src/std_algorithms/impl/Kokkos_InclusiveScan.hpp
++++ b/algorithms/src/std_algorithms/impl/Kokkos_InclusiveScan.hpp
+@@ -160,7 +160,7 @@ OutputIteratorType inclusive_scan_custom_binary_op_exespace_impl(
+   using index_type = typename InputIteratorType::difference_type;
+   using value_type =
+       std::remove_const_t<typename InputIteratorType::value_type>;
+-  using unary_op_type = StdNumericScanIdentityReferenceUnaryFunctor<value_type>;
++  using unary_op_type = StdNumericScanIdentityReferenceUnaryFunctor;
+   using func_type     = ExeSpaceTransformInclusiveScanNoInitValueFunctor<
+       ExecutionSpace, index_type, value_type, InputIteratorType,
+       OutputIteratorType, BinaryOpType, unary_op_type>;
+@@ -195,7 +195,7 @@ OutputIteratorType inclusive_scan_custom_binary_op_exespace_impl(
+ 
+   // aliases
+   using index_type    = typename InputIteratorType::difference_type;
+-  using unary_op_type = StdNumericScanIdentityReferenceUnaryFunctor<ValueType>;
++  using unary_op_type = StdNumericScanIdentityReferenceUnaryFunctor;
+   using func_type     = ExeSpaceTransformInclusiveScanWithInitValueFunctor<
+       ExecutionSpace, index_type, ValueType, InputIteratorType,
+       OutputIteratorType, BinaryOpType, unary_op_type>;
+@@ -283,7 +283,7 @@ KOKKOS_FUNCTION OutputIteratorType inclusive_scan_custom_binary_op_team_impl(
+ 
+   // aliases
+   using exe_space     = typename TeamHandleType::execution_space;
+-  using unary_op_type = StdNumericScanIdentityReferenceUnaryFunctor<value_type>;
++  using unary_op_type = StdNumericScanIdentityReferenceUnaryFunctor;
+   using func_type     = TeamTransformInclusiveScanNoInitValueFunctor<
+       exe_space, value_type, InputIteratorType, OutputIteratorType,
+       BinaryOpType, unary_op_type>;
+@@ -325,7 +325,7 @@ KOKKOS_FUNCTION OutputIteratorType inclusive_scan_custom_binary_op_team_impl(
+ 
+   // aliases
+   using exe_space     = typename TeamHandleType::execution_space;
+-  using unary_op_type = StdNumericScanIdentityReferenceUnaryFunctor<ValueType>;
++  using unary_op_type = StdNumericScanIdentityReferenceUnaryFunctor;
+   using func_type     = TeamTransformInclusiveScanWithInitValueFunctor<
+       exe_space, ValueType, InputIteratorType, OutputIteratorType, BinaryOpType,
+       unary_op_type>;
+diff --git a/core/src/Kokkos_GraphNode.hpp b/core/src/Kokkos_GraphNode.hpp
+index 5914853a9c0..968e834c9ab 100644
+--- a/core/src/Kokkos_GraphNode.hpp
++++ b/core/src/Kokkos_GraphNode.hpp
+@@ -321,6 +321,16 @@ class GraphNodeRef {
+   //----------------------------------------------------------------------------
+   // <editor-fold desc="then_parallel_reduce"> {{{2
+ 
++  // Equivalent to std::get<I>(std::tuple) but callable on the device.
++  template <bool B, class T1, class T2>
++  static KOKKOS_FUNCTION std::conditional_t<B, T1&&, T2&&>
++  impl_forwarding_switch(T1&& v1, T2&& v2) {
++    if constexpr (B)
++      return static_cast<T1&&>(v1);
++    else
++      return static_cast<T2&&>(v2);
++  }
++
+   template <
+       class Policy, class Functor, class ReturnType,
+       std::enable_if_t<
+@@ -410,15 +420,18 @@ class GraphNodeRef {
+ 
+     using passed_reducer_type = typename return_value_adapter::reducer_type;
+ 
+-    using reducer_selector =
+-        Kokkos::Impl::if_c<std::is_same_v<InvalidType, passed_reducer_type>,
+-                           functor_type, passed_reducer_type>;
++    constexpr bool passed_reducer_type_is_invalid =
++        std::is_same_v<InvalidType, passed_reducer_type>;
++    using TheReducerType =
++        std::conditional_t<passed_reducer_type_is_invalid, functor_type,
++                           passed_reducer_type>;
++
+     using analysis = Kokkos::Impl::FunctorAnalysis<
+-        Kokkos::Impl::FunctorPatternInterface::REDUCE, Policy,
+-        typename reducer_selector::type,
++        Kokkos::Impl::FunctorPatternInterface::REDUCE, Policy, TheReducerType,
+         typename return_value_adapter::value_type>;
+     typename analysis::Reducer final_reducer(
+-        reducer_selector::select(functor, return_value));
++        impl_forwarding_switch<passed_reducer_type_is_invalid>(functor,
++                                                               return_value));
+     Kokkos::Impl::CombinedFunctorReducer<functor_type,
+                                          typename analysis::Reducer>
+         functor_reducer(functor, final_reducer);
+diff --git a/core/src/Kokkos_Parallel_Reduce.hpp b/core/src/Kokkos_Parallel_Reduce.hpp
+index 3b89d184f2a..9b87d43fa09 100644
+--- a/core/src/Kokkos_Parallel_Reduce.hpp
++++ b/core/src/Kokkos_Parallel_Reduce.hpp
+@@ -1410,7 +1410,7 @@ struct ParallelReduceReturnValue<
+                                         value_type_scalar, value_type_array>;
+ 
+   static return_type& return_value(ReturnType& return_val, const FunctorType&) {
+-    return return_val;
++    return return_val;  // NOLINT(bugprone-return-const-ref-from-parameter)
+   }
+ };
+ 
+@@ -1492,20 +1492,21 @@ struct ParallelReducePolicyType<
+   }
+ };
+ 
+-template <class FunctorType, class ExecPolicy, class ValueType,
+-          class ExecutionSpace>
+-struct ParallelReduceFunctorType {
+-  using functor_type = FunctorType;
+-  static const functor_type& functor(const functor_type& functor) {
+-    return functor;
+-  }
+-};
+-
+ template <class PolicyType, class FunctorType, class ReturnType>
+ struct ParallelReduceAdaptor {
+   using return_value_adapter =
+       Impl::ParallelReduceReturnValue<void, ReturnType, FunctorType>;
+ 
++  // Equivalent to std::get<I>(std::tuple) but callable on the device.
++  template <bool B, class T1, class T2>
++  static KOKKOS_FUNCTION std::conditional_t<B, T1&&, T2&&> forwarding_switch(
++      T1&& v1, T2&& v2) {
++    if constexpr (B)
++      return static_cast<T1&&>(v1);
++    else
++      return static_cast<T2&&>(v2);
++  }
++
+   static inline void execute_impl(const std::string& label,
+                                   const PolicyType& policy,
+                                   const FunctorType& functor,
+@@ -1513,18 +1514,21 @@ struct ParallelReduceAdaptor {
+     using PassedReducerType = typename return_value_adapter::reducer_type;
+     uint64_t kpID           = 0;
+ 
+-    using ReducerSelector =
+-        Kokkos::Impl::if_c<std::is_same_v<InvalidType, PassedReducerType>,
+-                           FunctorType, PassedReducerType>;
++    constexpr bool passed_reducer_type_is_invalid =
++        std::is_same_v<InvalidType, PassedReducerType>;
++    using TheReducerType = std::conditional_t<passed_reducer_type_is_invalid,
++                                              FunctorType, PassedReducerType>;
++
+     using Analysis = FunctorAnalysis<FunctorPatternInterface::REDUCE,
+-                                     PolicyType, typename ReducerSelector::type,
++                                     PolicyType, TheReducerType,
+                                      typename return_value_adapter::value_type>;
+     using CombinedFunctorReducerType =
+         CombinedFunctorReducer<FunctorType, typename Analysis::Reducer>;
+ 
+     CombinedFunctorReducerType functor_reducer(
+         functor, typename Analysis::Reducer(
+-                     ReducerSelector::select(functor, return_value)));
++                     forwarding_switch<passed_reducer_type_is_invalid>(
++                         functor, return_value)));
+     const auto& response = Kokkos::Tools::Impl::begin_parallel_reduce<
+         typename return_value_adapter::reducer_type>(policy, functor_reducer,
+                                                      label, kpID);
+diff --git a/core/src/impl/Kokkos_Traits.hpp b/core/src/impl/Kokkos_Traits.hpp
+index fdbd0de03f3..b1dc65650f6 100644
+--- a/core/src/impl/Kokkos_Traits.hpp
++++ b/core/src/impl/Kokkos_Traits.hpp
+@@ -117,93 +117,6 @@ struct are_integral<T, Args...> {
+ namespace Kokkos {
+ namespace Impl {
+ 
+-//----------------------------------------------------------------------------
+-// if_
+-
+-template <bool Cond, typename TrueType, typename FalseType>
+-struct if_c {
+-  enum : bool { value = Cond };
+-
+-  using type = FalseType;
+-
+-  using value_type = std::remove_const_t<std::remove_reference_t<type>>;
+-
+-  using const_value_type = std::add_const_t<value_type>;
+-
+-  static KOKKOS_INLINE_FUNCTION const_value_type& select(const_value_type& v) {
+-    return v;
+-  }
+-
+-  static KOKKOS_INLINE_FUNCTION value_type& select(value_type& v) { return v; }
+-
+-  template <class T>
+-  static KOKKOS_INLINE_FUNCTION value_type& select(const T&) {
+-    value_type* ptr(0);
+-    return *ptr;
+-  }
+-
+-  template <class T>
+-  static KOKKOS_INLINE_FUNCTION const_value_type& select(const T&,
+-                                                         const_value_type& v) {
+-    return v;
+-  }
+-
+-  template <class T>
+-  static KOKKOS_INLINE_FUNCTION value_type& select(const T&, value_type& v) {
+-    return v;
+-  }
+-};
+-
+-template <typename TrueType, typename FalseType>
+-struct if_c<true, TrueType, FalseType> {
+-  enum : bool { value = true };
+-
+-  using type = TrueType;
+-
+-  using value_type = std::remove_const_t<std::remove_reference_t<type>>;
+-
+-  using const_value_type = std::add_const_t<value_type>;
+-
+-  static KOKKOS_INLINE_FUNCTION const_value_type& select(const_value_type& v) {
+-    return v;
+-  }
+-
+-  static KOKKOS_INLINE_FUNCTION value_type& select(value_type& v) { return v; }
+-
+-  template <class T>
+-  static KOKKOS_INLINE_FUNCTION value_type& select(const T&) {
+-    value_type* ptr(0);
+-    return *ptr;
+-  }
+-
+-  template <class F>
+-  static KOKKOS_INLINE_FUNCTION const_value_type& select(const_value_type& v,
+-                                                         const F&) {
+-    return v;
+-  }
+-
+-  template <class F>
+-  static KOKKOS_INLINE_FUNCTION value_type& select(value_type& v, const F&) {
+-    return v;
+-  }
+-};
+-
+-template <typename TrueType>
+-struct if_c<false, TrueType, void> {
+-  enum : bool { value = false };
+-
+-  using type       = void;
+-  using value_type = void;
+-};
+-
+-template <typename FalseType>
+-struct if_c<true, void, FalseType> {
+-  enum : bool { value = true };
+-
+-  using type       = void;
+-  using value_type = void;
+-};
+-
+ //----------------------------------------------------------------------------
+ // These 'constexpr'functions can be used as
+ // both regular functions and meta-function.

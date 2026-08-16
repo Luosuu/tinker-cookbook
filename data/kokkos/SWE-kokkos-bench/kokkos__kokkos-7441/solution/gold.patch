@@ -1,0 +1,434 @@
+diff --git a/core/src/Cuda/Kokkos_Cuda.hpp b/core/src/Cuda/Kokkos_Cuda.hpp
+index 8c73f93cf22..4c96e47b951 100644
+--- a/core/src/Cuda/Kokkos_Cuda.hpp
++++ b/core/src/Cuda/Kokkos_Cuda.hpp
+@@ -86,6 +86,9 @@ class Cuda {
+   //! This execution space preferred device_type
+   using device_type = Kokkos::Device<execution_space, memory_space>;
+ 
++  //! The index_type best suited for this execution space.
++  using index_type = memory_space::index_type;
++
+   //! The size_type best suited for this execution space.
+   using size_type = memory_space::size_type;
+ 
+diff --git a/core/src/Cuda/Kokkos_CudaSpace.hpp b/core/src/Cuda/Kokkos_CudaSpace.hpp
+index 29871e2386d..a9562209249 100644
+--- a/core/src/Cuda/Kokkos_CudaSpace.hpp
++++ b/core/src/Cuda/Kokkos_CudaSpace.hpp
+@@ -49,8 +49,8 @@ class CudaSpace {
+   using memory_space    = CudaSpace;
+   using execution_space = Kokkos::Cuda;
+   using device_type     = Kokkos::Device<execution_space, memory_space>;
+-
+-  using size_type = unsigned int;
++  using size_type       = unsigned int;
++  using index_type      = std::make_signed_t<size_type>;
+ 
+   /*--------------------------------*/
+ 
+@@ -139,6 +139,7 @@ class CudaUVMSpace {
+   using execution_space = Cuda;
+   using device_type     = Kokkos::Device<execution_space, memory_space>;
+   using size_type       = unsigned int;
++  using index_type      = std::make_signed_t<size_type>;
+ 
+   /*--------------------------------*/
+ 
+@@ -227,6 +228,7 @@ class CudaHostPinnedSpace {
+   using memory_space    = CudaHostPinnedSpace;
+   using device_type     = Kokkos::Device<execution_space, memory_space>;
+   using size_type       = unsigned int;
++  using index_type      = std::make_signed_t<size_type>;
+ 
+   /*--------------------------------*/
+ 
+diff --git a/core/src/HIP/Kokkos_HIP.hpp b/core/src/HIP/Kokkos_HIP.hpp
+index 9964ff753b5..0e2e557efdc 100644
+--- a/core/src/HIP/Kokkos_HIP.hpp
++++ b/core/src/HIP/Kokkos_HIP.hpp
+@@ -30,6 +30,7 @@ class HIP {
+   using device_type     = Kokkos::Device<execution_space, memory_space>;
+ 
+   using array_layout = LayoutLeft;
++  using index_type   = HIPSpace::index_type;
+   using size_type    = HIPSpace::size_type;
+ 
+   using scratch_memory_space = ScratchMemorySpace<HIP>;
+diff --git a/core/src/HIP/Kokkos_HIP_Space.hpp b/core/src/HIP/Kokkos_HIP_Space.hpp
+index b8cd1d4991f..d0d2d83efa8 100644
+--- a/core/src/HIP/Kokkos_HIP_Space.hpp
++++ b/core/src/HIP/Kokkos_HIP_Space.hpp
+@@ -39,8 +39,8 @@ class HIPSpace {
+   using memory_space    = HIPSpace;
+   using execution_space = HIP;
+   using device_type     = Kokkos::Device<execution_space, memory_space>;
+-
+-  using size_type = unsigned int;
++  using size_type       = unsigned int;
++  using index_type      = std::make_signed_t<size_type>;
+ 
+   /*--------------------------------*/
+ 
+@@ -122,6 +122,7 @@ class HIPHostPinnedSpace {
+   using memory_space    = HIPHostPinnedSpace;
+   using device_type     = Kokkos::Device<execution_space, memory_space>;
+   using size_type       = unsigned int;
++  using index_type      = std::make_signed_t<size_type>;
+ 
+   /*--------------------------------*/
+ 
+@@ -202,6 +203,7 @@ class HIPManagedSpace {
+   using execution_space = HIP;
+   using device_type     = Kokkos::Device<execution_space, memory_space>;
+   using size_type       = unsigned int;
++  using index_type      = std::make_signed_t<size_type>;
+ 
+   /*--------------------------------*/
+ 
+diff --git a/core/src/HPX/Kokkos_HPX.hpp b/core/src/HPX/Kokkos_HPX.hpp
+index bfd0fe7104c..de22dbf6f96 100644
+--- a/core/src/HPX/Kokkos_HPX.hpp
++++ b/core/src/HPX/Kokkos_HPX.hpp
+@@ -170,6 +170,7 @@ class HPX {
+   using device_type          = Kokkos::Device<execution_space, memory_space>;
+   using array_layout         = LayoutRight;
+   using size_type            = memory_space::size_type;
++  using index_type           = memory_space::index_type;
+   using scratch_memory_space = ScratchMemorySpace<HPX>;
+ 
+ // FIXME_HPX spurious warnings like
+diff --git a/core/src/Kokkos_AnonymousSpace.hpp b/core/src/Kokkos_AnonymousSpace.hpp
+index 1e27cace965..18b704fa443 100644
+--- a/core/src/Kokkos_AnonymousSpace.hpp
++++ b/core/src/Kokkos_AnonymousSpace.hpp
+@@ -23,6 +23,7 @@ class AnonymousSpace {
+   using memory_space    = AnonymousSpace;
+   using execution_space = Kokkos::DefaultExecutionSpace;
+   using size_type       = size_t;
++  using index_type      = std::make_signed_t<size_type>;
+ 
+   //! This memory space preferred device_type
+   using device_type = Kokkos::Device<execution_space, memory_space>;
+diff --git a/core/src/Kokkos_ExecPolicy.hpp b/core/src/Kokkos_ExecPolicy.hpp
+index 5462f7c4eab..0eb65c53683 100644
+--- a/core/src/Kokkos_ExecPolicy.hpp
++++ b/core/src/Kokkos_ExecPolicy.hpp
+@@ -240,37 +240,44 @@ class ImplRangePolicy<ExecSpace, Properties...>
+     }
+   }
+ 
+-  // To be replaced with std::in_range (c++20)
++  // Arithmetic member_type and IndexType: signedness / numeric_limits checks.
++  // Always run the round-trip check below as well; for non-arithmetic IndexType
++  // only that line applies inside the is_convertible gate.
+   template <typename IndexType>
+   static void check_conversion_safety([[maybe_unused]] const IndexType bound) {
+-    // Checking that the round-trip conversion preserves input index value
+     if constexpr (std::is_convertible_v<member_type, IndexType>) {
+       bool error = false;
+ 
+       if constexpr (std::is_arithmetic_v<member_type> &&
+-                    (std::is_signed_v<IndexType> !=
+-                     std::is_signed_v<member_type>)) {
+-        // check signed to unsigned
+-        if constexpr (std::is_signed_v<IndexType>)
+-          error |= (bound < static_cast<IndexType>(
+-                                std::numeric_limits<member_type>::min()));
+-
+-        // check unsigned to signed
+-        if constexpr (std::is_signed_v<member_type>)
+-          error |= (bound > static_cast<IndexType>(
+-                                std::numeric_limits<member_type>::max()));
++                    std::is_arithmetic_v<IndexType>) {
++        if constexpr (std::is_signed_v<IndexType> !=
++                      std::is_signed_v<member_type>) {
++          if constexpr (std::is_signed_v<IndexType>) error |= (bound < 0);
++          if constexpr (std::is_signed_v<member_type>) {
++            if constexpr (sizeof(member_type) <= sizeof(IndexType))
++              error |= (bound > static_cast<IndexType>(
++                                    std::numeric_limits<member_type>::max()));
++            else {
++              error |= (bound > std::numeric_limits<IndexType>::max());
++            }
++          }
++        }
+       }
+ 
+-      // check narrowing
+       error |=
+           (static_cast<IndexType>(static_cast<member_type>(bound)) != bound);
+ 
+       if (error) {
++        std::string bound_to_text = []<typename T>(const T& b) {
++          if constexpr (std::is_arithmetic_v<T>)
++            return std::to_string(b);
++          else
++            return std::to_string(static_cast<member_type>(b));
++        }(bound);
+         std::string msg =
+             "Kokkos::RangePolicy bound type error: an unsafe implicit "
+             "conversion is performed on a bound (" +
+-            std::to_string(bound) +
+-            "), which may not preserve its original value.\n";
++            bound_to_text + "), which may not preserve its original value.\n";
+ 
+         Kokkos::abort(msg.c_str());
+       }
+diff --git a/core/src/Kokkos_HostSpace.hpp b/core/src/Kokkos_HostSpace.hpp
+index eddc73a3816..aee1df5e125 100644
+--- a/core/src/Kokkos_HostSpace.hpp
++++ b/core/src/Kokkos_HostSpace.hpp
+@@ -38,6 +38,7 @@ class HostSpace {
+   //! Tag this class as a kokkos memory space
+   using memory_space = HostSpace;
+   using size_type    = size_t;
++  using index_type   = std::make_signed_t<size_type>;
+ 
+   /// \typedef execution_space
+   /// \brief Default execution space for this memory space.
+diff --git a/core/src/Kokkos_ScratchSpace.hpp b/core/src/Kokkos_ScratchSpace.hpp
+index db767cf809d..0d60aec1610 100644
+--- a/core/src/Kokkos_ScratchSpace.hpp
++++ b/core/src/Kokkos_ScratchSpace.hpp
+@@ -50,6 +50,7 @@ class ScratchMemorySpace {
+ 
+   using array_layout = typename ExecSpace::array_layout;
+   using size_type    = typename ExecSpace::size_type;
++  using index_type   = typename ExecSpace::index_type;
+ 
+   static constexpr const char* name() { return "ScratchMemorySpace"; }
+ 
+diff --git a/core/src/NextSilicon/Kokkos_NextSilicon.hpp b/core/src/NextSilicon/Kokkos_NextSilicon.hpp
+index 0de8582ad83..23118c9a9d8 100644
+--- a/core/src/NextSilicon/Kokkos_NextSilicon.hpp
++++ b/core/src/NextSilicon/Kokkos_NextSilicon.hpp
+@@ -38,6 +38,7 @@ class NextSilicon {
+ 
+   using array_layout = LayoutLeft;
+   using size_type    = memory_space::size_type;
++  using index_type   = memory_space::index_type;
+ 
+   using scratch_memory_space = ScratchMemorySpace<NextSilicon>;
+ 
+diff --git a/core/src/NextSilicon/Kokkos_NextSiliconSpace.hpp b/core/src/NextSilicon/Kokkos_NextSiliconSpace.hpp
+index 6e4c97fbcd6..ac525dbc973 100644
+--- a/core/src/NextSilicon/Kokkos_NextSiliconSpace.hpp
++++ b/core/src/NextSilicon/Kokkos_NextSiliconSpace.hpp
+@@ -14,6 +14,7 @@ static_assert(false,
+ #include <impl/Kokkos_Tools.hpp>
+ #include <Kokkos_ScratchSpace.hpp>
+ #include <iosfwd>
++#include <type_traits>
+ 
+ namespace Kokkos::Experimental {
+ 
+@@ -25,6 +26,7 @@ class NextSiliconSharedSpace {
+   using execution_space = NextSilicon;
+   using device_type     = Kokkos::Device<execution_space, memory_space>;
+   using size_type       = size_t;
++  using index_type      = std::make_signed_t<size_type>;
+ 
+   NextSiliconSharedSpace() = default;
+ 
+diff --git a/core/src/OpenACC/Kokkos_OpenACC.hpp b/core/src/OpenACC/Kokkos_OpenACC.hpp
+index 172038c54fd..68ba7a66cf2 100644
+--- a/core/src/OpenACC/Kokkos_OpenACC.hpp
++++ b/core/src/OpenACC/Kokkos_OpenACC.hpp
+@@ -59,6 +59,7 @@ class OpenACC {
+ 
+   using array_layout = LayoutLeft;
+   using size_type    = memory_space::size_type;
++  using index_type   = memory_space::index_type;
+ 
+   using scratch_memory_space = ScratchMemorySpace<OpenACC>;
+ 
+diff --git a/core/src/OpenACC/Kokkos_OpenACCSpace.hpp b/core/src/OpenACC/Kokkos_OpenACCSpace.hpp
+index 5d70cbeb82f..f6bd136fb81 100644
+--- a/core/src/OpenACC/Kokkos_OpenACCSpace.hpp
++++ b/core/src/OpenACC/Kokkos_OpenACCSpace.hpp
+@@ -26,7 +26,8 @@ class OpenACCSpace {
+   using execution_space = OpenACC;
+   using device_type     = Kokkos::Device<execution_space, memory_space>;
+ 
+-  using size_type = size_t;
++  using size_type  = size_t;
++  using index_type = std::make_signed_t<size_type>;
+ 
+   OpenACCSpace() = default;
+ 
+diff --git a/core/src/OpenACC/Kokkos_OpenACC_ParallelReduce_Range.hpp b/core/src/OpenACC/Kokkos_OpenACC_ParallelReduce_Range.hpp
+index 0dfe04ee68f..13a87056c79 100644
+--- a/core/src/OpenACC/Kokkos_OpenACC_ParallelReduce_Range.hpp
++++ b/core/src/OpenACC/Kokkos_OpenACC_ParallelReduce_Range.hpp
+@@ -184,7 +184,6 @@ KOKKOS_IMPL_ACC_PRAGMA(parallel loop gang num_gangs(n_chunks) num_workers(1) vec
+       }
+       KOKKOS_IMPL_OPENACC_VECTOR_RED_TEMP_ACCESS1(thread_id) = temp;
+     }
+-#pragma acc loop seq
+     for (tStep = (chunk_size >> 1); tStep > 0; tStep >>= 1) {
+ #pragma acc loop vector
+       for (IndexType thread_id = 0; thread_id < chunk_size; ++thread_id) {
+@@ -217,13 +216,11 @@ KOKKOS_IMPL_ACC_PRAGMA(parallel num_gangs(1) num_workers(1) vector_length(chunk_
+       IndexType idx;
+       ValueType temp;
+       temp = initVal;
+-#pragma acc loop seq
+       for (idx = thread_id; idx < n_chunks; idx += chunk_size) {
+         reducer.join(&temp, &gang_red_temp(idx));
+       }
+       KOKKOS_IMPL_OPENACC_VECTOR_RED_TEMP_ACCESS2(thread_id) = temp;
+     }
+-#pragma acc loop seq
+     for (tStep = (chunk_size >> 1); tStep > 0; tStep >>= 1) {
+ #pragma acc loop vector
+       for (IndexType thread_id = 0; thread_id < chunk_size; ++thread_id) {
+diff --git a/core/src/OpenMP/Kokkos_OpenMP.hpp b/core/src/OpenMP/Kokkos_OpenMP.hpp
+index fbfaaa4836e..a49f9b4cfaa 100644
+--- a/core/src/OpenMP/Kokkos_OpenMP.hpp
++++ b/core/src/OpenMP/Kokkos_OpenMP.hpp
+@@ -49,6 +49,7 @@ class OpenMP {
+   using device_type          = Kokkos::Device<execution_space, memory_space>;
+   using array_layout         = LayoutRight;
+   using size_type            = memory_space::size_type;
++  using index_type           = memory_space::index_type;
+   using scratch_memory_space = ScratchMemorySpace<OpenMP>;
+ 
+   KOKKOS_DEFAULTED_FUNCTION OpenMP(const OpenMP&) = default;
+diff --git a/core/src/SYCL/Kokkos_SYCL.hpp b/core/src/SYCL/Kokkos_SYCL.hpp
+index 518140bb9fd..26a695c56aa 100644
+--- a/core/src/SYCL/Kokkos_SYCL.hpp
++++ b/core/src/SYCL/Kokkos_SYCL.hpp
+@@ -40,6 +40,7 @@ class SYCL {
+ 
+   using array_layout = LayoutLeft;
+   using size_type    = memory_space::size_type;
++  using index_type   = memory_space::index_type;
+ 
+   using scratch_memory_space = ScratchMemorySpace<SYCL>;
+ 
+diff --git a/core/src/SYCL/Kokkos_SYCL_Instance.hpp b/core/src/SYCL/Kokkos_SYCL_Instance.hpp
+index 5546008da9d..19c491e5ec3 100644
+--- a/core/src/SYCL/Kokkos_SYCL_Instance.hpp
++++ b/core/src/SYCL/Kokkos_SYCL_Instance.hpp
+@@ -16,7 +16,8 @@ namespace Impl {
+ 
+ class SYCLInternal {
+  public:
+-  using size_type = unsigned int;
++  using size_type  = unsigned int;
++  using index_type = std::make_signed_t<size_type>;
+ 
+   static HostSharedPtr<SYCLInternal> default_instance;
+ 
+diff --git a/core/src/SYCL/Kokkos_SYCL_Space.hpp b/core/src/SYCL/Kokkos_SYCL_Space.hpp
+index 1080484c9cc..bc5d343819f 100644
+--- a/core/src/SYCL/Kokkos_SYCL_Space.hpp
++++ b/core/src/SYCL/Kokkos_SYCL_Space.hpp
+@@ -32,6 +32,7 @@ class SYCLDeviceUSMSpace {
+   using memory_space    = SYCLDeviceUSMSpace;
+   using device_type     = Kokkos::Device<execution_space, memory_space>;
+   using size_type       = Impl::SYCLInternal::size_type;
++  using index_type      = Impl::SYCLInternal::index_type;
+ 
+   SYCLDeviceUSMSpace();
+   explicit SYCLDeviceUSMSpace(sycl::queue queue);
+@@ -63,6 +64,7 @@ class SYCLSharedUSMSpace {
+   using memory_space    = SYCLSharedUSMSpace;
+   using device_type     = Kokkos::Device<execution_space, memory_space>;
+   using size_type       = Impl::SYCLInternal::size_type;
++  using index_type      = Impl::SYCLInternal::index_type;
+ 
+   SYCLSharedUSMSpace();
+   explicit SYCLSharedUSMSpace(sycl::queue queue);
+@@ -104,6 +106,7 @@ class SYCLHostUSMSpace {
+   using memory_space    = SYCLHostUSMSpace;
+   using device_type     = Kokkos::Device<execution_space, memory_space>;
+   using size_type       = Impl::SYCLInternal::size_type;
++  using index_type      = Impl::SYCLInternal::index_type;
+ 
+   SYCLHostUSMSpace();
+   explicit SYCLHostUSMSpace(sycl::queue queue);
+diff --git a/core/src/Serial/Kokkos_Serial.hpp b/core/src/Serial/Kokkos_Serial.hpp
+index 2096181813b..45978f5aee0 100644
+--- a/core/src/Serial/Kokkos_Serial.hpp
++++ b/core/src/Serial/Kokkos_Serial.hpp
+@@ -85,6 +85,8 @@ class Serial {
+   using execution_space = Serial;
+   //! This device's preferred memory space.
+   using memory_space = Kokkos::HostSpace;
++  //! The index_type alias best suited for this device.
++  using index_type = memory_space::index_type;
+   //! The size_type alias best suited for this device.
+   using size_type = memory_space::size_type;
+   //! This execution space preferred device_type
+diff --git a/core/src/Threads/Kokkos_Threads.hpp b/core/src/Threads/Kokkos_Threads.hpp
+index 70c26eb1d7e..0ee552d162a 100644
+--- a/core/src/Threads/Kokkos_Threads.hpp
++++ b/core/src/Threads/Kokkos_Threads.hpp
+@@ -41,6 +41,7 @@ class Threads {
+   using device_type = Kokkos::Device<execution_space, memory_space>;
+ 
+   using array_layout = Kokkos::LayoutRight;
++  using index_type   = memory_space::index_type;
+   using size_type    = memory_space::size_type;
+ 
+   using scratch_memory_space = ScratchMemorySpace<Threads>;
+diff --git a/core/src/View/Kokkos_BasicView.hpp b/core/src/View/Kokkos_BasicView.hpp
+index b5e3ed3efb8..7ee8cd351d2 100644
+--- a/core/src/View/Kokkos_BasicView.hpp
++++ b/core/src/View/Kokkos_BasicView.hpp
+@@ -134,15 +134,13 @@ class BasicView {
+  public:
+   using mdspan_type =
+       mdspan<ElementType, Extents, LayoutPolicy, AccessorPolicy>;
+-  using extents_type  = typename mdspan_type::extents_type;
+-  using layout_type   = typename mdspan_type::layout_type;
+-  using accessor_type = typename mdspan_type::accessor_type;
+-  using mapping_type  = typename mdspan_type::mapping_type;
+-  using element_type  = typename mdspan_type::element_type;
+-  using value_type    = typename mdspan_type::value_type;
+-  // FIXME: backwards compatibility, should be changed to the same as mdspan
+-  // index_type
+-  using index_type       = typename mdspan_type::size_type;
++  using extents_type     = typename mdspan_type::extents_type;
++  using layout_type      = typename mdspan_type::layout_type;
++  using accessor_type    = typename mdspan_type::accessor_type;
++  using mapping_type     = typename mdspan_type::mapping_type;
++  using element_type     = typename mdspan_type::element_type;
++  using value_type       = typename mdspan_type::value_type;
++  using index_type       = typename mdspan_type::index_type;
+   using size_type        = typename mdspan_type::size_type;
+   using rank_type        = typename mdspan_type::rank_type;
+   using data_handle_type = typename mdspan_type::data_handle_type;
+diff --git a/core/src/View/Kokkos_ViewAlloc.hpp b/core/src/View/Kokkos_ViewAlloc.hpp
+index e21188fabf2..264d5702d25 100644
+--- a/core/src/View/Kokkos_ViewAlloc.hpp
++++ b/core/src/View/Kokkos_ViewAlloc.hpp
+@@ -84,9 +84,11 @@ struct ViewValueFunctor {
+ 
+   template <typename Tag>
+   void parallel_for_implementation() {
++    // Use a 64-bit index range: allocations can exceed what the execution
++    // space default index_type (e.g. 32-bit on CUDA/HIP) can represent.
+     using PolicyType =
+-        Kokkos::RangePolicy<ExecSpace, Kokkos::IndexType<int64_t>, Tag>;
+-    PolicyType policy(space, 0, n);
++        Kokkos::RangePolicy<ExecSpace, Kokkos::IndexType<size_t>, Tag>;
++    PolicyType policy(space, size_t(0), n);
+     uint64_t kpID = 0;
+     if (Kokkos::Profiling::profileLibraryLoaded()) {
+       const std::string functor_name =
+diff --git a/core/src/impl/Kokkos_AnalyzePolicy.hpp b/core/src/impl/Kokkos_AnalyzePolicy.hpp
+index ea884b30e56..042552de110 100644
+--- a/core/src/impl/Kokkos_AnalyzePolicy.hpp
++++ b/core/src/impl/Kokkos_AnalyzePolicy.hpp
+@@ -197,7 +197,7 @@ struct ExecPolicyTraitsWithDefaults : AnalysisResults {
+   //   instead of the wrapped IndexType<T> for backwards compatibility
+   using index_type = typename std::conditional_t<
+       base_t::index_type_is_defaulted,
+-      Kokkos::IndexType<typename execution_space::size_type>,
++      Kokkos::IndexType<typename execution_space::index_type>,
+       typename base_t::index_type>::type;
+ };
+ 

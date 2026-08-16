@@ -1,0 +1,537 @@
+diff --git a/core/unit_test/CMakeLists.txt b/core/unit_test/CMakeLists.txt
+index 7a1e2bb3ecb..8d505e531e4 100644
+--- a/core/unit_test/CMakeLists.txt
++++ b/core/unit_test/CMakeLists.txt
+@@ -91,6 +91,7 @@ SET(COMPILE_ONLY_SOURCES
+   TestVersionMacros.cpp
+   TestViewRank.cpp
+   TestViewTypeTraits.cpp
++  TestTypeInfo.cpp
+   TestTypeList.cpp
+   TestMDRangePolicyCTAD.cpp
+   TestTeamPolicyCTAD.cpp
+@@ -104,6 +105,20 @@ if(WIN32)
+   LIST(APPEND COMPILE_ONLY_SOURCES TestWindowsInclude.cpp)
+ endif()
+ 
++if(Kokkos_INSTALL_TESTING)  # FIXME Kokkos_ and KOKKOS_ variables are out of sync
++  if((Kokkos_CXX_COMPILER_ID STREQUAL "Intel" AND Kokkos_CXX_COMPILER_VERSION VERSION_LESS 2021.2.0)
++     OR (Kokkos_CXX_COMPILER_ID STREQUAL "NVIDIA" AND Kokkos_CXX_COMPILER_VERSION VERSION_LESS 11.3.0)
++     OR (Kokkos_CXX_COMPILER_ID STREQUAL "NVIDIA" AND Kokkos_CXX_HOST_COMPILER_ID STREQUAL "MSVC"))
++    LIST(REMOVE_ITEM COMPILE_ONLY_SOURCES TestTypeInfo.cpp)
++  endif()
++else()
++  if((KOKKOS_CXX_COMPILER_ID STREQUAL "Intel" AND KOKKOS_CXX_COMPILER_VERSION VERSION_LESS 2021.2.0)
++     OR (KOKKOS_CXX_COMPILER_ID STREQUAL "NVIDIA" AND KOKKOS_CXX_COMPILER_VERSION VERSION_LESS 11.3.0)
++     OR (KOKKOS_CXX_COMPILER_ID STREQUAL "NVIDIA" AND KOKKOS_CXX_HOST_COMPILER_ID STREQUAL "MSVC"))
++    LIST(REMOVE_ITEM COMPILE_ONLY_SOURCES TestTypeInfo.cpp)
++  endif()
++endif()
++
+ #TestInterOp has a dependency on containers
+ IF(KOKKOS_HAS_TRILINOS)
+   LIST(REMOVE_ITEM COMPILE_ONLY_SOURCES TestInterOp.cpp)
+diff --git a/core/unit_test/TestAtomicOperations.hpp b/core/unit_test/TestAtomicOperations.hpp
+index 77f589f411f..806fdace3cb 100644
+--- a/core/unit_test/TestAtomicOperations.hpp
++++ b/core/unit_test/TestAtomicOperations.hpp
+@@ -353,21 +353,21 @@ bool atomic_op_test(T old_val, T update) {
+       result);
+   if ((result & 1) != 0)
+     std::cerr << "atomic_" << Op::name() << " failed with type "
+-              << typeid(T).name() << '\n';
++              << Kokkos::Impl::TypeInfo<T>::name() << '\n';
+   if ((result & 2) != 0)
+     std::cerr << "atomic_fetch_" << Op::name() << " failed with type "
+-              << typeid(T).name() << '\n';
++              << Kokkos::Impl::TypeInfo<T>::name() << '\n';
+   if ((result & 4) != 0)
+     std::cerr << "atomic_" << Op::name() << "_fetch failed with type "
+-              << typeid(T).name() << '\n';
++              << Kokkos::Impl::TypeInfo<T>::name() << '\n';
+   if ((result & 8) != 0)
+     std::cerr << "atomic_fetch_" << Op::name()
+-              << " did not return old value with type " << typeid(T).name()
+-              << '\n';
++              << " did not return old value with type "
++              << Kokkos::Impl::TypeInfo<T>::name() << '\n';
+   if ((result & 16) != 0)
+     std::cerr << "atomic_" << Op::name() << "_fetch"
+-              << " did not return updated value with type " << typeid(T).name()
+-              << '\n';
++              << " did not return updated value with type "
++              << Kokkos::Impl::TypeInfo<T>::name() << '\n';
+ 
+   return result == 0;
+ }
+@@ -413,21 +413,21 @@ bool atomic_op_test_rel(T old_val, T update) {
+       result);
+   if ((result & 1) != 0)
+     std::cerr << "atomic_" << Op::name() << " failed with type "
+-              << typeid(T).name() << '\n';
++              << Kokkos::Impl::TypeInfo<T>::name() << '\n';
+   if ((result & 2) != 0)
+     std::cerr << "atomic_fetch_" << Op::name() << " failed with type "
+-              << typeid(T).name() << '\n';
++              << Kokkos::Impl::TypeInfo<T>::name() << '\n';
+   if ((result & 4) != 0)
+     std::cerr << "atomic_" << Op::name() << "_fetch failed with type "
+-              << typeid(T).name() << '\n';
++              << Kokkos::Impl::TypeInfo<T>::name() << '\n';
+   if ((result & 8) != 0)
+     std::cerr << "atomic_fetch_" << Op::name()
+-              << " did not return old value with type " << typeid(T).name()
+-              << '\n';
++              << " did not return old value with type "
++              << Kokkos::Impl::TypeInfo<T>::name() << '\n';
+   if ((result & 16) != 0)
+     std::cerr << "atomic_" << Op::name() << "_fetch"
+-              << " did not return updated value with type " << typeid(T).name()
+-              << '\n';
++              << " did not return updated value with type "
++              << Kokkos::Impl::TypeInfo<T>::name() << '\n';
+ 
+   return result == 0;
+ }
+diff --git a/core/unit_test/TestAtomicViews.hpp b/core/unit_test/TestAtomicViews.hpp
+index a6a027289ef..fa72e0b0cfd 100644
+--- a/core/unit_test/TestAtomicViews.hpp
++++ b/core/unit_test/TestAtomicViews.hpp
+@@ -419,8 +419,9 @@ void PlusEqualAtomicViewTest(int64_t input_length) {
+   T res       = PlusEqualAtomicView<T, DeviceType>(input_length);
+   T resSerial = PlusEqualAtomicViewCheck<T>(input_length);
+ 
+-  ASSERT_EQ(res, resSerial) << "PlusEqualAtomicViewTest<" << typeid(T).name()
+-                            << ">(length=" << input_length << ")";
++  ASSERT_EQ(res, resSerial)
++      << "PlusEqualAtomicViewTest<" << Kokkos::Impl::TypeInfo<T>::name()
++      << ">(length=" << input_length << ")";
+ }
+ 
+ //---------------------------------------------------
+@@ -507,8 +508,9 @@ void MinusEqualAtomicViewTest(int64_t input_length) {
+   T res       = MinusEqualAtomicView<T, DeviceType>(input_length);
+   T resSerial = MinusEqualAtomicViewCheck<T>(input_length);
+ 
+-  ASSERT_EQ(res, resSerial) << "MinusEqualAtomicViewTest<" << typeid(T).name()
+-                            << ">(length=" << input_length << ")";
++  ASSERT_EQ(res, resSerial)
++      << "MinusEqualAtomicViewTest<" << Kokkos::Impl::TypeInfo<T>::name()
++      << ">(length=" << input_length << ")";
+ }
+ 
+ //---------------------------------------------------
+@@ -588,8 +590,9 @@ void TimesEqualAtomicViewTest(const int64_t input_length) {
+   T res       = TimesEqualAtomicView<T, DeviceType>(input_length, remainder);
+   T resSerial = TimesEqualAtomicViewCheck<T>(input_length, remainder);
+ 
+-  ASSERT_EQ(res, resSerial) << "TimesEqualAtomicViewTest<" << typeid(T).name()
+-                            << ">(length=" << input_length << ")";
++  ASSERT_EQ(res, resSerial)
++      << "TimesEqualAtomicViewTest<" << Kokkos::Impl::TypeInfo<T>::name()
++      << ">(length=" << input_length << ")";
+ }
+ 
+ //---------------------------------------------------
+@@ -670,7 +673,7 @@ void DivEqualAtomicViewTest(const int64_t input_length) {
+   T resSerial = DivEqualAtomicViewCheck<T>(input_length, remainder);
+ 
+   ASSERT_EQ(res, resSerial)
+-      << "DivEqualAtomicViewTest<" << typeid(T).name()
++      << "DivEqualAtomicViewTest<" << Kokkos::Impl::TypeInfo<T>::name()
+       << ">(length=" << input_length << ",remainder=" << remainder << ")";
+ }
+ 
+@@ -756,7 +759,7 @@ void ModEqualAtomicViewTest(const int64_t input_length) {
+   T resSerial = ModEqualAtomicViewCheck<T>(input_length, remainder);
+ 
+   ASSERT_EQ(res, resSerial)
+-      << "ModEqualAtomicViewTest<" << typeid(T).name()
++      << "ModEqualAtomicViewTest<" << Kokkos::Impl::TypeInfo<T>::name()
+       << ">(length=" << input_length << ",remainder=" << remainder << ")";
+ }
+ 
+@@ -874,9 +877,10 @@ void RSEqualAtomicViewTest(const int64_t input_length) {
+   T res = RSEqualAtomicView<T, DeviceType>(input_length, value, remainder);
+   T resSerial = RSEqualAtomicViewCheck<T>(input_length, value, remainder);
+ 
+-  ASSERT_EQ(res, resSerial) << "RSEqualAtomicViewTest<" << typeid(T).name()
+-                            << ">(length=" << input_length << ",value=" << value
+-                            << ",remainder=" << remainder << ")";
++  ASSERT_EQ(res, resSerial)
++      << "RSEqualAtomicViewTest<" << Kokkos::Impl::TypeInfo<T>::name()
++      << ">(length=" << input_length << ",value=" << value
++      << ",remainder=" << remainder << ")";
+ }
+ 
+ //---------------------------------------------------
+@@ -993,9 +997,10 @@ void LSEqualAtomicViewTest(const int64_t input_length) {
+   T res = LSEqualAtomicView<T, DeviceType>(input_length, value, remainder);
+   T resSerial = LSEqualAtomicViewCheck<T>(input_length, value, remainder);
+ 
+-  ASSERT_EQ(res, resSerial) << "LSEqualAtomicViewTest<" << typeid(T).name()
+-                            << ">(length=" << input_length << ",value=" << value
+-                            << ",remainder=" << remainder << ")";
++  ASSERT_EQ(res, resSerial)
++      << "LSEqualAtomicViewTest<" << Kokkos::Impl::TypeInfo<T>::name()
++      << ">(length=" << input_length << ",value=" << value
++      << ",remainder=" << remainder << ")";
+ }
+ 
+ //---------------------------------------------------
+@@ -1078,8 +1083,9 @@ void AndEqualAtomicViewTest(int64_t input_length) {
+   T res       = AndEqualAtomicView<T, DeviceType>(input_length);
+   T resSerial = AndEqualAtomicViewCheck<T>(input_length);
+ 
+-  ASSERT_EQ(res, resSerial) << "AndEqualAtomicViewTest<" << typeid(T).name()
+-                            << ">(length=" << input_length << ")";
++  ASSERT_EQ(res, resSerial)
++      << "AndEqualAtomicViewTest<" << Kokkos::Impl::TypeInfo<T>::name()
++      << ">(length=" << input_length << ")";
+ }
+ 
+ //---------------------------------------------------
+@@ -1161,8 +1167,9 @@ void OrEqualAtomicViewTest(int64_t input_length) {
+   T res       = OrEqualAtomicView<T, DeviceType>(input_length);
+   T resSerial = OrEqualAtomicViewCheck<T>(input_length);
+ 
+-  ASSERT_EQ(res, resSerial) << "OrEqualAtomicViewTest<" << typeid(T).name()
+-                            << ">(length=" << input_length << ")";
++  ASSERT_EQ(res, resSerial)
++      << "OrEqualAtomicViewTest<" << Kokkos::Impl::TypeInfo<T>::name()
++      << ">(length=" << input_length << ")";
+ }
+ 
+ //---------------------------------------------------
+@@ -1244,8 +1251,9 @@ void XOrEqualAtomicViewTest(int64_t input_length) {
+   T res       = XOrEqualAtomicView<T, DeviceType>(input_length);
+   T resSerial = XOrEqualAtomicViewCheck<T>(input_length);
+ 
+-  ASSERT_EQ(res, resSerial) << "XOrEqualAtomicViewTest<" << typeid(T).name()
+-                            << ">(length=" << input_length << ")";
++  ASSERT_EQ(res, resSerial)
++      << "XOrEqualAtomicViewTest<" << Kokkos::Impl::TypeInfo<T>::name()
++      << ">(length=" << input_length << ")";
+ }
+ 
+ // inc/dec?
+diff --git a/core/unit_test/TestAtomics.hpp b/core/unit_test/TestAtomics.hpp
+index 4f11269bc23..183c262e919 100644
+--- a/core/unit_test/TestAtomics.hpp
++++ b/core/unit_test/TestAtomics.hpp
+@@ -450,8 +450,8 @@ void Loop(int loop, int test) {
+   T res       = LoopVariant<T, DeviceType>(loop, test);
+   T resSerial = LoopVariantSerial<T>(loop, test);
+ 
+-  ASSERT_EQ(res, resSerial) << "Loop<" << typeid(T).name() << ">(loop=" << loop
+-                            << ",test=" << test << ")";
++  ASSERT_EQ(res, resSerial) << "Loop<" << Kokkos::Impl::TypeInfo<T>::name()
++                            << ">(loop=" << loop << ",test=" << test << ")";
+ }
+ 
+ TEST(TEST_CATEGORY, atomics) {
+diff --git a/core/unit_test/TestTeamScan.hpp b/core/unit_test/TestTeamScan.hpp
+index b0734985f6d..84798563055 100644
+--- a/core/unit_test/TestTeamScan.hpp
++++ b/core/unit_test/TestTeamScan.hpp
+@@ -15,7 +15,6 @@
+ //@HEADER
+ 
+ #include <Kokkos_Core.hpp>
+-#include <impl/Kokkos_Stacktrace.hpp>
+ #include <cstdio>
+ #include <cstdint>
+ #include <sstream>
+@@ -56,7 +55,7 @@ struct TestTeamScan {
+ 
+   auto operator()(int32_t M_, int32_t N_) {
+     std::stringstream ss;
+-    ss << Kokkos::Impl::demangle(typeid(*this).name());
++    ss << Kokkos::Impl::TypeInfo<decltype(*this)>::name();
+     ss << "(/*M=*/" << M_ << ", /*N=*/" << N_ << ")";
+     std::string const test_id = ss.str();
+ 
+@@ -174,7 +173,7 @@ struct TestTeamScanRetVal {
+ 
+   auto operator()(int32_t M_, int32_t N_) {
+     std::stringstream ss;
+-    ss << Kokkos::Impl::demangle(typeid(*this).name());
++    ss << Kokkos::Impl::TypeInfo<decltype(*this)>::name();
+     ss << "(/*M=*/" << M_ << ", /*N=*/" << N_ << ")";
+     std::string const test_id = ss.str();
+ 
+diff --git a/core/unit_test/TestTeamVector.hpp b/core/unit_test/TestTeamVector.hpp
+index 8e9acabbfc1..579966ac33d 100644
+--- a/core/unit_test/TestTeamVector.hpp
++++ b/core/unit_test/TestTeamVector.hpp
+@@ -980,7 +980,7 @@ struct checkScan {
+     const std::string label =
+         (scan_type == ScanType::Inclusive ? std::string("inclusive")
+                                           : std::string("exclusive")) +
+-        "Scan" + typeid(Reducer).name();
++        "Scan" + std::string(Kokkos::Impl::TypeInfo<Reducer>::name());
+     Kokkos::parallel_for(label, policy, *this);
+     Kokkos::fence();
+ 
+diff --git a/core/unit_test/TestTypeInfo.cpp b/core/unit_test/TestTypeInfo.cpp
+new file mode 100644
+index 00000000000..93c4ae19092
+--- /dev/null
++++ b/core/unit_test/TestTypeInfo.cpp
+@@ -0,0 +1,74 @@
++//@HEADER
++// ************************************************************************
++//
++//                        Kokkos v. 4.0
++//       Copyright (2022) National Technology & Engineering
++//               Solutions of Sandia, LLC (NTESS).
++//
++// Under the terms of Contract DE-NA0003525 with NTESS,
++// the U.S. Government retains certain rights in this software.
++//
++// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
++// See https://kokkos.org/LICENSE for license information.
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++//
++//@HEADER
++
++#include <Kokkos_TypeInfo.hpp>
++
++#include <type_traits>
++
++namespace {
++
++using Kokkos::Impl::TypeInfo;
++
++struct Foo {};
++using FooAlias = Foo;
++enum Bar { BAR_0, BAR_1, BAR_2 };
++union Baz {
++  int i;
++  float f;
++};
++
++[[maybe_unused]] auto func = [](int) {};  // < line 33
++//                           ^  column 30
++using Lambda = decltype(func);
++
++// clang-format off
++#if defined(__NVCC__) && !defined(__CUDA_ARCH__)
++// can't do much
++// it looks like that there is 1st an EDG pass and then a host pass and they cannot both agree on what the type info is
++#elif defined(__EDG__) || (defined(__NVCC__) && defined(__CUDA_ARCH__))
++static_assert(TypeInfo<Foo>::name()      == "<unnamed>::Foo");
++static_assert(TypeInfo<FooAlias>::name() == "<unnamed>::Foo");
++static_assert(TypeInfo<Bar>::name()      == "<unnamed>::Bar");
++static_assert(TypeInfo<Baz>::name()      == "<unnamed>::Baz");
++static_assert(TypeInfo<Lambda>::name()   == "lambda [](int)->void");
++#elif defined(__clang__)
++static_assert(TypeInfo<Foo>::name()      == "(anonymous namespace)::Foo");
++static_assert(TypeInfo<FooAlias>::name() == "(anonymous namespace)::Foo");
++static_assert(TypeInfo<Bar>::name()      == "(anonymous namespace)::Bar");
++static_assert(TypeInfo<Baz>::name()      == "(anonymous namespace)::Baz");
++static_assert(TypeInfo<Lambda>::name()   == "(anonymous namespace)::(lambda at "  __FILE__  ":33:30)");
++#elif defined(__GNUC__)
++static_assert(TypeInfo<Foo>::name()      == "{anonymous}::Foo");
++static_assert(TypeInfo<FooAlias>::name() == "{anonymous}::Foo");
++static_assert(TypeInfo<Bar>::name()      == "{anonymous}::Bar");
++static_assert(TypeInfo<Baz>::name()      == "{anonymous}::Baz");
++static_assert(TypeInfo<Lambda>::name()   == "{anonymous}::<lambda(int)>");
++#elif defined(_MSC_VER)
++static_assert(TypeInfo<Foo>::name()      == "struct `anonymous-namespace'::Foo");
++static_assert(TypeInfo<FooAlias>::name() == "struct `anonymous-namespace'::Foo");
++static_assert(TypeInfo<Bar>::name()      == "enum `anonymous-namespace'::Bar");
++static_assert(TypeInfo<Baz>::name()      == "union `anonymous-namespace'::Baz");
++#ifndef KOKKOS_ENABLE_CXX17
++static_assert(TypeInfo<Lambda>::name().starts_with("class `anonymous-namespace'::<lambda_"));
++// underscore followed by some 32-bit hash that seems sensitive to the content of the current source code file
++static_assert(TypeInfo<Lambda>::name().ends_with(">"));
++#endif
++#else
++#error how did I ended up here?
++#endif
++// clang-format on
++
++}  // namespace
+diff --git a/core/unit_test/TestViewIsAssignable.hpp b/core/unit_test/TestViewIsAssignable.hpp
+index 01cac4e2231..824693eaf99 100644
+--- a/core/unit_test/TestViewIsAssignable.hpp
++++ b/core/unit_test/TestViewIsAssignable.hpp
+@@ -49,20 +49,15 @@ struct TestAssignability {
+         Kokkos::is_always_assignable<ViewTypeDst, ViewTypeSrc>::value;
+     bool is_assignable = Kokkos::is_assignable(dst, src);
+ 
+-    // Print out if there is an error with typeid so you can just filter the
+-    // output with c++filt -t to see which assignment causes the error.
+-    if (is_always_assignable != always || is_assignable != sometimes)
+-      printf(
+-          "is_always_assignable: %i (%i), is_assignable: %i (%i) [ %s ] to [ "
+-          "%s ]\n",
+-          is_always_assignable ? 1 : 0, always ? 1 : 0, is_assignable ? 1 : 0,
+-          sometimes ? 1 : 0, typeid(ViewTypeSrc).name(),
+-          typeid(ViewTypeDst).name());
+     if (sometimes) {
+       ASSERT_NO_THROW(try_assign<mapping_type>(dst, src));
+     }
+-    ASSERT_EQ(always, is_always_assignable);
+-    ASSERT_EQ(sometimes, is_assignable);
++    ASSERT_EQ(always, is_always_assignable)
++        << Kokkos::Impl::TypeInfo<ViewTypeSrc>::name() << " to "
++        << Kokkos::Impl::TypeInfo<ViewTypeDst>::name();
++    ASSERT_EQ(sometimes, is_assignable)
++        << Kokkos::Impl::TypeInfo<ViewTypeSrc>::name() << " to "
++        << Kokkos::Impl::TypeInfo<ViewTypeDst>::name();
+   }
+ };
+ 
+diff --git a/core/unit_test/TestViewMapping_a.hpp b/core/unit_test/TestViewMapping_a.hpp
+index 7c2a07e5595..d869ca3bf72 100644
+--- a/core/unit_test/TestViewMapping_a.hpp
++++ b/core/unit_test/TestViewMapping_a.hpp
+@@ -643,9 +643,6 @@ void test_view_mapping() {
+     static_assert(
+         std::is_same_v<typename a_const_int_r3::non_const_scalar_array_type,
+                        int** [4]>);
+-
+-    // std::cout << "typeid( const int**[4] ).name() = " << typeid( const
+-    // int**[4] ).name() << std::endl;
+   }
+ 
+   //----------------------------------------
+diff --git a/core/unit_test/tools/TestKernelNames.cpp b/core/unit_test/tools/TestKernelNames.cpp
+index 3ecf0813c0c..8b3d455487d 100644
+--- a/core/unit_test/tools/TestKernelNames.cpp
++++ b/core/unit_test/tools/TestKernelNames.cpp
+@@ -20,6 +20,18 @@
+ 
+ namespace {
+ 
++#ifdef KOKKOS_ENABLE_IMPL_TYPEINFO
++template <class T>
++std::string typeid_name(T const&) {
++  return std::string(Kokkos::Impl::TypeInfo<T>::name());
++}
++#else
++template <class T>
++std::string typeid_name(T const&) {
++  return typeid(T).name();
++}
++#endif
++
+ std::string last_parallel_for;
+ std::string last_parallel_reduce;
+ std::string last_parallel_scan;
+@@ -58,7 +70,11 @@ void test_kernel_name_parallel_for() {
+     ASSERT_EQ(last_parallel_for, my_label);
+ 
+     Kokkos::parallel_for(Kokkos::RangePolicy<ExecutionSpace>(0, 1), my_lambda);
+-    ASSERT_EQ(last_parallel_for, typeid(my_lambda).name());
++    ASSERT_EQ(last_parallel_for, typeid_name(my_lambda));
++#ifndef KOKKOS_ENABLE_CXX17
++    ASSERT_FALSE(last_parallel_for.starts_with("const "))
++        << last_parallel_for << " is const-qualified";
++#endif
+ 
+     auto const my_lambda_with_tag = KOKKOS_LAMBDA(WorkTag, int){};
+     Kokkos::parallel_for(my_label,
+@@ -69,8 +85,11 @@ void test_kernel_name_parallel_for() {
+     Kokkos::parallel_for(Kokkos::RangePolicy<ExecutionSpace, WorkTag>(0, 1),
+                          my_lambda_with_tag);
+     ASSERT_EQ(last_parallel_for,
+-              std::string(typeid(my_lambda_with_tag).name()) + "/" +
+-                  typeid(WorkTag).name());
++              typeid_name(my_lambda_with_tag) + "/" + typeid_name(WorkTag{}));
++#ifndef KOKKOS_ENABLE_CXX17
++    ASSERT_FALSE(last_parallel_for.starts_with("const "))
++        << last_parallel_for << " is const-qualified";
++#endif
+   }
+ 
+   Kokkos::Tools::Experimental::set_begin_parallel_for_callback(nullptr);
+@@ -93,13 +112,19 @@ void test_kernel_name_parallel_reduce() {
+ 
+     Kokkos::parallel_reduce(Kokkos::RangePolicy<ExecutionSpace>(0, 1),
+                             my_lambda, my_result);
+-    ASSERT_NE(last_parallel_reduce.find(typeid(my_lambda).name()),
++#ifndef KOKKOS_COMPILER_MSVC
++    ASSERT_NE(last_parallel_reduce.find(typeid_name(my_lambda)),
+               std::string::npos)
+         << last_parallel_reduce << " does not contain "
+-        << typeid(my_lambda)
+-               .name();  // internally using
+-                         // Impl::CombinedFunctorReducer but the name should
+-                         // still include the lambda as template parameter
++        << typeid_name(
++               my_lambda);  // internally using Impl::CombinedFunctorReducer
++                            // but the name should still include the lambda as
++                            // template parameter
++#endif
++#ifndef KOKKOS_ENABLE_CXX17
++    ASSERT_FALSE(last_parallel_reduce.starts_with("const "))
++        << last_parallel_reduce << " is const-qualified";
++#endif
+ 
+     auto const my_lambda_with_tag = KOKKOS_LAMBDA(WorkTag, int, float&){};
+     Kokkos::parallel_reduce(my_label,
+@@ -109,9 +134,13 @@ void test_kernel_name_parallel_reduce() {
+ 
+     Kokkos::parallel_reduce(Kokkos::RangePolicy<ExecutionSpace, WorkTag>(0, 1),
+                             my_lambda_with_tag, my_result);
+-    auto const suffix = std::string("/") + typeid(WorkTag).name();
++    auto const suffix = std::string("/") + typeid_name(WorkTag{});
+     ASSERT_EQ(last_parallel_reduce.find(suffix),
+               last_parallel_reduce.length() - suffix.length());
++#ifndef KOKKOS_ENABLE_CXX17
++    ASSERT_FALSE(last_parallel_reduce.starts_with("const "))
++        << last_parallel_reduce << " is const-qualified";
++#endif
+   }
+ 
+   Kokkos::Tools::Experimental::set_begin_parallel_reduce_callback(nullptr);
+@@ -132,7 +161,11 @@ void test_kernel_name_parallel_scan() {
+     ASSERT_EQ(last_parallel_scan, my_label);
+ 
+     Kokkos::parallel_scan(Kokkos::RangePolicy<ExecutionSpace>(0, 1), my_lambda);
+-    ASSERT_EQ(last_parallel_scan, typeid(my_lambda).name());
++    ASSERT_EQ(last_parallel_scan, typeid_name(my_lambda));
++#ifndef KOKKOS_ENABLE_CXX17
++    ASSERT_FALSE(last_parallel_scan.starts_with("const "))
++        << last_parallel_scan << " is const-qualified";
++#endif
+ 
+     auto const my_lambda_with_tag = KOKKOS_LAMBDA(WorkTag, int, float&, bool){};
+     Kokkos::parallel_scan(my_label,
+@@ -143,8 +176,11 @@ void test_kernel_name_parallel_scan() {
+     Kokkos::parallel_scan(Kokkos::RangePolicy<ExecutionSpace, WorkTag>(0, 1),
+                           my_lambda_with_tag);
+     ASSERT_EQ(last_parallel_scan,
+-              std::string(typeid(my_lambda_with_tag).name()) + "/" +
+-                  typeid(WorkTag).name());
++              typeid_name(my_lambda_with_tag) + "/" + typeid_name(WorkTag{}));
++#ifndef KOKKOS_ENABLE_CXX17
++    ASSERT_FALSE(last_parallel_scan.starts_with("const "))
++        << last_parallel_scan << " is const-qualified";
++#endif
+   }
+ 
+   Kokkos::Tools::Experimental::set_begin_parallel_scan_callback(nullptr);
+@@ -166,7 +202,7 @@ TEST(kokkosp, kernel_name_internal) {
+     ASSERT_EQ(pcn.get(), label);
+     std::string const empty_label("");
+     Kokkos::Impl::ParallelConstructName<ThisType, void> empty_pcn(empty_label);
+-    ASSERT_EQ(empty_pcn.get(), typeid(ThisType).name());
++    ASSERT_EQ(empty_pcn.get(), typeid_name(ThisType{}));
+   }
+   {
+     std::string const label("my_label");
+@@ -175,8 +211,8 @@ TEST(kokkosp, kernel_name_internal) {
+     std::string const empty_label("");
+     Kokkos::Impl::ParallelConstructName<ThisType, WorkTag> empty_pcn(
+         empty_label);
+-    ASSERT_EQ(empty_pcn.get(), std::string(typeid(ThisType).name()) + "/" +
+-                                   typeid(WorkTag).name());
++    ASSERT_EQ(empty_pcn.get(),
++              typeid_name(ThisType{}) + "/" + typeid_name(WorkTag{}));
+   }
+ }
+ 

@@ -1,0 +1,129 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreUnitTest_InitializeFinalize"
+  ],
+  "PASS_TO_PASS": [],
+  "base_commit": "2f6aa91b7628d3d52f247f2540b1164c9adf0db6",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreUnitTest_InitializeFinalize"
+  ],
+  "changed_files": [
+    {
+      "additions": 4,
+      "deletions": 2,
+      "filename": "core/src/Kokkos_Core.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 0,
+      "deletions": 15,
+      "filename": "core/src/Kokkos_InitializeFinalize.hpp",
+      "status": "renamed"
+    },
+    {
+      "additions": 1,
+      "deletions": 1,
+      "filename": "core/src/Kokkos_ScopeGuard.hpp",
+      "status": "renamed"
+    },
+    {
+      "additions": 1,
+      "deletions": 1,
+      "filename": "core/src/View/Kokkos_BasicView.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 1,
+      "deletions": 1,
+      "filename": "core/src/View/Kokkos_ViewLegacy.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 1,
+      "deletions": 1,
+      "filename": "core/src/impl/Kokkos_CStyleMemoryManagement.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 1,
+      "deletions": 1,
+      "filename": "core/src/impl/Kokkos_CheckUsage.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 13,
+      "deletions": 0,
+      "filename": "core/src/impl/Kokkos_Fence.hpp",
+      "status": "added"
+    },
+    {
+      "additions": 29,
+      "deletions": 0,
+      "filename": "core/src/impl/Kokkos_RuntimeInfo.hpp",
+      "status": "added"
+    },
+    {
+      "additions": 1,
+      "deletions": 1,
+      "filename": "core/unit_test/KokkosExecutionEnvironmentNeverInitializedFixture.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 1,
+      "deletions": 1,
+      "filename": "core/unit_test/TestInitializeFinalize.cpp",
+      "status": "modified"
+    },
+    {
+      "additions": 4,
+      "deletions": 2,
+      "filename": "core/unit_test/TestKokkosHelpCausesNormalProgramTermination.cpp",
+      "status": "modified"
+    },
+    {
+      "additions": 1,
+      "deletions": 1,
+      "filename": "core/unit_test/TestPushFinalizeHook.cpp",
+      "status": "modified"
+    },
+    {
+      "additions": 1,
+      "deletions": 1,
+      "filename": "core/unit_test/TestScopeGuard.cpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/Kokkos_Core.hpp b/core/src/Kokkos_Core.hpp\nindex a9cc9d116ed..c8bac64a765 100644\n--- a/core/src/Kokkos_Core.hpp\n+++ b/core/src/Kokkos_Core.hpp\n@@ -53,11 +53,13 @@\n #include <Kokkos_Tuners.hpp>\n #include <Kokkos_Complex.hpp>\n #include <Kokkos_CopyViews.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n+#include <Kokkos_ScopeGuard.hpp>\n #include <impl/Kokkos_TeamMDPolicy.hpp>\n-#include <impl/Kokkos_InitializeFinalize.hpp>\n-#include <impl/Kokkos_ScopeGuard.hpp>\n #include <impl/Kokkos_PartitionSpace.hpp>\n #include <impl/Kokkos_CStyleMemoryManagement.hpp>\n+#include <impl/Kokkos_RuntimeInfo.hpp>\n+#include <impl/Kokkos_Fence.hpp>\n \n //----------------------------------------------------------------------------\n //----------------------------------------------------------------------------\ndiff --git a/core/src/impl/Kokkos_InitializeFinalize.hpp b/core/src/Kokkos_InitializeFinalize.hpp\nsimilarity index 76%\nrename from core/src/impl/Kokkos_InitializeFinalize.hpp\nrename to core/src/Kokkos_InitializeFinalize.hpp\nindex ea17eda97d0..907f2edbb71 100644\n--- a/core/src/impl/Kokkos_InitializeFinalize.hpp\n+++ b/core/src/Kokkos_InitializeFinalize.hpp\n@@ -41,20 +41,9 @@ void finalize();\n  */\n void push_finalize_hook(std::function<void()> f);\n \n-/** \\brief Print \"Bill of Materials\" */\n-void print_configuration(std::ostream& os, bool verbose = false);\n-\n [[nodiscard]] bool is_initialized() noexcept;\n [[nodiscard]] bool is_finalized() noexcept;\n \n-[[nodiscard]] int device_id() noexcept;\n-[[nodiscard]] int num_devices() noexcept;\n-[[nodiscard]] int num_threads() noexcept;\n-\n-bool show_warnings() noexcept;\n-bool tune_internals() noexcept;\n-\n-void fence(const std::string& name /*= \"Kokkos::fence: Unnamed Global Fence\"*/);\n }  // namespace Kokkos\n \n namespace Kokkos::Impl {\n@@ -67,10 +56,6 @@ void pre_finalize();\n \n void post_finalize();\n \n-void declare_configuration_metadata(const std::string& category,\n-                                    const std::string& key,\n-                                    const std::string& value);\n-\n }  // namespace Kokkos::Impl\n \n #endif\ndiff --git a/core/src/impl/Kokkos_ScopeGuard.hpp b/core/src/Kokkos_ScopeGuard.hpp\nsimilarity index 97%\nrename from core/src/impl/Kokkos_ScopeGuard.hpp\nrename to core/src/Kokkos_ScopeGuard.hpp\nindex 622bfcf011e..fd93c641f55 100644\n--- a/core/src/impl/Kokkos_ScopeGuard.hpp\n+++ b/core/src/Kokkos_ScopeGuard.hpp\n@@ -5,7 +5,7 @@\n #define KOKKOS_SCOPE_GUARD_HPP\n \n #include <Kokkos_Abort.hpp>\n-#include <impl/Kokkos_InitializeFinalize.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n \n #include <string>\n \ndiff --git a/core/src/View/Kokkos_BasicView.hpp b/core/src/View/Kokkos_BasicView.hpp\nindex 728c609b288..fe633d55a73 100644\n--- a/core/src/View/Kokkos_BasicView.hpp\n+++ b/core/src/View/Kokkos_BasicView.hpp\n@@ -9,7 +9,7 @@ static_assert(false,\n #ifndef KOKKOS_BASIC_VIEW_HPP\n #define KOKKOS_BASIC_VIEW_HPP\n #include <Kokkos_Macros.hpp>\n-#include <impl/Kokkos_InitializeFinalize.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n #include <impl/Kokkos_Utilities.hpp>\n #include <impl/Kokkos_SharedAlloc.hpp>\n #include <View/Kokkos_ViewAlloc.hpp>\ndiff --git a/core/src/View/Kokkos_ViewLegacy.hpp b/core/src/View/Kokkos_ViewLegacy.hpp\nindex c434df00ef1..873b0bbbf17 100644\n--- a/core/src/View/Kokkos_ViewLegacy.hpp\n+++ b/core/src/View/Kokkos_ViewLegacy.hpp\n@@ -21,7 +21,7 @@ static_assert(false,\n #include <Kokkos_ExecPolicy.hpp>\n #include <View/Hooks/Kokkos_ViewHooks.hpp>\n \n-#include <impl/Kokkos_InitializeFinalize.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n #include <impl/Kokkos_Tools.hpp>\n #include <impl/Kokkos_Utilities.hpp>\n \ndiff --git a/core/src/impl/Kokkos_CStyleMemoryManagement.hpp b/core/src/impl/Kokkos_CStyleMemoryManagement.hpp\nindex 82095f5eac2..87d98de8772 100644\n--- a/core/src/impl/Kokkos_CStyleMemoryManagement.hpp\n+++ b/core/src/impl/Kokkos_CStyleMemoryManagement.hpp\n@@ -11,7 +11,7 @@\n \n #include <Kokkos_Abort.hpp>\n #include <Kokkos_Macros.hpp>\n-#include <impl/Kokkos_InitializeFinalize.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n \n #include <KokkosCore_Config_DeclareBackend.hpp>  // FIXME\n \ndiff --git a/core/src/impl/Kokkos_CheckUsage.hpp b/core/src/impl/Kokkos_CheckUsage.hpp\nindex ea1b6578acb..7061e5f1437 100644\n--- a/core/src/impl/Kokkos_CheckUsage.hpp\n+++ b/core/src/impl/Kokkos_CheckUsage.hpp\n@@ -6,7 +6,7 @@\n \n #include <Kokkos_Abort.hpp>\n #include <Kokkos_Macros.hpp>\n-#include <impl/Kokkos_InitializeFinalize.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n #include <impl/Kokkos_Utilities.hpp>\n \n #include <string>\ndiff --git a/core/src/impl/Kokkos_Fence.hpp b/core/src/impl/Kokkos_Fence.hpp\nnew file mode 100644\nindex 00000000000..52411393758\n--- /dev/null\n+++ b/core/src/impl/Kokkos_Fence.hpp\n@@ -0,0 +1,13 @@\n+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception\n+// SPDX-FileCopyrightText: Copyright Contributors to the Kokkos project\n+\n+#ifndef KOKKOS_FENCE_HPP\n+#define KOKKOS_FENCE_HPP\n+\n+#include <string>\n+\n+namespace Kokkos {\n+void fence(const std::string& name /*= \"Kokkos::fence: Unnamed Global Fence\"*/);\n+}\n+\n+#endif\ndiff --git a/core/src/impl/Kokkos_RuntimeInfo.hpp b/core/src/impl/Kokkos_RuntimeInfo.hpp\nnew file mode 100644\nindex 00000000000..c916ccbeb0c\n--- /dev/null\n+++ b/core/src/impl/Kokkos_RuntimeInfo.hpp\n@@ -0,0 +1,29 @@\n+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception\n+// SPDX-FileCopyrightText: Copyright Contributors to the Kokkos project\n+\n+#ifndef KOKKOS_RUNTIME_INFO_HPP\n+#define KOKKOS_RUNTIME_INFO_HPP\n+\n+#include <iostream>\n+#include <string>\n+\n+namespace Kokkos {\n+/** \\brief Print \"Bill of Materials\" */\n+void print_configuration(std::ostream& os, bool verbose = false);\n+\n+[[nodiscard]] int device_id() noexcept;\n+[[nodiscard]] int num_devices() noexcept;\n+[[nodiscard]] int num_threads() noexcept;\n+\n+bool show_warnings() noexcept;\n+bool tune_internals() noexcept;\n+}  // namespace Kokkos\n+\n+namespace Kokkos::Impl {\n+void declare_configuration_metadata(const std::string& category,\n+                                    const std::string& key,\n+                                    const std::string& value);\n+\n+}  // namespace Kokkos::Impl\n+\n+#endif\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=OFF -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo",
+  "created_at": "2026-07-30T18:03:48Z",
+  "era": "cpp20",
+  "f2p_commands": [],
+  "fail_to_pass": [
+    "Kokkos_CoreUnitTest_InitializeFinalize"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-9309",
+  "labels": [],
+  "linked_issues": [],
+  "merge_commit": "021c8ff2a7bd91932a9734a5c04e1f3a521daab8",
+  "merged_at": "2026-07-30T18:03:48Z",
+  "metadata": {
+    "difficulty": "medium",
+    "docker_validated": true,
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/9309",
+    "phase0_validated": true,
+    "validation_date": "2026-08-15",
+    "validation_platform": "macOS arm64 AppleClang 21; Linux arm64 GCC 13 Docker"
+  },
+  "p2p_commands": [],
+  "pass_to_pass": [],
+  "patch": "diff --git a/core/src/Kokkos_Core.hpp b/core/src/Kokkos_Core.hpp\nindex a9cc9d116ed..c8bac64a765 100644\n--- a/core/src/Kokkos_Core.hpp\n+++ b/core/src/Kokkos_Core.hpp\n@@ -53,11 +53,13 @@\n #include <Kokkos_Tuners.hpp>\n #include <Kokkos_Complex.hpp>\n #include <Kokkos_CopyViews.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n+#include <Kokkos_ScopeGuard.hpp>\n #include <impl/Kokkos_TeamMDPolicy.hpp>\n-#include <impl/Kokkos_InitializeFinalize.hpp>\n-#include <impl/Kokkos_ScopeGuard.hpp>\n #include <impl/Kokkos_PartitionSpace.hpp>\n #include <impl/Kokkos_CStyleMemoryManagement.hpp>\n+#include <impl/Kokkos_RuntimeInfo.hpp>\n+#include <impl/Kokkos_Fence.hpp>\n \n //----------------------------------------------------------------------------\n //----------------------------------------------------------------------------\ndiff --git a/core/src/impl/Kokkos_InitializeFinalize.hpp b/core/src/Kokkos_InitializeFinalize.hpp\nsimilarity index 76%\nrename from core/src/impl/Kokkos_InitializeFinalize.hpp\nrename to core/src/Kokkos_InitializeFinalize.hpp\nindex ea17eda97d0..907f2edbb71 100644\n--- a/core/src/impl/Kokkos_InitializeFinalize.hpp\n+++ b/core/src/Kokkos_InitializeFinalize.hpp\n@@ -41,20 +41,9 @@ void finalize();\n  */\n void push_finalize_hook(std::function<void()> f);\n \n-/** \\brief Print \"Bill of Materials\" */\n-void print_configuration(std::ostream& os, bool verbose = false);\n-\n [[nodiscard]] bool is_initialized() noexcept;\n [[nodiscard]] bool is_finalized() noexcept;\n \n-[[nodiscard]] int device_id() noexcept;\n-[[nodiscard]] int num_devices() noexcept;\n-[[nodiscard]] int num_threads() noexcept;\n-\n-bool show_warnings() noexcept;\n-bool tune_internals() noexcept;\n-\n-void fence(const std::string& name /*= \"Kokkos::fence: Unnamed Global Fence\"*/);\n }  // namespace Kokkos\n \n namespace Kokkos::Impl {\n@@ -67,10 +56,6 @@ void pre_finalize();\n \n void post_finalize();\n \n-void declare_configuration_metadata(const std::string& category,\n-                                    const std::string& key,\n-                                    const std::string& value);\n-\n }  // namespace Kokkos::Impl\n \n #endif\ndiff --git a/core/src/impl/Kokkos_ScopeGuard.hpp b/core/src/Kokkos_ScopeGuard.hpp\nsimilarity index 97%\nrename from core/src/impl/Kokkos_ScopeGuard.hpp\nrename to core/src/Kokkos_ScopeGuard.hpp\nindex 622bfcf011e..fd93c641f55 100644\n--- a/core/src/impl/Kokkos_ScopeGuard.hpp\n+++ b/core/src/Kokkos_ScopeGuard.hpp\n@@ -5,7 +5,7 @@\n #define KOKKOS_SCOPE_GUARD_HPP\n \n #include <Kokkos_Abort.hpp>\n-#include <impl/Kokkos_InitializeFinalize.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n \n #include <string>\n \ndiff --git a/core/src/View/Kokkos_BasicView.hpp b/core/src/View/Kokkos_BasicView.hpp\nindex 728c609b288..fe633d55a73 100644\n--- a/core/src/View/Kokkos_BasicView.hpp\n+++ b/core/src/View/Kokkos_BasicView.hpp\n@@ -9,7 +9,7 @@ static_assert(false,\n #ifndef KOKKOS_BASIC_VIEW_HPP\n #define KOKKOS_BASIC_VIEW_HPP\n #include <Kokkos_Macros.hpp>\n-#include <impl/Kokkos_InitializeFinalize.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n #include <impl/Kokkos_Utilities.hpp>\n #include <impl/Kokkos_SharedAlloc.hpp>\n #include <View/Kokkos_ViewAlloc.hpp>\ndiff --git a/core/src/View/Kokkos_ViewLegacy.hpp b/core/src/View/Kokkos_ViewLegacy.hpp\nindex c434df00ef1..873b0bbbf17 100644\n--- a/core/src/View/Kokkos_ViewLegacy.hpp\n+++ b/core/src/View/Kokkos_ViewLegacy.hpp\n@@ -21,7 +21,7 @@ static_assert(false,\n #include <Kokkos_ExecPolicy.hpp>\n #include <View/Hooks/Kokkos_ViewHooks.hpp>\n \n-#include <impl/Kokkos_InitializeFinalize.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n #include <impl/Kokkos_Tools.hpp>\n #include <impl/Kokkos_Utilities.hpp>\n \ndiff --git a/core/src/impl/Kokkos_CStyleMemoryManagement.hpp b/core/src/impl/Kokkos_CStyleMemoryManagement.hpp\nindex 82095f5eac2..87d98de8772 100644\n--- a/core/src/impl/Kokkos_CStyleMemoryManagement.hpp\n+++ b/core/src/impl/Kokkos_CStyleMemoryManagement.hpp\n@@ -11,7 +11,7 @@\n \n #include <Kokkos_Abort.hpp>\n #include <Kokkos_Macros.hpp>\n-#include <impl/Kokkos_InitializeFinalize.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n \n #include <KokkosCore_Config_DeclareBackend.hpp>  // FIXME\n \ndiff --git a/core/src/impl/Kokkos_CheckUsage.hpp b/core/src/impl/Kokkos_CheckUsage.hpp\nindex ea1b6578acb..7061e5f1437 100644\n--- a/core/src/impl/Kokkos_CheckUsage.hpp\n+++ b/core/src/impl/Kokkos_CheckUsage.hpp\n@@ -6,7 +6,7 @@\n \n #include <Kokkos_Abort.hpp>\n #include <Kokkos_Macros.hpp>\n-#include <impl/Kokkos_InitializeFinalize.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n #include <impl/Kokkos_Utilities.hpp>\n \n #include <string>\ndiff --git a/core/src/impl/Kokkos_Fence.hpp b/core/src/impl/Kokkos_Fence.hpp\nnew file mode 100644\nindex 00000000000..52411393758\n--- /dev/null\n+++ b/core/src/impl/Kokkos_Fence.hpp\n@@ -0,0 +1,13 @@\n+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception\n+// SPDX-FileCopyrightText: Copyright Contributors to the Kokkos project\n+\n+#ifndef KOKKOS_FENCE_HPP\n+#define KOKKOS_FENCE_HPP\n+\n+#include <string>\n+\n+namespace Kokkos {\n+void fence(const std::string& name /*= \"Kokkos::fence: Unnamed Global Fence\"*/);\n+}\n+\n+#endif\ndiff --git a/core/src/impl/Kokkos_RuntimeInfo.hpp b/core/src/impl/Kokkos_RuntimeInfo.hpp\nnew file mode 100644\nindex 00000000000..c916ccbeb0c\n--- /dev/null\n+++ b/core/src/impl/Kokkos_RuntimeInfo.hpp\n@@ -0,0 +1,29 @@\n+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception\n+// SPDX-FileCopyrightText: Copyright Contributors to the Kokkos project\n+\n+#ifndef KOKKOS_RUNTIME_INFO_HPP\n+#define KOKKOS_RUNTIME_INFO_HPP\n+\n+#include <iostream>\n+#include <string>\n+\n+namespace Kokkos {\n+/** \\brief Print \"Bill of Materials\" */\n+void print_configuration(std::ostream& os, bool verbose = false);\n+\n+[[nodiscard]] int device_id() noexcept;\n+[[nodiscard]] int num_devices() noexcept;\n+[[nodiscard]] int num_threads() noexcept;\n+\n+bool show_warnings() noexcept;\n+bool tune_internals() noexcept;\n+}  // namespace Kokkos\n+\n+namespace Kokkos::Impl {\n+void declare_configuration_metadata(const std::string& category,\n+                                    const std::string& key,\n+                                    const std::string& value);\n+\n+}  // namespace Kokkos::Impl\n+\n+#endif\ndiff --git a/core/unit_test/KokkosExecutionEnvironmentNeverInitializedFixture.hpp b/core/unit_test/KokkosExecutionEnvironmentNeverInitializedFixture.hpp\nindex 73d32f44e0c..c4b406b70af 100644\n--- a/core/unit_test/KokkosExecutionEnvironmentNeverInitializedFixture.hpp\n+++ b/core/unit_test/KokkosExecutionEnvironmentNeverInitializedFixture.hpp\n@@ -7,7 +7,7 @@\n #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES\n import kokkos.core;\n #else\n-#include <Kokkos_Core.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n #endif\n \n /**\ndiff --git a/core/unit_test/TestInitializeFinalize.cpp b/core/unit_test/TestInitializeFinalize.cpp\nindex 822a4a75dd0..13a665be5cb 100644\n--- a/core/unit_test/TestInitializeFinalize.cpp\n+++ b/core/unit_test/TestInitializeFinalize.cpp\n@@ -5,7 +5,7 @@\n #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES\n import kokkos.core;\n #else\n-#include <Kokkos_Core.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n #endif\n \n #include <gtest/gtest.h>\ndiff --git a/core/unit_test/TestKokkosHelpCausesNormalProgramTermination.cpp b/core/unit_test/TestKokkosHelpCausesNormalProgramTermination.cpp\nindex 708d3f72a33..755f00cc022 100644\n--- a/core/unit_test/TestKokkosHelpCausesNormalProgramTermination.cpp\n+++ b/core/unit_test/TestKokkosHelpCausesNormalProgramTermination.cpp\n@@ -7,11 +7,13 @@\n #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES\n import kokkos.core;\n #else\n-#include <Kokkos_Core.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n #endif\n \n #include \"KokkosExecutionEnvironmentNeverInitializedFixture.hpp\"\n \n+#include <cstdlib>\n+\n namespace {\n \n using KokkosHelpCausesNormalProgramTermination_DeathTest =\n@@ -33,7 +35,7 @@ TEST_F(KokkosHelpCausesNormalProgramTermination_DeathTest,\n   EXPECT_EXIT(\n       {\n         Kokkos::initialize(argc, const_cast<char **>(argv));\n-        Kokkos::abort(\"better exit before getting there\");\n+        std::abort();  // should have exited and not reach that line\n       },\n       ::testing::ExitedWithCode(EXIT_SUCCESS), \"\");\n \ndiff --git a/core/unit_test/TestPushFinalizeHook.cpp b/core/unit_test/TestPushFinalizeHook.cpp\nindex 82b212c1872..f3d69c41daf 100644\n--- a/core/unit_test/TestPushFinalizeHook.cpp\n+++ b/core/unit_test/TestPushFinalizeHook.cpp\n@@ -5,7 +5,7 @@\n #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES\n import kokkos.core;\n #else\n-#include <Kokkos_Core.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n #endif\n \n #include <gtest/gtest.h>\ndiff --git a/core/unit_test/TestScopeGuard.cpp b/core/unit_test/TestScopeGuard.cpp\nindex 7d6c80f6870..7904f4b1f74 100644\n--- a/core/unit_test/TestScopeGuard.cpp\n+++ b/core/unit_test/TestScopeGuard.cpp\n@@ -7,7 +7,7 @@\n #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES\n import kokkos.core;\n #else\n-#include <Kokkos_Core.hpp>\n+#include <Kokkos_ScopeGuard.hpp>\n #endif\n \n #include \"KokkosExecutionEnvironmentNeverInitializedFixture.hpp\"\n",
+  "pr_number": 9309,
+  "problem_statement": "We discussed in the developer meeting that we want to make `Kokkos_ScopeGuard.hpp` and `Kokkos_InitializeFinalize.hpp` public since these headers are very small and users might have translation units (like those containing `main`) that don't need more functionality than provided in these headers.\r\n~~Drive-by: Rename `Kokkos_Core.cpp` to `Kokkos_InitializeFinalize.cpp`.~~\r\n\r\n### Changelog Entry\r\n - Yes, needs one.",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/KokkosExecutionEnvironmentNeverInitializedFixture.hpp b/core/unit_test/KokkosExecutionEnvironmentNeverInitializedFixture.hpp\nindex 73d32f44e0c..c4b406b70af 100644\n--- a/core/unit_test/KokkosExecutionEnvironmentNeverInitializedFixture.hpp\n+++ b/core/unit_test/KokkosExecutionEnvironmentNeverInitializedFixture.hpp\n@@ -7,7 +7,7 @@\n #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES\n import kokkos.core;\n #else\n-#include <Kokkos_Core.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n #endif\n \n /**\ndiff --git a/core/unit_test/TestInitializeFinalize.cpp b/core/unit_test/TestInitializeFinalize.cpp\nindex 822a4a75dd0..13a665be5cb 100644\n--- a/core/unit_test/TestInitializeFinalize.cpp\n+++ b/core/unit_test/TestInitializeFinalize.cpp\n@@ -5,7 +5,7 @@\n #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES\n import kokkos.core;\n #else\n-#include <Kokkos_Core.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n #endif\n \n #include <gtest/gtest.h>\ndiff --git a/core/unit_test/TestKokkosHelpCausesNormalProgramTermination.cpp b/core/unit_test/TestKokkosHelpCausesNormalProgramTermination.cpp\nindex 708d3f72a33..755f00cc022 100644\n--- a/core/unit_test/TestKokkosHelpCausesNormalProgramTermination.cpp\n+++ b/core/unit_test/TestKokkosHelpCausesNormalProgramTermination.cpp\n@@ -7,11 +7,13 @@\n #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES\n import kokkos.core;\n #else\n-#include <Kokkos_Core.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n #endif\n \n #include \"KokkosExecutionEnvironmentNeverInitializedFixture.hpp\"\n \n+#include <cstdlib>\n+\n namespace {\n \n using KokkosHelpCausesNormalProgramTermination_DeathTest =\n@@ -33,7 +35,7 @@ TEST_F(KokkosHelpCausesNormalProgramTermination_DeathTest,\n   EXPECT_EXIT(\n       {\n         Kokkos::initialize(argc, const_cast<char **>(argv));\n-        Kokkos::abort(\"better exit before getting there\");\n+        std::abort();  // should have exited and not reach that line\n       },\n       ::testing::ExitedWithCode(EXIT_SUCCESS), \"\");\n \ndiff --git a/core/unit_test/TestPushFinalizeHook.cpp b/core/unit_test/TestPushFinalizeHook.cpp\nindex 82b212c1872..f3d69c41daf 100644\n--- a/core/unit_test/TestPushFinalizeHook.cpp\n+++ b/core/unit_test/TestPushFinalizeHook.cpp\n@@ -5,7 +5,7 @@\n #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES\n import kokkos.core;\n #else\n-#include <Kokkos_Core.hpp>\n+#include <Kokkos_InitializeFinalize.hpp>\n #endif\n \n #include <gtest/gtest.h>\ndiff --git a/core/unit_test/TestScopeGuard.cpp b/core/unit_test/TestScopeGuard.cpp\nindex 7d6c80f6870..7904f4b1f74 100644\n--- a/core/unit_test/TestScopeGuard.cpp\n+++ b/core/unit_test/TestScopeGuard.cpp\n@@ -7,7 +7,7 @@\n #ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES\n import kokkos.core;\n #else\n-#include <Kokkos_Core.hpp>\n+#include <Kokkos_ScopeGuard.hpp>\n #endif\n \n #include \"KokkosExecutionEnvironmentNeverInitializedFixture.hpp\"\n",
+  "title": "Make Kokkos_ScopeGuard.hpp and Kokkos_InitializeFinalize public",
+  "version": "cpp20"
+}

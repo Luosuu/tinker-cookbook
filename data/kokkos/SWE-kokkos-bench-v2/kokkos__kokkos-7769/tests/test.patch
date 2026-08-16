@@ -1,0 +1,50 @@
+diff --git a/algorithms/unit_tests/TestStdAlgorithmsTransformExclusiveScan.cpp b/algorithms/unit_tests/TestStdAlgorithmsTransformExclusiveScan.cpp
+index 365ca21688b..e3114daeae2 100644
+--- a/algorithms/unit_tests/TestStdAlgorithmsTransformExclusiveScan.cpp
++++ b/algorithms/unit_tests/TestStdAlgorithmsTransformExclusiveScan.cpp
+@@ -344,8 +344,7 @@ TEST(std_algorithms_numeric_ops_test, transform_exclusive_scan_functor) {
+   using view_type = Kokkos::View<int*, exespace>;
+   view_type dummy_view("dummy_view", 0);
+   using unary_op_type =
+-      Kokkos::Experimental::Impl::StdNumericScanIdentityReferenceUnaryFunctor<
+-          int>;
++      Kokkos::Experimental::Impl::StdNumericScanIdentityReferenceUnaryFunctor;
+   using functor_type =
+       Kokkos::Experimental::Impl::TransformExclusiveScanFunctorWithValueWrapper<
+           exespace, int, int, view_type, view_type, MultiplyFunctor<int>,
+diff --git a/algorithms/unit_tests/TestStdAlgorithmsTransformInclusiveScan.cpp b/algorithms/unit_tests/TestStdAlgorithmsTransformInclusiveScan.cpp
+index cc872621478..2dda12e22d3 100644
+--- a/algorithms/unit_tests/TestStdAlgorithmsTransformInclusiveScan.cpp
++++ b/algorithms/unit_tests/TestStdAlgorithmsTransformInclusiveScan.cpp
+@@ -390,8 +390,7 @@ TEST(std_algorithms_numeric_ops_test, transform_inclusive_scan_functor) {
+   int dummy       = 0;
+   using view_type = Kokkos::View<int*, exespace>;
+   view_type dummy_view("dummy_view", 0);
+-  using unary_op_type =
+-      KE::Impl::StdNumericScanIdentityReferenceUnaryFunctor<int>;
++  using unary_op_type = KE::Impl::StdNumericScanIdentityReferenceUnaryFunctor;
+   {
+     using functor_type =
+         KE::Impl::ExeSpaceTransformInclusiveScanNoInitValueFunctor<
+diff --git a/core/unit_test/TestHalfOperators.hpp b/core/unit_test/TestHalfOperators.hpp
+index 56232298930..54366bbb890 100644
+--- a/core/unit_test/TestHalfOperators.hpp
++++ b/core/unit_test/TestHalfOperators.hpp
+@@ -23,7 +23,7 @@ using ScalarType     = double;
+ using ViewType       = Kokkos::View<ScalarType*, ExecutionSpace>;
+ using ViewTypeHost   = Kokkos::View<ScalarType*, Kokkos::HostSpace>;
+ KOKKOS_FUNCTION
+-const half_t& accept_ref(const half_t& a) { return a; }
++half_t accept_ref(const half_t& a) { return a; }
+ KOKKOS_FUNCTION
+ double accept_ref_expected(const half_t& a) {
+   double tmp = static_cast<double>(a);
+@@ -31,7 +31,7 @@ double accept_ref_expected(const half_t& a) {
+ }
+ #if !KOKKOS_BHALF_T_IS_FLOAT
+ KOKKOS_FUNCTION
+-const bhalf_t& accept_ref(const bhalf_t& a) { return a; }
++bhalf_t accept_ref(const bhalf_t& a) { return a; }
+ KOKKOS_FUNCTION
+ double accept_ref_expected(const bhalf_t& a) {
+   double tmp = static_cast<double>(a);

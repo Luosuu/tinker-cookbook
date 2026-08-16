@@ -1,0 +1,100 @@
+diff --git a/core/src/Kokkos_Core.cppm b/core/src/Kokkos_Core.cppm
+index d9e9c330e13..0f8d8983489 100644
+--- a/core/src/Kokkos_Core.cppm
++++ b/core/src/Kokkos_Core.cppm
+@@ -246,6 +246,9 @@ export {
+   using ::Kokkos::real;
+   using ::Kokkos::tie;
+   using ::Kokkos::to_array;
++  namespace Experimental {
++  using ::Kokkos::Experimental::BadAlloc;
++  }  // namespace Experimental
+ 
+   // reducers
+   using ::Kokkos::BAnd;
+diff --git a/core/src/impl/Kokkos_Error.cpp b/core/src/impl/Kokkos_Error.cpp
+index eaaa18f1397..22c55cdcd58 100644
+--- a/core/src/impl/Kokkos_Error.cpp
++++ b/core/src/impl/Kokkos_Error.cpp
+@@ -19,11 +19,7 @@ void Kokkos::Impl::throw_runtime_exception(const std::string &msg) {
+ 
+ void Kokkos::Impl::throw_bad_alloc(std::string_view memory_space_name,
+                                    std::size_t size, std::string_view label) {
+-  std::stringstream ss;
+-  ss << "Kokkos ERROR: " << memory_space_name
+-     << " memory space failed to allocate " << human_memory_size(size)
+-     << " (label=\"" << label << "\").";
+-  throw std::runtime_error(ss.str());
++  throw Kokkos::Experimental::BadAlloc(memory_space_name, size, label);
+ }
+ 
+ void Kokkos::Impl::log_warning(const std::string &msg) {
+diff --git a/core/src/impl/Kokkos_Error.hpp b/core/src/impl/Kokkos_Error.hpp
+index d41840c068c..7ea90b3976c 100644
+--- a/core/src/impl/Kokkos_Error.hpp
++++ b/core/src/impl/Kokkos_Error.hpp
+@@ -5,19 +5,62 @@
+ #define KOKKOS_IMPL_ERROR_HPP
+ 
+ #include <string>
++#include <string_view>
++#include <stdexcept>
++#include <sstream>
+ #include <Kokkos_Macros.hpp>
+ #include <Kokkos_Abort.hpp>
+ #include <Kokkos_Assert.hpp>
+ 
+ namespace Kokkos::Impl {
+ 
+-[[noreturn]] void throw_runtime_exception(const std::string &msg);
++[[noreturn]] void throw_runtime_exception(const std::string& msg);
+ [[noreturn]] void throw_bad_alloc(std::string_view memory_space_name,
+                                   std::size_t size, std::string_view label);
+-void log_warning(const std::string &msg);
++void log_warning(const std::string& msg);
+ 
+ std::string human_memory_size(size_t bytes);
+ 
+ }  // namespace Kokkos::Impl
+ 
++namespace Kokkos::Experimental {
++
++/// Exception thrown when a Kokkos memory allocation fails.
++///
++/// Inherits from std::runtime_error for backward compatibility — existing
++/// catch blocks that catch std::runtime_error still work.  Provides structured
++/// access to the memory space, requested allocation size, and label of the
++/// allocation that failed.
++class BadAlloc : public std::runtime_error {
++  std::string m_memory_space_name;
++  std::size_t m_allocation_size;
++  std::string m_label;
++
++  static std::string make_message(std::string_view memory_space_name,
++                                  std::size_t size, std::string_view label) {
++    std::stringstream ss;
++    ss << "Kokkos ERROR: " << memory_space_name
++       << " memory space failed to allocate "
++       << Kokkos::Impl::human_memory_size(size) << " (label=\"" << label
++       << "\").";
++    return ss.str();
++  }
++
++ public:
++  BadAlloc(std::string_view memory_space_name, std::size_t size,
++           std::string_view label)
++      : std::runtime_error(make_message(memory_space_name, size, label)),
++        m_memory_space_name(memory_space_name),
++        m_allocation_size(size),
++        m_label(label) {}
++
++  const std::string& memory_space_name() const noexcept {
++    return m_memory_space_name;
++  }
++  std::size_t allocation_size() const noexcept { return m_allocation_size; }
++  const std::string& label() const noexcept { return m_label; }
++};
++
++}  // namespace Kokkos::Experimental
++
+ #endif

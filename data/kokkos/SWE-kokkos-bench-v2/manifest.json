@@ -1,0 +1,506 @@
+{
+  "format": "SWE-bench-compatible JSONL",
+  "instance_count": 100,
+  "instances": [
+    {
+      "instance_id": "kokkos__kokkos-6289",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-6375",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-6943",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7030",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7040",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7043",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7074",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7088",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7089",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7148",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7151",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7172",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7242",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7244",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7247",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7248",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7250",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7293",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7308",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7327",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7334",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7374",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7428",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7441",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7458",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7467",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7485",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7517",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7601",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7605",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7629",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7653",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7675",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7676",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7769",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-7984",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8039",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8098",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8131",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8164",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8182",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8190",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8202",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8221",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8289",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8358",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8364",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8370",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8399",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8481",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8486",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8494",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8509",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8559",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8577",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8582",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8594",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8612",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8692",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8712",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8715",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8741",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8761",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8789",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8792",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8819",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8827",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8838",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8891",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8904",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8927",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8928",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/expansion/validated/kokkos-selected-70.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8967",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-8989",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-9027",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-9050",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-9055",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-9128",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-9147",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-9159",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-9185",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-9239",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-9260",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-9276",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-9303",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-9309",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-9328",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-9344",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-9408",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-9414",
+      "repo": "kokkos/kokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-kernels-2864",
+      "repo": "kokkos/kokkos-kernels",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-kernels-2935",
+      "repo": "kokkos/kokkos-kernels",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-kernels-3049",
+      "repo": "kokkos/kokkos-kernels",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-kernels-3088",
+      "repo": "kokkos/kokkos-kernels",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-kernels-3089",
+      "repo": "kokkos/kokkos-kernels",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-kernels-3130",
+      "repo": "kokkos/kokkos-kernels",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-kernels-3138",
+      "repo": "kokkos/kokkos-kernels",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__kokkos-kernels-3217",
+      "repo": "kokkos/kokkos-kernels",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__pykokkos-422",
+      "repo": "kokkos/pykokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    },
+    {
+      "instance_id": "kokkos__pykokkos-424",
+      "repo": "kokkos/pykokkos",
+      "validation_source": "data/kokkos/SWE-kokkos-bench/instances.jsonl"
+    }
+  ]
+}

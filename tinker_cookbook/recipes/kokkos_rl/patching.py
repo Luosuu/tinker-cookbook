@@ -6,20 +6,18 @@ import re
 from collections.abc import Iterable
 from itertools import pairwise
 
+from tinker_cookbook.recipes.kokkos_rl.ecosystem import get_repository_profile
 from tinker_cookbook.recipes.kokkos_rl.models import ChangedFile
 
-SOURCE_PREFIXES = ("core/src/", "containers/src/", "algorithms/src/")
 GPU_BACKEND_SEGMENTS = frozenset({"Cuda", "CUDA", "HIP", "SYCL", "OpenMPTarget", "OpenACC"})
 UNSUPPORTED_BACKEND_SEGMENTS = GPU_BACKEND_SEGMENTS | {"HPX"}
 SUPPORTED_HOST_BACKEND_SEGMENTS = frozenset({"Serial", "OpenMP", "Threads"})
-ISSUE_REFERENCE_RE = re.compile(
-    r"(?i)\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?[ \t]+#(\d+)"
-)
-ISSUE_URL_RE = re.compile(r"https?://github\.com/kokkos/kokkos/issues/(\d+)")
+ISSUE_REFERENCE_RE = re.compile(r"(?i)\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s*:?[ \t]+#(\d+)")
 GPU_TITLE_RE = re.compile(r"(?i)\b(?:cuda|hip|sycl|rocm|nvidia|amd gpu|rubin)\b")
 GPU_COMPILER_RE = re.compile(r"(?i)\b(?:nvcc|hipcc)\b")
 MAINTENANCE_TITLE_RE = re.compile(
-    r"(?i)\b(?:deprecat(?:e|ed|ion)|final removal|remove deprecated|cleanup only)\b"
+    r"(?i)\b(?:deprecat(?:e|ed|ion)|final removal|remove deprecated|cleanup only|"
+    r"pre-commit|clang-format|formatting only|update workflow|dependency bump)\b"
 )
 FENCED_CODE_RE = re.compile(r"```.*?```", re.DOTALL)
 SOURCE_LINE_URL_RE = re.compile(
@@ -27,31 +25,38 @@ SOURCE_LINE_URL_RE = re.compile(
 )
 
 
-def is_test_path(path: str) -> bool:
+def is_test_path(path: str, repo: str = "kokkos/kokkos") -> bool:
+    profile = get_repository_profile(repo)
     parts = path.split("/")
-    return any(part in {"unit_test", "unit_tests"} for part in parts)
+    filename = parts[-1].lower()
+    return any(part in profile.test_dir_names for part in parts) or (
+        repo == "kokkos/pykokkos"
+        and (filename.startswith("test_") or filename.endswith("_test.py"))
+    )
 
 
-def is_source_path(path: str) -> bool:
-    return path.startswith(SOURCE_PREFIXES)
+def is_source_path(path: str, repo: str = "kokkos/kokkos") -> bool:
+    profile = get_repository_profile(repo)
+    return path.startswith(profile.source_prefixes) and not is_test_path(path, repo)
 
 
 def is_gpu_backend_path(path: str) -> bool:
     return bool(GPU_BACKEND_SEGMENTS.intersection(path.split("/")))
 
 
-def is_forbidden_agent_path(path: str) -> bool:
+def is_forbidden_agent_path(path: str, repo: str = "kokkos/kokkos") -> bool:
     """Paths an agent may not change because they can compromise scoring."""
 
     return (
-        is_test_path(path)
+        is_test_path(path, repo)
         or path.startswith((".github/", "cmake/"))
         or path.endswith("CMakeLists.txt")
     )
 
 
-def linked_issue_numbers(text: str) -> tuple[int, ...]:
-    matches = ISSUE_REFERENCE_RE.findall(text) + ISSUE_URL_RE.findall(text)
+def linked_issue_numbers(text: str, repo: str = "kokkos/kokkos") -> tuple[int, ...]:
+    issue_url_re = re.compile(rf"https?://github\.com/{re.escape(repo)}/issues/(\d+)")
+    matches = ISSUE_REFERENCE_RE.findall(text) + issue_url_re.findall(text)
     return tuple(dict.fromkeys(int(match) for match in matches))
 
 
@@ -84,13 +89,13 @@ def split_unified_diff(patch: str) -> list[tuple[str, str]]:
     return blocks
 
 
-def partition_patch(patch: str) -> tuple[str, str]:
+def partition_patch(patch: str, repo: str = "kokkos/kokkos") -> tuple[str, str]:
     """Split a PR patch into hidden tests and agent-visible production changes."""
 
     test_blocks: list[str] = []
     code_blocks: list[str] = []
     for path, block in split_unified_diff(patch):
-        (test_blocks if is_test_path(path) else code_blocks).append(block)
+        (test_blocks if is_test_path(path, repo) else code_blocks).append(block)
     return "".join(test_blocks), "".join(code_blocks)
 
 
@@ -99,29 +104,39 @@ def candidate_rejection_reasons(
     *,
     title: str = "",
     description: str = "",
+    repo: str = "kokkos/kokkos",
+    include_gpu: bool = False,
     min_changed_lines: int = 5,
     max_changed_lines: int = 500,
 ) -> tuple[str, ...]:
     files = tuple(files)
-    source_files = tuple(item for item in files if is_source_path(item.filename))
-    test_files = tuple(item for item in files if is_test_path(item.filename))
+    source_files = tuple(item for item in files if is_source_path(item.filename, repo))
+    test_files = tuple(item for item in files if is_test_path(item.filename, repo))
     changed_lines = sum(item.changed_lines for item in files)
     reasons: list[str] = []
     if not source_files:
         reasons.append("no-production-source-change")
     if not test_files:
         reasons.append("no-unit-test-change")
-    if source_files and all(is_gpu_backend_path(item.filename) for item in source_files):
+    if (
+        not include_gpu
+        and source_files
+        and all(is_gpu_backend_path(item.filename) for item in source_files)
+    ):
         reasons.append("gpu-backend-only")
-    elif source_files and all(
-        UNSUPPORTED_BACKEND_SEGMENTS.intersection(item.filename.split("/"))
-        and not SUPPORTED_HOST_BACKEND_SEGMENTS.intersection(item.filename.split("/"))
-        for item in source_files
+    elif (
+        not include_gpu
+        and source_files
+        and all(
+            UNSUPPORTED_BACKEND_SEGMENTS.intersection(item.filename.split("/"))
+            and not SUPPORTED_HOST_BACKEND_SEGMENTS.intersection(item.filename.split("/"))
+            for item in source_files
+        )
     ):
         reasons.append("unsupported-backend-only")
-    elif GPU_TITLE_RE.search(title):
+    elif not include_gpu and GPU_TITLE_RE.search(title):
         reasons.append("gpu-specific-change")
-    elif GPU_COMPILER_RE.search(description):
+    elif not include_gpu and GPU_COMPILER_RE.search(description):
         reasons.append("gpu-compiler-specific-change")
     if MAINTENANCE_TITLE_RE.search(title):
         reasons.append("maintenance-cleanup")
@@ -130,6 +145,19 @@ def candidate_rejection_reasons(
     if changed_lines > max_changed_lines:
         reasons.append("diff-too-large")
     return tuple(reasons)
+
+
+def infer_accelerator(
+    files: Iterable[ChangedFile], *, title: str = "", description: str = ""
+) -> str | None:
+    text = " ".join([title, description, *(item.filename for item in files)]).lower()
+    if any(word in text for word in ("cuda", "nvcc", "nvidia")):
+        return "cuda"
+    if any(word in text for word in ("hip", "hipcc", "rocm", "amd gpu")):
+        return "hip"
+    if any(word in text for word in ("sycl", "oneapi")):
+        return "sycl"
+    return None
 
 
 def infer_era(merged_at: str) -> str:

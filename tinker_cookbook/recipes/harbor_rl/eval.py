@@ -55,6 +55,7 @@ class EvalConfig:
     command_timeout: int = 120
     grader_timeout: int = 60
     max_tasks: int | None = None
+    max_concurrency: int = 6
     checkpoint_url: str | None = None
     base_url: str | None = None
     renderer_name: str | None = None
@@ -249,19 +250,25 @@ async def run_eval(
 
     logger.info("Starting evaluation of %d tasks", len(tasks))
 
+    semaphore = asyncio.Semaphore(config.max_concurrency)
+
+    async def evaluate_with_limit(task: HarborTask) -> TaskResult:
+        async with semaphore:
+            return await evaluate_task(
+                task,
+                policy,
+                renderer,
+                sandbox_factory,
+                config,
+                results_dir,
+                lock,
+                tokenizer,
+            )
+
     task_results = list(
         await asyncio.gather(
             *[
-                evaluate_task(
-                    task,
-                    policy,
-                    renderer,
-                    sandbox_factory,
-                    config,
-                    results_dir,
-                    lock,
-                    tokenizer,
-                )
+                evaluate_with_limit(task)
                 for task in tasks
             ]
         )

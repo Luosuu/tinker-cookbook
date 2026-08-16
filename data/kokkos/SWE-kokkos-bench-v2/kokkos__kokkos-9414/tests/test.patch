@@ -1,0 +1,32 @@
+diff --git a/core/unit_test/view/TestAccessorFromMemoryTraits.cpp b/core/unit_test/view/TestAccessorFromMemoryTraits.cpp
+index 76370e7ab84..890cd0d59bb 100644
+--- a/core/unit_test/view/TestAccessorFromMemoryTraits.cpp
++++ b/core/unit_test/view/TestAccessorFromMemoryTraits.cpp
+@@ -82,6 +82,27 @@ constexpr bool test_equivalence() {
+   return true;
+ }
+ 
++using memory_scope = desul::MemoryScopeCore;
++
++// Check that CheckedRelaxedAtomicAccessor preserves memory scope.
++static_assert(std::is_same_v<
++              Kokkos::Impl::CheckedRelaxedAtomicAccessor<
++                  float, Kokkos::HostSpace, memory_scope>,
++              Kokkos::Impl::SpaceAwareAccessor<
++                  Kokkos::HostSpace,
++                  Kokkos::Impl::AtomicAccessorRelaxed<float, memory_scope>>>);
++// Check that CheckedReferenceCountedRelaxedAtomicAccessor preserves memory
++// scope.
++static_assert(
++    std::is_same_v<
++        Kokkos::Impl::CheckedReferenceCountedRelaxedAtomicAccessor<
++            float, Kokkos::HostSpace, memory_scope>,
++        Kokkos::Impl::SpaceAwareAccessor<
++            Kokkos::HostSpace,
++            Kokkos::Impl::ReferenceCountedAccessor<
++                float, Kokkos::HostSpace,
++                Kokkos::Impl::AtomicAccessorRelaxed<float, memory_scope>>>>);
++
+ static_assert(test_equivalence<float, Kokkos::DefaultExecutionSpace>());
+ static_assert(
+     test_equivalence<const float, Kokkos::DefaultHostExecutionSpace>());

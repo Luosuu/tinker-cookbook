@@ -1,0 +1,71 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreUnitTest_Serial1 compile with TestTimer static assertions"
+  ],
+  "PASS_TO_PASS": [
+    "TEST_CATEGORY.timer"
+  ],
+  "base_commit": "08f79ebe085bc6f03d222f069f9034b55e59465d",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreUnitTest_Serial1",
+    "Kokkos_CoreUnitTest_Serial2"
+  ],
+  "changed_files": [
+    {
+      "additions": 9,
+      "deletions": 56,
+      "filename": "core/src/Kokkos_Timer.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 1,
+      "deletions": 0,
+      "filename": "core/unit_test/CMakeLists.txt",
+      "status": "modified"
+    },
+    {
+      "additions": 53,
+      "deletions": 0,
+      "filename": "core/unit_test/TestTimer.hpp",
+      "status": "added"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/Kokkos_Timer.hpp b/core/src/Kokkos_Timer.hpp\nindex ab31484d76a..7f086024f6f 100644\n--- a/core/src/Kokkos_Timer.hpp\n+++ b/core/src/Kokkos_Timer.hpp\n@@ -16,79 +16,32 @@\n \n #ifndef KOKKOS_TIMER_HPP\n #define KOKKOS_TIMER_HPP\n-#ifndef KOKKOS_IMPL_PUBLIC_INCLUDE\n-#define KOKKOS_IMPL_PUBLIC_INCLUDE\n-#define KOKKOS_IMPL_PUBLIC_INCLUDE_NOTDEFINED_TIMER\n-#endif\n \n #include <Kokkos_Macros.hpp>\n-// gcc 10.3.0 with CUDA doesn't support std::chrono,\n-// see https://github.com/kokkos/kokkos/issues/4334\n-#if defined(KOKKOS_COMPILER_GNU) && (KOKKOS_COMPILER_GNU == 1030) && \\\n-    defined(KOKKOS_COMPILER_NVCC)\n-#include <sys/time.h>\n-#else\n+\n #include <chrono>\n-#endif\n \n namespace Kokkos {\n \n-/** \\brief  Time since construction */\n-\n-#if defined(KOKKOS_COMPILER_GNU) && (KOKKOS_COMPILER_GNU == 1030) && \\\n-    defined(KOKKOS_COMPILER_NVCC)\n class Timer {\n- private:\n-  struct timeval m_old;\n+  using Clock = std::chrono::high_resolution_clock;\n+  Clock::time_point start_;\n \n  public:\n-  inline void reset() { gettimeofday(&m_old, nullptr); }\n-\n-  inline ~Timer() = default;\n-\n-  inline Timer() { reset(); }\n-\n   Timer(const Timer&)            = delete;\n   Timer& operator=(const Timer&) = delete;\n \n-  inline double seconds() const {\n-    struct timeval m_new;\n+  Timer() { reset(); }\n \n-    gettimeofday(&m_new, nullptr);\n+  void reset() { start_ = Clock::now(); }\n \n-    return ((double)(m_new.tv_sec - m_old.tv_sec)) +\n-           ((double)(m_new.tv_usec - m_old.tv_usec) * 1.0e-6);\n+  double seconds() const {\n+    using namespace std::chrono;\n+    auto const now = Clock::now();\n+    return duration_cast<duration<double>>(now - start_).count();\n   }\n };\n-#else\n-class Timer {\n- private:\n-  std::chrono::high_resolution_clock::time_point m_old;\n-\n- public:\n-  inline void reset() { m_old = std::chrono::high_resolution_clock::now(); }\n-\n-  inline ~Timer() = default;\n-\n-  inline Timer() { reset(); }\n-\n-  Timer(const Timer&);\n-  Timer& operator=(const Timer&);\n-\n-  inline double seconds() const {\n-    std::chrono::high_resolution_clock::time_point m_new =\n-        std::chrono::high_resolution_clock::now();\n-    return std::chrono::duration_cast<std::chrono::duration<double> >(m_new -\n-                                                                      m_old)\n-        .count();\n-  }\n-};\n-#endif\n \n }  // namespace Kokkos\n \n-#ifdef KOKKOS_IMPL_PUBLIC_INCLUDE_NOTDEFINED_TIMER\n-#undef KOKKOS_IMPL_PUBLIC_INCLUDE\n-#undef KOKKOS_IMPL_PUBLIC_INCLUDE_NOTDEFINED_TIMER\n #endif\n-#endif /* #ifndef KOKKOS_TIMER_HPP */\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+  "created_at": "2025-09-05T11:11:46Z",
+  "era": "cpp17",
+  "f2p_commands": [],
+  "fail_to_pass": [
+    "Kokkos_CoreUnitTest_Serial1 compile with TestTimer static assertions"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-8399",
+  "labels": [
+    "Refactor"
+  ],
+  "linked_issues": [],
+  "merge_commit": "4dd8dc843307b527486051e2e2833c89ee832d6c",
+  "merged_at": "2025-09-05T11:11:46Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/8399",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter=TEST_CATEGORY.timer"
+  ],
+  "pass_to_pass": [
+    "TEST_CATEGORY.timer"
+  ],
+  "patch": "diff --git a/core/src/Kokkos_Timer.hpp b/core/src/Kokkos_Timer.hpp\nindex ab31484d76a..7f086024f6f 100644\n--- a/core/src/Kokkos_Timer.hpp\n+++ b/core/src/Kokkos_Timer.hpp\n@@ -16,79 +16,32 @@\n \n #ifndef KOKKOS_TIMER_HPP\n #define KOKKOS_TIMER_HPP\n-#ifndef KOKKOS_IMPL_PUBLIC_INCLUDE\n-#define KOKKOS_IMPL_PUBLIC_INCLUDE\n-#define KOKKOS_IMPL_PUBLIC_INCLUDE_NOTDEFINED_TIMER\n-#endif\n \n #include <Kokkos_Macros.hpp>\n-// gcc 10.3.0 with CUDA doesn't support std::chrono,\n-// see https://github.com/kokkos/kokkos/issues/4334\n-#if defined(KOKKOS_COMPILER_GNU) && (KOKKOS_COMPILER_GNU == 1030) && \\\n-    defined(KOKKOS_COMPILER_NVCC)\n-#include <sys/time.h>\n-#else\n+\n #include <chrono>\n-#endif\n \n namespace Kokkos {\n \n-/** \\brief  Time since construction */\n-\n-#if defined(KOKKOS_COMPILER_GNU) && (KOKKOS_COMPILER_GNU == 1030) && \\\n-    defined(KOKKOS_COMPILER_NVCC)\n class Timer {\n- private:\n-  struct timeval m_old;\n+  using Clock = std::chrono::high_resolution_clock;\n+  Clock::time_point start_;\n \n  public:\n-  inline void reset() { gettimeofday(&m_old, nullptr); }\n-\n-  inline ~Timer() = default;\n-\n-  inline Timer() { reset(); }\n-\n   Timer(const Timer&)            = delete;\n   Timer& operator=(const Timer&) = delete;\n \n-  inline double seconds() const {\n-    struct timeval m_new;\n+  Timer() { reset(); }\n \n-    gettimeofday(&m_new, nullptr);\n+  void reset() { start_ = Clock::now(); }\n \n-    return ((double)(m_new.tv_sec - m_old.tv_sec)) +\n-           ((double)(m_new.tv_usec - m_old.tv_usec) * 1.0e-6);\n+  double seconds() const {\n+    using namespace std::chrono;\n+    auto const now = Clock::now();\n+    return duration_cast<duration<double>>(now - start_).count();\n   }\n };\n-#else\n-class Timer {\n- private:\n-  std::chrono::high_resolution_clock::time_point m_old;\n-\n- public:\n-  inline void reset() { m_old = std::chrono::high_resolution_clock::now(); }\n-\n-  inline ~Timer() = default;\n-\n-  inline Timer() { reset(); }\n-\n-  Timer(const Timer&);\n-  Timer& operator=(const Timer&);\n-\n-  inline double seconds() const {\n-    std::chrono::high_resolution_clock::time_point m_new =\n-        std::chrono::high_resolution_clock::now();\n-    return std::chrono::duration_cast<std::chrono::duration<double> >(m_new -\n-                                                                      m_old)\n-        .count();\n-  }\n-};\n-#endif\n \n }  // namespace Kokkos\n \n-#ifdef KOKKOS_IMPL_PUBLIC_INCLUDE_NOTDEFINED_TIMER\n-#undef KOKKOS_IMPL_PUBLIC_INCLUDE\n-#undef KOKKOS_IMPL_PUBLIC_INCLUDE_NOTDEFINED_TIMER\n #endif\n-#endif /* #ifndef KOKKOS_TIMER_HPP */\ndiff --git a/core/unit_test/CMakeLists.txt b/core/unit_test/CMakeLists.txt\nindex c554965b052..0728a05952b 100644\n--- a/core/unit_test/CMakeLists.txt\n+++ b/core/unit_test/CMakeLists.txt\n@@ -260,6 +260,7 @@ foreach(Tag Threads;Serial;OpenMP;Cuda;HPX;OpenMPTarget;OpenACC;HIP;SYCL)\n         TeamScratch\n         TeamTeamSize\n         TeamVectorRange\n+        Timer\n         UniqueToken\n         View_64bit\n         ViewAPI_a\ndiff --git a/core/unit_test/TestTimer.hpp b/core/unit_test/TestTimer.hpp\nnew file mode 100644\nindex 00000000000..74154ae6dd6\n--- /dev/null\n+++ b/core/unit_test/TestTimer.hpp\n@@ -0,0 +1,53 @@\n+//@HEADER\n+// ************************************************************************\n+//\n+//                        Kokkos v. 4.0\n+//       Copyright (2022) National Technology & Engineering\n+//               Solutions of Sandia, LLC (NTESS).\n+//\n+// Under the terms of Contract DE-NA0003525 with NTESS,\n+// the U.S. Government retains certain rights in this software.\n+//\n+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.\n+// See https://kokkos.org/LICENSE for license information.\n+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception\n+//\n+//@HEADER\n+\n+#include <gtest/gtest.h>\n+\n+#include <Kokkos_Timer.hpp>\n+\n+#include <thread>\n+#include <type_traits>\n+#include <utility>\n+\n+namespace {\n+\n+TEST(TEST_CATEGORY, timer) {\n+  using namespace std::chrono_literals;\n+\n+  Kokkos::Timer t;\n+  std::this_thread::sleep_for(5ms);\n+  auto elapsed = t.seconds();\n+  EXPECT_GE(elapsed, .005);\n+  EXPECT_LT(elapsed, 1.);\n+\n+  std::this_thread::sleep_for(10ms);\n+  auto elapsed2 = std::as_const(t).seconds();\n+  EXPECT_GE(elapsed2, .015);\n+  EXPECT_GT(elapsed2, elapsed);\n+\n+  t.reset();\n+  std::this_thread::sleep_for(5ms);\n+  auto elapsed3 = t.seconds();\n+  EXPECT_GE(elapsed3, .005);\n+  EXPECT_LT(elapsed3, elapsed2);\n+}\n+\n+static_assert(!std::is_copy_constructible_v<Kokkos::Timer>);\n+static_assert(!std::is_move_constructible_v<Kokkos::Timer>);\n+static_assert(!std::is_copy_assignable_v<Kokkos::Timer>);\n+static_assert(!std::is_move_assignable_v<Kokkos::Timer>);\n+\n+}  // namespace\n",
+  "pr_number": 8399,
+  "problem_statement": "* Get rid of the GCC 10.3 workaround.\r\n* Fix copy semantics (broken in https://github.com/kokkos/kokkos/pull/4348, giving a link time error instead of compile time)\r\n* Modernize the implementation\r\n* Add test coverage",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/CMakeLists.txt b/core/unit_test/CMakeLists.txt\nindex c554965b052..0728a05952b 100644\n--- a/core/unit_test/CMakeLists.txt\n+++ b/core/unit_test/CMakeLists.txt\n@@ -260,6 +260,7 @@ foreach(Tag Threads;Serial;OpenMP;Cuda;HPX;OpenMPTarget;OpenACC;HIP;SYCL)\n         TeamScratch\n         TeamTeamSize\n         TeamVectorRange\n+        Timer\n         UniqueToken\n         View_64bit\n         ViewAPI_a\ndiff --git a/core/unit_test/TestTimer.hpp b/core/unit_test/TestTimer.hpp\nnew file mode 100644\nindex 00000000000..74154ae6dd6\n--- /dev/null\n+++ b/core/unit_test/TestTimer.hpp\n@@ -0,0 +1,53 @@\n+//@HEADER\n+// ************************************************************************\n+//\n+//                        Kokkos v. 4.0\n+//       Copyright (2022) National Technology & Engineering\n+//               Solutions of Sandia, LLC (NTESS).\n+//\n+// Under the terms of Contract DE-NA0003525 with NTESS,\n+// the U.S. Government retains certain rights in this software.\n+//\n+// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.\n+// See https://kokkos.org/LICENSE for license information.\n+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception\n+//\n+//@HEADER\n+\n+#include <gtest/gtest.h>\n+\n+#include <Kokkos_Timer.hpp>\n+\n+#include <thread>\n+#include <type_traits>\n+#include <utility>\n+\n+namespace {\n+\n+TEST(TEST_CATEGORY, timer) {\n+  using namespace std::chrono_literals;\n+\n+  Kokkos::Timer t;\n+  std::this_thread::sleep_for(5ms);\n+  auto elapsed = t.seconds();\n+  EXPECT_GE(elapsed, .005);\n+  EXPECT_LT(elapsed, 1.);\n+\n+  std::this_thread::sleep_for(10ms);\n+  auto elapsed2 = std::as_const(t).seconds();\n+  EXPECT_GE(elapsed2, .015);\n+  EXPECT_GT(elapsed2, elapsed);\n+\n+  t.reset();\n+  std::this_thread::sleep_for(5ms);\n+  auto elapsed3 = t.seconds();\n+  EXPECT_GE(elapsed3, .005);\n+  EXPECT_LT(elapsed3, elapsed2);\n+}\n+\n+static_assert(!std::is_copy_constructible_v<Kokkos::Timer>);\n+static_assert(!std::is_move_constructible_v<Kokkos::Timer>);\n+static_assert(!std::is_copy_assignable_v<Kokkos::Timer>);\n+static_assert(!std::is_move_assignable_v<Kokkos::Timer>);\n+\n+}  // namespace\n",
+  "title": "Cleanup Timer class and add tests",
+  "version": "cpp17"
+}

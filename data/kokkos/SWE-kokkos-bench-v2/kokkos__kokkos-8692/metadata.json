@@ -1,0 +1,64 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreTestCompileOnly compilation"
+  ],
+  "PASS_TO_PASS": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "base_commit": "1ce7b9515ded1d4ed3c627c242e4688b91cc727e",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "changed_files": [
+    {
+      "additions": 6,
+      "deletions": 30,
+      "filename": "core/src/Kokkos_Array.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 23,
+      "deletions": 0,
+      "filename": "core/unit_test/TestArray.cpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/Kokkos_Array.hpp b/core/src/Kokkos_Array.hpp\nindex a24a3d628aa..bebbbaf2647 100644\n--- a/core/src/Kokkos_Array.hpp\n+++ b/core/src/Kokkos_Array.hpp\n@@ -22,28 +22,11 @@ namespace Kokkos {\n \n #ifdef KOKKOS_ENABLE_DEBUG_BOUNDS_CHECK\n namespace Impl {\n-template <typename Integral, bool Signed = std::is_signed_v<Integral>>\n-struct ArrayBoundsCheck;\n \n-template <typename Integral>\n-struct ArrayBoundsCheck<Integral, true> {\n+struct ArrayBoundsCheck {\n   KOKKOS_INLINE_FUNCTION\n-  constexpr ArrayBoundsCheck(Integral i, size_t N) {\n-    if (i < 0) {\n-      char err[128] = \"Kokkos::Array: index \";\n-      to_chars_i(err + strlen(err), err + 128, i);\n-      strcat(err, \" < 0\");\n-      Kokkos::abort(err);\n-    }\n-    ArrayBoundsCheck<Integral, false>(i, N);\n-  }\n-};\n-\n-template <typename Integral>\n-struct ArrayBoundsCheck<Integral, false> {\n-  KOKKOS_INLINE_FUNCTION\n-  constexpr ArrayBoundsCheck(Integral i, size_t N) {\n-    if (size_t(i) >= N) {\n+  constexpr ArrayBoundsCheck(size_t i, size_t N) {\n+    if (i >= N) {\n       char err[128] = \"Kokkos::Array: index \";\n       to_chars_i(err + strlen(err), err + 128, i);\n       strcat(err, \" >= \");\n@@ -54,8 +37,7 @@ struct ArrayBoundsCheck<Integral, false> {\n };\n }  // end namespace Impl\n \n-#define KOKKOS_ARRAY_BOUNDS_CHECK(i, N) \\\n-  Kokkos::Impl::ArrayBoundsCheck<decltype(i)>(i, N)\n+#define KOKKOS_ARRAY_BOUNDS_CHECK(i, N) Kokkos::Impl::ArrayBoundsCheck(i, N)\n \n #else  // !defined( KOKKOS_ENABLE_DEBUG_BOUNDS_CHECK )\n \n@@ -100,19 +82,13 @@ struct Array {\n     return N;\n   }\n \n-  template <typename iType>\n-  KOKKOS_INLINE_FUNCTION constexpr reference operator[](const iType& i) {\n-    static_assert((std::is_integral_v<iType> || std::is_enum_v<iType>),\n-                  \"Must be integral argument\");\n+  KOKKOS_INLINE_FUNCTION constexpr reference operator[](size_type i) {\n     KOKKOS_ARRAY_BOUNDS_CHECK(i, N);\n     return m_internal_implementation_private_member_data[i];\n   }\n \n-  template <typename iType>\n   KOKKOS_INLINE_FUNCTION constexpr const_reference operator[](\n-      const iType& i) const {\n-    static_assert((std::is_integral_v<iType> || std::is_enum_v<iType>),\n-                  \"Must be integral argument\");\n+      size_type i) const {\n     KOKKOS_ARRAY_BOUNDS_CHECK(i, N);\n     return m_internal_implementation_private_member_data[i];\n   }\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+  "created_at": "2025-11-20T06:49:38Z",
+  "era": "cpp17",
+  "f2p_commands": [
+    "cmake --build build --target Kokkos_CoreTestCompileOnly"
+  ],
+  "fail_to_pass": [
+    "Kokkos_CoreTestCompileOnly compilation"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-8692",
+  "labels": [],
+  "linked_issues": [],
+  "merge_commit": "bba2d1f60741b6a2023b36313016c0a0dd125f42",
+  "merged_at": "2025-11-20T06:49:38Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/8692",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "cmake --build build --target Kokkos_CoreTestCompileOnly"
+  ],
+  "pass_to_pass": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "patch": "diff --git a/core/src/Kokkos_Array.hpp b/core/src/Kokkos_Array.hpp\nindex a24a3d628aa..bebbbaf2647 100644\n--- a/core/src/Kokkos_Array.hpp\n+++ b/core/src/Kokkos_Array.hpp\n@@ -22,28 +22,11 @@ namespace Kokkos {\n \n #ifdef KOKKOS_ENABLE_DEBUG_BOUNDS_CHECK\n namespace Impl {\n-template <typename Integral, bool Signed = std::is_signed_v<Integral>>\n-struct ArrayBoundsCheck;\n \n-template <typename Integral>\n-struct ArrayBoundsCheck<Integral, true> {\n+struct ArrayBoundsCheck {\n   KOKKOS_INLINE_FUNCTION\n-  constexpr ArrayBoundsCheck(Integral i, size_t N) {\n-    if (i < 0) {\n-      char err[128] = \"Kokkos::Array: index \";\n-      to_chars_i(err + strlen(err), err + 128, i);\n-      strcat(err, \" < 0\");\n-      Kokkos::abort(err);\n-    }\n-    ArrayBoundsCheck<Integral, false>(i, N);\n-  }\n-};\n-\n-template <typename Integral>\n-struct ArrayBoundsCheck<Integral, false> {\n-  KOKKOS_INLINE_FUNCTION\n-  constexpr ArrayBoundsCheck(Integral i, size_t N) {\n-    if (size_t(i) >= N) {\n+  constexpr ArrayBoundsCheck(size_t i, size_t N) {\n+    if (i >= N) {\n       char err[128] = \"Kokkos::Array: index \";\n       to_chars_i(err + strlen(err), err + 128, i);\n       strcat(err, \" >= \");\n@@ -54,8 +37,7 @@ struct ArrayBoundsCheck<Integral, false> {\n };\n }  // end namespace Impl\n \n-#define KOKKOS_ARRAY_BOUNDS_CHECK(i, N) \\\n-  Kokkos::Impl::ArrayBoundsCheck<decltype(i)>(i, N)\n+#define KOKKOS_ARRAY_BOUNDS_CHECK(i, N) Kokkos::Impl::ArrayBoundsCheck(i, N)\n \n #else  // !defined( KOKKOS_ENABLE_DEBUG_BOUNDS_CHECK )\n \n@@ -100,19 +82,13 @@ struct Array {\n     return N;\n   }\n \n-  template <typename iType>\n-  KOKKOS_INLINE_FUNCTION constexpr reference operator[](const iType& i) {\n-    static_assert((std::is_integral_v<iType> || std::is_enum_v<iType>),\n-                  \"Must be integral argument\");\n+  KOKKOS_INLINE_FUNCTION constexpr reference operator[](size_type i) {\n     KOKKOS_ARRAY_BOUNDS_CHECK(i, N);\n     return m_internal_implementation_private_member_data[i];\n   }\n \n-  template <typename iType>\n   KOKKOS_INLINE_FUNCTION constexpr const_reference operator[](\n-      const iType& i) const {\n-    static_assert((std::is_integral_v<iType> || std::is_enum_v<iType>),\n-                  \"Must be integral argument\");\n+      size_type i) const {\n     KOKKOS_ARRAY_BOUNDS_CHECK(i, N);\n     return m_internal_implementation_private_member_data[i];\n   }\ndiff --git a/core/unit_test/TestArray.cpp b/core/unit_test/TestArray.cpp\nindex 89f6cb6355d..ab1df1ee543 100644\n--- a/core/unit_test/TestArray.cpp\n+++ b/core/unit_test/TestArray.cpp\n@@ -375,4 +375,27 @@ constexpr bool test_array_equality_comparable() {\n \n static_assert(test_array_equality_comparable());\n \n+struct IntegralConvertibleType {\n+  KOKKOS_INLINE_FUNCTION constexpr operator std::size_t() const noexcept {\n+    return static_cast<std::size_t>(v);\n+  }\n+  int v;\n+};\n+\n+constexpr bool test_array_indexable_with_integral_convertible_type() {\n+  using array_type = Kokkos::Array<int, 2>;\n+  static_assert(!std::is_integral_v<IntegralConvertibleType>);\n+  static_assert(std::is_nothrow_convertible_v<IntegralConvertibleType,\n+                                              array_type::size_type>);\n+  array_type arr{2, 3};\n+  (void)arr[IntegralConvertibleType{0}];\n+\n+  enum Test { one };\n+  (void)arr[one];\n+\n+  return true;\n+}\n+\n+static_assert(test_array_indexable_with_integral_convertible_type());\n+\n }  // namespace\n",
+  "pr_number": 8692,
+  "problem_statement": "This PR relaxes the constraints on `Kokkos::Array` `operator[]` to allow custom type indexers.\r\n\r\nThe current constraint, which requires `std::is_integral`, prevents the use of convertible types in its subscript operators, unlike `std::array`.\r\n\r\nThis change aligns with `Kokkos::View` interface, which previously also mandated `std::is_integral` in its legacy implementation:\r\n[source location omitted]\r\n\r\nbut was updated to:\r\n[source location omitted]",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/TestArray.cpp b/core/unit_test/TestArray.cpp\nindex 89f6cb6355d..ab1df1ee543 100644\n--- a/core/unit_test/TestArray.cpp\n+++ b/core/unit_test/TestArray.cpp\n@@ -375,4 +375,27 @@ constexpr bool test_array_equality_comparable() {\n \n static_assert(test_array_equality_comparable());\n \n+struct IntegralConvertibleType {\n+  KOKKOS_INLINE_FUNCTION constexpr operator std::size_t() const noexcept {\n+    return static_cast<std::size_t>(v);\n+  }\n+  int v;\n+};\n+\n+constexpr bool test_array_indexable_with_integral_convertible_type() {\n+  using array_type = Kokkos::Array<int, 2>;\n+  static_assert(!std::is_integral_v<IntegralConvertibleType>);\n+  static_assert(std::is_nothrow_convertible_v<IntegralConvertibleType,\n+                                              array_type::size_type>);\n+  array_type arr{2, 3};\n+  (void)arr[IntegralConvertibleType{0}];\n+\n+  enum Test { one };\n+  (void)arr[one];\n+\n+  return true;\n+}\n+\n+static_assert(test_array_indexable_with_integral_convertible_type());\n+\n }  // namespace\n",
+  "title": "Array: Relax constraints on subscript operator",
+  "version": "cpp17"
+}

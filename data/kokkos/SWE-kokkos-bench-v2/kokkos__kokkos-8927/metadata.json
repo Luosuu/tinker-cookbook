@@ -1,0 +1,72 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreUnitTest_Serial1 compilation"
+  ],
+  "PASS_TO_PASS": [
+    "Kokkos_CoreUnitTest_Serial1 compilation"
+  ],
+  "base_commit": "34922d92da262e3b9da9b97de327c9c63c6e9a50",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreUnitTest_Serial1"
+  ],
+  "changed_files": [
+    {
+      "additions": 12,
+      "deletions": 0,
+      "filename": "core/src/Kokkos_Complex.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 1,
+      "deletions": 0,
+      "filename": "core/src/Kokkos_Core.cppm",
+      "status": "modified"
+    },
+    {
+      "additions": 23,
+      "deletions": 0,
+      "filename": "core/unit_test/TestComplex.hpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/Kokkos_Complex.hpp b/core/src/Kokkos_Complex.hpp\nindex dd095aeb7ed..9370dfd3535 100644\n--- a/core/src/Kokkos_Complex.hpp\n+++ b/core/src/Kokkos_Complex.hpp\n@@ -801,6 +801,18 @@ KOKKOS_INLINE_FUNCTION constexpr complex<Impl::promote_t<ArithmeticType>> conj(\n   return complex<type>(x, -type());\n }\n \n+//! Norm of a complex number.\n+template <class RealType>\n+KOKKOS_INLINE_FUNCTION constexpr RealType norm(const complex<RealType>& x) {\n+  return x.real() * x.real() + x.imag() * x.imag();\n+}\n+\n+template <class ArithmeticType>\n+KOKKOS_INLINE_FUNCTION constexpr Impl::promote_t<ArithmeticType> norm(\n+    ArithmeticType x) {\n+  return static_cast<Impl::promote_t<ArithmeticType>>(x) * x;\n+}\n+\n //! Exponential of a complex number.\n template <class RealType>\n KOKKOS_INLINE_FUNCTION complex<RealType> exp(const complex<RealType>& x) {\ndiff --git a/core/src/Kokkos_Core.cppm b/core/src/Kokkos_Core.cppm\nindex bc7255b633a..794c39a8be0 100644\n--- a/core/src/Kokkos_Core.cppm\n+++ b/core/src/Kokkos_Core.cppm\n@@ -552,6 +552,7 @@ export {\n   using ::Kokkos::nexttoward;\n   using ::Kokkos::nexttowardf;\n   using ::Kokkos::nexttowardl;\n+  using ::Kokkos::norm;\n   using ::Kokkos::pow;\n   using ::Kokkos::powf;\n   using ::Kokkos::powl;\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+  "created_at": "2026-03-02T19:34:00Z",
+  "era": "cpp20",
+  "f2p_commands": [
+    "ninja -C build Kokkos_CoreUnitTest_Serial1"
+  ],
+  "fail_to_pass": [
+    "Kokkos_CoreUnitTest_Serial1 compilation"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-8927",
+  "labels": [
+    "SNL-CI-APPROVAL"
+  ],
+  "linked_issues": [],
+  "merge_commit": "01c911c2a915cb57c8d08d92f032f1c1c705be70",
+  "merged_at": "2026-03-02T19:34:00Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/8927",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "ninja -C build Kokkos_CoreUnitTest_Serial1"
+  ],
+  "pass_to_pass": [
+    "Kokkos_CoreUnitTest_Serial1 compilation"
+  ],
+  "patch": "diff --git a/core/src/Kokkos_Complex.hpp b/core/src/Kokkos_Complex.hpp\nindex dd095aeb7ed..9370dfd3535 100644\n--- a/core/src/Kokkos_Complex.hpp\n+++ b/core/src/Kokkos_Complex.hpp\n@@ -801,6 +801,18 @@ KOKKOS_INLINE_FUNCTION constexpr complex<Impl::promote_t<ArithmeticType>> conj(\n   return complex<type>(x, -type());\n }\n \n+//! Norm of a complex number.\n+template <class RealType>\n+KOKKOS_INLINE_FUNCTION constexpr RealType norm(const complex<RealType>& x) {\n+  return x.real() * x.real() + x.imag() * x.imag();\n+}\n+\n+template <class ArithmeticType>\n+KOKKOS_INLINE_FUNCTION constexpr Impl::promote_t<ArithmeticType> norm(\n+    ArithmeticType x) {\n+  return static_cast<Impl::promote_t<ArithmeticType>>(x) * x;\n+}\n+\n //! Exponential of a complex number.\n template <class RealType>\n KOKKOS_INLINE_FUNCTION complex<RealType> exp(const complex<RealType>& x) {\ndiff --git a/core/src/Kokkos_Core.cppm b/core/src/Kokkos_Core.cppm\nindex bc7255b633a..794c39a8be0 100644\n--- a/core/src/Kokkos_Core.cppm\n+++ b/core/src/Kokkos_Core.cppm\n@@ -552,6 +552,7 @@ export {\n   using ::Kokkos::nexttoward;\n   using ::Kokkos::nexttowardf;\n   using ::Kokkos::nexttowardl;\n+  using ::Kokkos::norm;\n   using ::Kokkos::pow;\n   using ::Kokkos::powf;\n   using ::Kokkos::powl;\ndiff --git a/core/unit_test/TestComplex.hpp b/core/unit_test/TestComplex.hpp\nindex 169c2069017..8facd400cc7 100644\n--- a/core/unit_test/TestComplex.hpp\n+++ b/core/unit_test/TestComplex.hpp\n@@ -346,6 +346,10 @@ struct TestComplexSpecialFunctions {\n     r = std::log10(a);\n     ASSERT_FLOAT_EQ(h_results(18).real(), r.real());\n     ASSERT_FLOAT_EQ(h_results(18).imag(), r.imag());\n+    // norm\n+    r = std::norm(a);\n+    ASSERT_FLOAT_EQ(h_results(19).real(), r.real());\n+    ASSERT_FLOAT_EQ(h_results(19).imag(), r.imag());\n   }\n \n   KOKKOS_INLINE_FUNCTION\n@@ -372,6 +376,7 @@ struct TestComplexSpecialFunctions {\n     d_results(16) = Kokkos::acos(a);\n     d_results(17) = Kokkos::atan(a);\n     d_results(18) = Kokkos::log10(a);\n+    d_results(19) = Kokkos::norm(a);\n   }\n };\n \n@@ -669,6 +674,24 @@ constexpr bool comparison_in_constant_expression() {\n \n static_assert(comparison_in_constant_expression());\n \n+constexpr bool test_complex_norm() {\n+  return Kokkos::norm(Kokkos::complex<double>{4., 2.}) == 20.;\n+}\n+static_assert(test_complex_norm());\n+\n+constexpr bool test_overload_norm() {\n+  constexpr auto res_int = Kokkos::norm(int(100000));\n+  static_assert(std::same_as<decltype(res_int), const double>);\n+  static_assert(res_int == 1e10);\n+\n+  constexpr auto res_float = Kokkos::norm(float(666.));\n+  static_assert(std::same_as<decltype(res_float), const float>);\n+  static_assert(res_float == 666. * 666.);\n+\n+  return true;\n+}\n+static_assert(test_overload_norm());\n+\n }  // namespace Test\n \n #ifdef KOKKOS_COMPILER_NVCC\n",
+  "pr_number": 8927,
+  "problem_statement": "Implement `Kokkos::norm` both for `Kokkos::complex` and additional overloads for floating point and integer types.\r\n\r\nQuick reference:\r\n* https://en.cppreference.com/w/cpp/numeric/complex/norm.html",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/TestComplex.hpp b/core/unit_test/TestComplex.hpp\nindex 169c2069017..8facd400cc7 100644\n--- a/core/unit_test/TestComplex.hpp\n+++ b/core/unit_test/TestComplex.hpp\n@@ -346,6 +346,10 @@ struct TestComplexSpecialFunctions {\n     r = std::log10(a);\n     ASSERT_FLOAT_EQ(h_results(18).real(), r.real());\n     ASSERT_FLOAT_EQ(h_results(18).imag(), r.imag());\n+    // norm\n+    r = std::norm(a);\n+    ASSERT_FLOAT_EQ(h_results(19).real(), r.real());\n+    ASSERT_FLOAT_EQ(h_results(19).imag(), r.imag());\n   }\n \n   KOKKOS_INLINE_FUNCTION\n@@ -372,6 +376,7 @@ struct TestComplexSpecialFunctions {\n     d_results(16) = Kokkos::acos(a);\n     d_results(17) = Kokkos::atan(a);\n     d_results(18) = Kokkos::log10(a);\n+    d_results(19) = Kokkos::norm(a);\n   }\n };\n \n@@ -669,6 +674,24 @@ constexpr bool comparison_in_constant_expression() {\n \n static_assert(comparison_in_constant_expression());\n \n+constexpr bool test_complex_norm() {\n+  return Kokkos::norm(Kokkos::complex<double>{4., 2.}) == 20.;\n+}\n+static_assert(test_complex_norm());\n+\n+constexpr bool test_overload_norm() {\n+  constexpr auto res_int = Kokkos::norm(int(100000));\n+  static_assert(std::same_as<decltype(res_int), const double>);\n+  static_assert(res_int == 1e10);\n+\n+  constexpr auto res_float = Kokkos::norm(float(666.));\n+  static_assert(std::same_as<decltype(res_float), const float>);\n+  static_assert(res_float == 666. * 666.);\n+\n+  return true;\n+}\n+static_assert(test_overload_norm());\n+\n }  // namespace Test\n \n #ifdef KOKKOS_COMPILER_NVCC\n",
+  "title": "core(complex): norm",
+  "version": "cpp20"
+}

@@ -1,0 +1,181 @@
+diff --git a/core/src/Kokkos_Core.hpp b/core/src/Kokkos_Core.hpp
+index a9cc9d116ed..c8bac64a765 100644
+--- a/core/src/Kokkos_Core.hpp
++++ b/core/src/Kokkos_Core.hpp
+@@ -53,11 +53,13 @@
+ #include <Kokkos_Tuners.hpp>
+ #include <Kokkos_Complex.hpp>
+ #include <Kokkos_CopyViews.hpp>
++#include <Kokkos_InitializeFinalize.hpp>
++#include <Kokkos_ScopeGuard.hpp>
+ #include <impl/Kokkos_TeamMDPolicy.hpp>
+-#include <impl/Kokkos_InitializeFinalize.hpp>
+-#include <impl/Kokkos_ScopeGuard.hpp>
+ #include <impl/Kokkos_PartitionSpace.hpp>
+ #include <impl/Kokkos_CStyleMemoryManagement.hpp>
++#include <impl/Kokkos_RuntimeInfo.hpp>
++#include <impl/Kokkos_Fence.hpp>
+ 
+ //----------------------------------------------------------------------------
+ //----------------------------------------------------------------------------
+diff --git a/core/src/impl/Kokkos_InitializeFinalize.hpp b/core/src/Kokkos_InitializeFinalize.hpp
+similarity index 76%
+rename from core/src/impl/Kokkos_InitializeFinalize.hpp
+rename to core/src/Kokkos_InitializeFinalize.hpp
+index ea17eda97d0..907f2edbb71 100644
+--- a/core/src/impl/Kokkos_InitializeFinalize.hpp
++++ b/core/src/Kokkos_InitializeFinalize.hpp
+@@ -41,20 +41,9 @@ void finalize();
+  */
+ void push_finalize_hook(std::function<void()> f);
+ 
+-/** \brief Print "Bill of Materials" */
+-void print_configuration(std::ostream& os, bool verbose = false);
+-
+ [[nodiscard]] bool is_initialized() noexcept;
+ [[nodiscard]] bool is_finalized() noexcept;
+ 
+-[[nodiscard]] int device_id() noexcept;
+-[[nodiscard]] int num_devices() noexcept;
+-[[nodiscard]] int num_threads() noexcept;
+-
+-bool show_warnings() noexcept;
+-bool tune_internals() noexcept;
+-
+-void fence(const std::string& name /*= "Kokkos::fence: Unnamed Global Fence"*/);
+ }  // namespace Kokkos
+ 
+ namespace Kokkos::Impl {
+@@ -67,10 +56,6 @@ void pre_finalize();
+ 
+ void post_finalize();
+ 
+-void declare_configuration_metadata(const std::string& category,
+-                                    const std::string& key,
+-                                    const std::string& value);
+-
+ }  // namespace Kokkos::Impl
+ 
+ #endif
+diff --git a/core/src/impl/Kokkos_ScopeGuard.hpp b/core/src/Kokkos_ScopeGuard.hpp
+similarity index 97%
+rename from core/src/impl/Kokkos_ScopeGuard.hpp
+rename to core/src/Kokkos_ScopeGuard.hpp
+index 622bfcf011e..fd93c641f55 100644
+--- a/core/src/impl/Kokkos_ScopeGuard.hpp
++++ b/core/src/Kokkos_ScopeGuard.hpp
+@@ -5,7 +5,7 @@
+ #define KOKKOS_SCOPE_GUARD_HPP
+ 
+ #include <Kokkos_Abort.hpp>
+-#include <impl/Kokkos_InitializeFinalize.hpp>
++#include <Kokkos_InitializeFinalize.hpp>
+ 
+ #include <string>
+ 
+diff --git a/core/src/View/Kokkos_BasicView.hpp b/core/src/View/Kokkos_BasicView.hpp
+index 728c609b288..fe633d55a73 100644
+--- a/core/src/View/Kokkos_BasicView.hpp
++++ b/core/src/View/Kokkos_BasicView.hpp
+@@ -9,7 +9,7 @@ static_assert(false,
+ #ifndef KOKKOS_BASIC_VIEW_HPP
+ #define KOKKOS_BASIC_VIEW_HPP
+ #include <Kokkos_Macros.hpp>
+-#include <impl/Kokkos_InitializeFinalize.hpp>
++#include <Kokkos_InitializeFinalize.hpp>
+ #include <impl/Kokkos_Utilities.hpp>
+ #include <impl/Kokkos_SharedAlloc.hpp>
+ #include <View/Kokkos_ViewAlloc.hpp>
+diff --git a/core/src/View/Kokkos_ViewLegacy.hpp b/core/src/View/Kokkos_ViewLegacy.hpp
+index c434df00ef1..873b0bbbf17 100644
+--- a/core/src/View/Kokkos_ViewLegacy.hpp
++++ b/core/src/View/Kokkos_ViewLegacy.hpp
+@@ -21,7 +21,7 @@ static_assert(false,
+ #include <Kokkos_ExecPolicy.hpp>
+ #include <View/Hooks/Kokkos_ViewHooks.hpp>
+ 
+-#include <impl/Kokkos_InitializeFinalize.hpp>
++#include <Kokkos_InitializeFinalize.hpp>
+ #include <impl/Kokkos_Tools.hpp>
+ #include <impl/Kokkos_Utilities.hpp>
+ 
+diff --git a/core/src/impl/Kokkos_CStyleMemoryManagement.hpp b/core/src/impl/Kokkos_CStyleMemoryManagement.hpp
+index 82095f5eac2..87d98de8772 100644
+--- a/core/src/impl/Kokkos_CStyleMemoryManagement.hpp
++++ b/core/src/impl/Kokkos_CStyleMemoryManagement.hpp
+@@ -11,7 +11,7 @@
+ 
+ #include <Kokkos_Abort.hpp>
+ #include <Kokkos_Macros.hpp>
+-#include <impl/Kokkos_InitializeFinalize.hpp>
++#include <Kokkos_InitializeFinalize.hpp>
+ 
+ #include <KokkosCore_Config_DeclareBackend.hpp>  // FIXME
+ 
+diff --git a/core/src/impl/Kokkos_CheckUsage.hpp b/core/src/impl/Kokkos_CheckUsage.hpp
+index ea1b6578acb..7061e5f1437 100644
+--- a/core/src/impl/Kokkos_CheckUsage.hpp
++++ b/core/src/impl/Kokkos_CheckUsage.hpp
+@@ -6,7 +6,7 @@
+ 
+ #include <Kokkos_Abort.hpp>
+ #include <Kokkos_Macros.hpp>
+-#include <impl/Kokkos_InitializeFinalize.hpp>
++#include <Kokkos_InitializeFinalize.hpp>
+ #include <impl/Kokkos_Utilities.hpp>
+ 
+ #include <string>
+diff --git a/core/src/impl/Kokkos_Fence.hpp b/core/src/impl/Kokkos_Fence.hpp
+new file mode 100644
+index 00000000000..52411393758
+--- /dev/null
++++ b/core/src/impl/Kokkos_Fence.hpp
+@@ -0,0 +1,13 @@
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++// SPDX-FileCopyrightText: Copyright Contributors to the Kokkos project
++
++#ifndef KOKKOS_FENCE_HPP
++#define KOKKOS_FENCE_HPP
++
++#include <string>
++
++namespace Kokkos {
++void fence(const std::string& name /*= "Kokkos::fence: Unnamed Global Fence"*/);
++}
++
++#endif
+diff --git a/core/src/impl/Kokkos_RuntimeInfo.hpp b/core/src/impl/Kokkos_RuntimeInfo.hpp
+new file mode 100644
+index 00000000000..c916ccbeb0c
+--- /dev/null
++++ b/core/src/impl/Kokkos_RuntimeInfo.hpp
+@@ -0,0 +1,29 @@
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++// SPDX-FileCopyrightText: Copyright Contributors to the Kokkos project
++
++#ifndef KOKKOS_RUNTIME_INFO_HPP
++#define KOKKOS_RUNTIME_INFO_HPP
++
++#include <iostream>
++#include <string>
++
++namespace Kokkos {
++/** \brief Print "Bill of Materials" */
++void print_configuration(std::ostream& os, bool verbose = false);
++
++[[nodiscard]] int device_id() noexcept;
++[[nodiscard]] int num_devices() noexcept;
++[[nodiscard]] int num_threads() noexcept;
++
++bool show_warnings() noexcept;
++bool tune_internals() noexcept;
++}  // namespace Kokkos
++
++namespace Kokkos::Impl {
++void declare_configuration_metadata(const std::string& category,
++                                    const std::string& key,
++                                    const std::string& value);
++
++}  // namespace Kokkos::Impl
++
++#endif

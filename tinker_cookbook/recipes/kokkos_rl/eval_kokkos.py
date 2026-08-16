@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 
 import chz
@@ -20,6 +21,7 @@ class CLIConfig:
     tasks_dir: str = "data/kokkos/phase0/harbor"
     output_path: str = "notes/experiments/kokkos_phase0/baselines"
     checkpoint_url: str | None = None
+    env_file: str = ".env"
 
     max_turns: int = 20
     max_tokens: int = 16384
@@ -28,6 +30,8 @@ class CLIConfig:
     command_timeout: int = 180
     grader_timeout: int = 180
     max_tasks: int | None = None
+    max_concurrency: int = 6
+    task_names: str | None = None
     max_trajectory_tokens: int = 112 * 1024
     max_sampled_tokens: int = 64 * 1024
     max_tool_calls: int = 40
@@ -35,6 +39,20 @@ class CLIConfig:
     base_url: str | None = None
     renderer_name: str | None = None
     thinking_effort: float | None = None
+
+
+def load_env_file(path: Path) -> None:
+    if not path.is_file():
+        return
+    for raw_line in path.read_text().splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip("'\"")
+        if key:
+            os.environ.setdefault(key, value)
 
 
 def print_summary(results: list[TaskResult]) -> None:
@@ -47,8 +65,24 @@ def print_summary(results: list[TaskResult]) -> None:
     )
 
 
+def select_tasks(tasks: list, task_names: str | None) -> list:
+    """Select a deterministic comma-separated task subset for incremental evals."""
+
+    if task_names is None:
+        return tasks
+    wanted = {name.strip() for name in task_names.split(",") if name.strip()}
+    selected = [task for task in tasks if task.task_name in wanted]
+    missing = wanted - {task.task_name for task in selected}
+    if missing:
+        raise ValueError(f"unknown task names: {sorted(missing)}")
+    return selected
+
+
 async def main(cli_config: CLIConfig) -> None:
-    tasks = load_harbor_tasks_from_dir(Path(cli_config.tasks_dir))
+    load_env_file(Path(cli_config.env_file))
+    tasks = select_tasks(
+        load_harbor_tasks_from_dir(Path(cli_config.tasks_dir)), cli_config.task_names
+    )
     eval_config = EvalConfig(
         model_name=cli_config.model_name,
         checkpoint_url=cli_config.checkpoint_url,
@@ -60,6 +94,7 @@ async def main(cli_config: CLIConfig) -> None:
         command_timeout=cli_config.command_timeout,
         grader_timeout=cli_config.grader_timeout,
         max_tasks=cli_config.max_tasks,
+        max_concurrency=cli_config.max_concurrency,
         base_url=cli_config.base_url,
         renderer_name=cli_config.renderer_name,
         thinking_effort=cli_config.thinking_effort,

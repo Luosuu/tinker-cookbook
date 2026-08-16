@@ -1,0 +1,52 @@
+diff --git a/containers/src/Kokkos_DynRankView.hpp b/containers/src/Kokkos_DynRankView.hpp
+index ed99798aa83..cab29dc0a2d 100644
+--- a/containers/src/Kokkos_DynRankView.hpp
++++ b/containers/src/Kokkos_DynRankView.hpp
+@@ -104,13 +104,10 @@ struct DynRankDimTraits {
+         layout.dimension[7] != unspecified ? layout.dimension[7] : unspecified);
+ 
+ #ifndef KOKKOS_ENABLE_IMPL_VIEW_LEGACY
+-    // In order to have a valid LayoutRight stride when Sacado passes through
+-    // extra integer arguments, we need to set it to the dimension[6] for the
+-    // rank-7 view coming out of here. Only if the original layout was already
+-    // rank-7 we can preserve the stride.
+-    // FIXME_SACADO
+-    if constexpr (!std::is_same_v<Specialize, void> &&
+-                  std::is_same_v<Layout, Kokkos::LayoutRight>) {
++    // In order to have a valid LayoutRight stride we need to set it to the
++    // dimension[6] for the rank-7 view coming out of here. Only if the original
++    // layout was already rank-7 we can preserve the stride.
++    if constexpr (std::is_same_v<Layout, Kokkos::LayoutRight>) {
+       if (layout.dimension[6] == unspecified) {
+         new_layout.stride = unspecified;
+       } else {
+diff --git a/core/src/View/MDSpan/Kokkos_MDSpan_Layout.hpp b/core/src/View/MDSpan/Kokkos_MDSpan_Layout.hpp
+index c87c2785513..f4213cecc56 100644
+--- a/core/src/View/MDSpan/Kokkos_MDSpan_Layout.hpp
++++ b/core/src/View/MDSpan/Kokkos_MDSpan_Layout.hpp
+@@ -107,6 +107,10 @@ KOKKOS_INLINE_FUNCTION auto array_layout_from_mapping(
+     if constexpr (std::is_same_v<typename mapping_type::layout_type,
+                                  Kokkos::Experimental::layout_right_padded<
+                                      dynamic_extent>>) {
++// Legacy LayoutRight actually padded the left most dimension, not like
++// layout_right_padded the right most dimension. Thus if the stride wasn't
++// matching the appropriate extent this conversion doesn't work.
++#ifdef KOKKOS_ENABLE_IMPL_VIEW_LEGACY
+       if constexpr (rank == 2) {
+         layout.stride = mapping.stride(0);
+       }
+@@ -115,6 +119,14 @@ KOKKOS_INLINE_FUNCTION auto array_layout_from_mapping(
+           Kokkos::abort(
+               "Invalid conversion from layout_right_padded to LayoutRight");
+       }
++#else
++      if constexpr (rank > 1) {
++        layout.stride = mapping.stride(rank - 2);
++      } else {
++        // Just setting the stride to 1 for rank 0/1
++        layout.stride = 1;
++      }
++#endif
+     }
+     return layout;
+   }

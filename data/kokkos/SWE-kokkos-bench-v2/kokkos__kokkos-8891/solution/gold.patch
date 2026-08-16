@@ -1,0 +1,52 @@
+diff --git a/core/src/Kokkos_Core.cppm b/core/src/Kokkos_Core.cppm
+index 2e3088c1415..69737b6883f 100644
+--- a/core/src/Kokkos_Core.cppm
++++ b/core/src/Kokkos_Core.cppm
+@@ -550,6 +550,9 @@ export {
+   using ::Kokkos::nextafter;
+   using ::Kokkos::nextafterf;
+   using ::Kokkos::nextafterl;
++  using ::Kokkos::nexttoward;
++  using ::Kokkos::nexttowardf;
++  using ::Kokkos::nexttowardl;
+   using ::Kokkos::pow;
+   using ::Kokkos::powf;
+   using ::Kokkos::powl;
+diff --git a/core/src/Kokkos_MathematicalFunctions.hpp b/core/src/Kokkos_MathematicalFunctions.hpp
+index 4af4127053a..952e51b9b9f 100644
+--- a/core/src/Kokkos_MathematicalFunctions.hpp
++++ b/core/src/Kokkos_MathematicalFunctions.hpp
+@@ -663,7 +663,32 @@ KOKKOS_IMPL_MATH_BINARY_INT_FUNCTION(scalbn, ldexp, int)
+ KOKKOS_IMPL_MATH_UNARY_INT_FUNCTION(ilogb)
+ KOKKOS_IMPL_MATH_UNARY_FUNCTION(logb)
+ KOKKOS_IMPL_MATH_BINARY_FUNCTION(nextafter)
+-// nexttoward
++inline float nexttoward(float from, long double to) {
++  using std::nexttoward;
++  return nexttoward(from, to);
++}
++inline float nexttowardf(float from, long double to) {
++  using std::nexttoward;
++  return nexttoward(from, to);
++}
++inline double nexttoward(double from, long double to) {
++  using std::nexttoward;
++  return nexttoward(from, to);
++}
++inline long double nexttoward(long double from, long double to) {
++  using std::nexttoward;
++  return nexttoward(from, to);
++}
++inline long double nexttowardl(long double from, long double to) {
++  using std::nexttoward;
++  return nexttoward(from, to);
++}
++template <class Integer>
++inline std::enable_if_t<std::is_integral_v<Integer>, double> nexttoward(
++    Integer from, long double to) {
++  using std::nexttoward;
++  return nexttoward(from, to);
++}
+ KOKKOS_IMPL_MATH_BINARY_FUNCTION(copysign)
+ // Classification and comparison
+ // fpclassify not available on Cuda and SYCL

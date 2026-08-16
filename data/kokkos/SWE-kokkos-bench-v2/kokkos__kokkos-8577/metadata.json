@@ -1,0 +1,74 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreTestCompileOnly compilation with begin/end static assertions"
+  ],
+  "PASS_TO_PASS": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "base_commit": "4747e234408f3b1c84a127956471c538f89b624a",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "changed_files": [
+    {
+      "additions": 40,
+      "deletions": 0,
+      "filename": "core/src/Kokkos_Array.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 62,
+      "deletions": 0,
+      "filename": "core/unit_test/TestArray.cpp",
+      "status": "modified"
+    },
+    {
+      "additions": 11,
+      "deletions": 0,
+      "filename": "core/unit_test/TestArrayOps.hpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/Kokkos_Array.hpp b/core/src/Kokkos_Array.hpp\nindex 49f7a6922f5..1621f8b0973 100644\n--- a/core/src/Kokkos_Array.hpp\n+++ b/core/src/Kokkos_Array.hpp\n@@ -118,6 +118,26 @@ struct Array {\n     return &m_internal_implementation_private_member_data[0];\n   }\n \n+  KOKKOS_INLINE_FUNCTION constexpr pointer begin() noexcept { return data(); }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer begin() const noexcept {\n+    return data();\n+  }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr pointer end() noexcept { return data() + N; }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer end() const noexcept {\n+    return data() + N;\n+  }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer cbegin() const noexcept {\n+    return data();\n+  }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer cend() const noexcept {\n+    return data() + N;\n+  }\n+\n   friend KOKKOS_FUNCTION constexpr bool operator==(Array const& lhs,\n                                                    Array const& rhs) noexcept {\n     for (size_t i = 0; i != N; ++i)\n@@ -183,6 +203,26 @@ struct Array<T, 0> {\n     return nullptr;\n   }\n \n+  KOKKOS_INLINE_FUNCTION constexpr pointer begin() noexcept { return data(); }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer begin() const noexcept {\n+    return data();\n+  }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr pointer end() noexcept { return data(); }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer end() const noexcept {\n+    return data();\n+  }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer cbegin() const noexcept {\n+    return data();\n+  }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer cend() const noexcept {\n+    return data();\n+  }\n+\n   friend KOKKOS_FUNCTION constexpr bool operator==(Array const&,\n                                                    Array const&) noexcept {\n     return true;\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+  "created_at": "2025-10-21T19:43:37Z",
+  "era": "cpp17",
+  "f2p_commands": [
+    "cmake --build build --target Kokkos_CoreTestCompileOnly"
+  ],
+  "fail_to_pass": [
+    "Kokkos_CoreTestCompileOnly compilation with begin/end static assertions"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-8577",
+  "labels": [
+    "SNL-CI-APPROVAL"
+  ],
+  "linked_issues": [
+    8573
+  ],
+  "merge_commit": "a08f99af5bb685d0ea5d839365f5c66b3b7ef266",
+  "merged_at": "2025-10-21T19:43:37Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/8577",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "cmake --build build --target Kokkos_CoreTestCompileOnly"
+  ],
+  "pass_to_pass": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "patch": "diff --git a/core/src/Kokkos_Array.hpp b/core/src/Kokkos_Array.hpp\nindex 49f7a6922f5..1621f8b0973 100644\n--- a/core/src/Kokkos_Array.hpp\n+++ b/core/src/Kokkos_Array.hpp\n@@ -118,6 +118,26 @@ struct Array {\n     return &m_internal_implementation_private_member_data[0];\n   }\n \n+  KOKKOS_INLINE_FUNCTION constexpr pointer begin() noexcept { return data(); }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer begin() const noexcept {\n+    return data();\n+  }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr pointer end() noexcept { return data() + N; }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer end() const noexcept {\n+    return data() + N;\n+  }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer cbegin() const noexcept {\n+    return data();\n+  }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer cend() const noexcept {\n+    return data() + N;\n+  }\n+\n   friend KOKKOS_FUNCTION constexpr bool operator==(Array const& lhs,\n                                                    Array const& rhs) noexcept {\n     for (size_t i = 0; i != N; ++i)\n@@ -183,6 +203,26 @@ struct Array<T, 0> {\n     return nullptr;\n   }\n \n+  KOKKOS_INLINE_FUNCTION constexpr pointer begin() noexcept { return data(); }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer begin() const noexcept {\n+    return data();\n+  }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr pointer end() noexcept { return data(); }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer end() const noexcept {\n+    return data();\n+  }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer cbegin() const noexcept {\n+    return data();\n+  }\n+\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer cend() const noexcept {\n+    return data();\n+  }\n+\n   friend KOKKOS_FUNCTION constexpr bool operator==(Array const&,\n                                                    Array const&) noexcept {\n     return true;\ndiff --git a/core/unit_test/TestArray.cpp b/core/unit_test/TestArray.cpp\nindex bd48db4ad6a..89f6cb6355d 100644\n--- a/core/unit_test/TestArray.cpp\n+++ b/core/unit_test/TestArray.cpp\n@@ -258,6 +258,68 @@ constexpr bool test_begin_end() {\n \n static_assert(test_begin_end());\n \n+constexpr bool test_begin_end_method() {\n+  constexpr Kokkos::Array<float, 0> a0{};\n+  static_assert(a0.begin() == nullptr);\n+  static_assert(a0.end() == nullptr);\n+  static_assert(a0.cbegin() == nullptr);\n+  static_assert(a0.cend() == nullptr);\n+\n+  constexpr Kokkos::Array<float, 1> a1{};\n+  static_assert(a1.begin() == &a1[0]);\n+  static_assert(a1.end() == &a1[0] + a1.size());\n+  static_assert(a1.cbegin() == &a1[0]);\n+  static_assert(a1.cend() == &a1[0] + a1.size());\n+\n+  [[maybe_unused]] Kokkos::Array<double, 0> n0{};\n+  static_assert(std::is_same_v<decltype(n0.begin()), double*>);\n+  static_assert(std::is_same_v<decltype(n0.end()), double*>);\n+  static_assert(std::is_same_v<decltype(n0.cbegin()), double const*>);\n+  static_assert(std::is_same_v<decltype(n0.cend()), double const*>);\n+  static_assert(std::is_same_v<double*, decltype(n0)::pointer>);\n+  static_assert(noexcept(n0.begin()));\n+  static_assert(noexcept(n0.end()));\n+  static_assert(noexcept(n0.cbegin()));\n+  static_assert(noexcept(n0.cend()));\n+\n+  [[maybe_unused]] Kokkos::Array<double, 0> const c0{};\n+  static_assert(std::is_same_v<decltype(c0.begin()), double const*>);\n+  static_assert(std::is_same_v<decltype(c0.end()), double const*>);\n+  static_assert(std::is_same_v<decltype(c0.cbegin()), double const*>);\n+  static_assert(std::is_same_v<decltype(c0.cend()), double const*>);\n+  static_assert(std::is_same_v<double const*, decltype(c0)::const_pointer>);\n+  static_assert(noexcept(c0.begin()));\n+  static_assert(noexcept(c0.end()));\n+  static_assert(noexcept(c0.cbegin()));\n+  static_assert(noexcept(c0.cend()));\n+\n+  [[maybe_unused]] Kokkos::Array<double, 1> n1{};\n+  static_assert(std::is_same_v<decltype(n1.begin()), double*>);\n+  static_assert(std::is_same_v<decltype(n1.end()), double*>);\n+  static_assert(std::is_same_v<decltype(n1.cbegin()), double const*>);\n+  static_assert(std::is_same_v<decltype(n1.cend()), double const*>);\n+  static_assert(std::is_same_v<double*, decltype(n1)::pointer>);\n+  static_assert(noexcept(n1.begin()));\n+  static_assert(noexcept(n1.end()));\n+  static_assert(noexcept(n1.cbegin()));\n+  static_assert(noexcept(n1.cend()));\n+\n+  [[maybe_unused]] Kokkos::Array<double, 1> const c1{};\n+  static_assert(std::is_same_v<decltype(c1.begin()), double const*>);\n+  static_assert(std::is_same_v<decltype(c1.end()), double const*>);\n+  static_assert(std::is_same_v<decltype(c1.cbegin()), double const*>);\n+  static_assert(std::is_same_v<decltype(c1.cend()), double const*>);\n+  static_assert(std::is_same_v<double const*, decltype(c1)::const_pointer>);\n+  static_assert(noexcept(c1.begin()));\n+  static_assert(noexcept(c1.end()));\n+  static_assert(noexcept(c1.cbegin()));\n+  static_assert(noexcept(c1.cend()));\n+\n+  return true;\n+}\n+\n+static_assert(test_begin_end_method());\n+\n constexpr bool test_array_equality_comparable() {\n   using C0 = Kokkos::Array<char, 0>;\n   using C2 = Kokkos::Array<char, 2>;\ndiff --git a/core/unit_test/TestArrayOps.hpp b/core/unit_test/TestArrayOps.hpp\nindex e21f73bfcd5..5f0c01ddbdc 100644\n--- a/core/unit_test/TestArrayOps.hpp\n+++ b/core/unit_test/TestArrayOps.hpp\n@@ -128,6 +128,17 @@ TEST(TEST_CATEGORY, array_zero_data_nullptr) {\n   ASSERT_EQ(ce.data(), nullptr);\n }\n \n+TEST(TEST_CATEGORY, array_stl_compatibility) {\n+  using A = Kokkos::Array<int, 3>;\n+  A a{1, 2, 3};\n+\n+  int sum  = std::reduce(a.begin(), a.end(), int{0}, std::plus<int>{});\n+  int csum = std::reduce(a.cbegin(), a.cend(), int{0}, std::plus<int>{});\n+  int expected_sum = 1 + 2 + 3;\n+  EXPECT_EQ(sum, expected_sum);\n+  EXPECT_EQ(csum, expected_sum);\n+}\n+\n #ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4\n #ifdef KOKKOS_ENABLE_DEPRECATION_WARNINGS\n KOKKOS_IMPL_DISABLE_DEPRECATED_WARNINGS_PUSH()\n",
+  "pr_number": 8577,
+  "problem_statement": "Proposal: add begin/end to Kokkos::Array\n\nCurrently, `Kokkos::Array` does not have `begin()` and `end()` methods which are essential for C++ standard algorithm.",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/TestArray.cpp b/core/unit_test/TestArray.cpp\nindex bd48db4ad6a..89f6cb6355d 100644\n--- a/core/unit_test/TestArray.cpp\n+++ b/core/unit_test/TestArray.cpp\n@@ -258,6 +258,68 @@ constexpr bool test_begin_end() {\n \n static_assert(test_begin_end());\n \n+constexpr bool test_begin_end_method() {\n+  constexpr Kokkos::Array<float, 0> a0{};\n+  static_assert(a0.begin() == nullptr);\n+  static_assert(a0.end() == nullptr);\n+  static_assert(a0.cbegin() == nullptr);\n+  static_assert(a0.cend() == nullptr);\n+\n+  constexpr Kokkos::Array<float, 1> a1{};\n+  static_assert(a1.begin() == &a1[0]);\n+  static_assert(a1.end() == &a1[0] + a1.size());\n+  static_assert(a1.cbegin() == &a1[0]);\n+  static_assert(a1.cend() == &a1[0] + a1.size());\n+\n+  [[maybe_unused]] Kokkos::Array<double, 0> n0{};\n+  static_assert(std::is_same_v<decltype(n0.begin()), double*>);\n+  static_assert(std::is_same_v<decltype(n0.end()), double*>);\n+  static_assert(std::is_same_v<decltype(n0.cbegin()), double const*>);\n+  static_assert(std::is_same_v<decltype(n0.cend()), double const*>);\n+  static_assert(std::is_same_v<double*, decltype(n0)::pointer>);\n+  static_assert(noexcept(n0.begin()));\n+  static_assert(noexcept(n0.end()));\n+  static_assert(noexcept(n0.cbegin()));\n+  static_assert(noexcept(n0.cend()));\n+\n+  [[maybe_unused]] Kokkos::Array<double, 0> const c0{};\n+  static_assert(std::is_same_v<decltype(c0.begin()), double const*>);\n+  static_assert(std::is_same_v<decltype(c0.end()), double const*>);\n+  static_assert(std::is_same_v<decltype(c0.cbegin()), double const*>);\n+  static_assert(std::is_same_v<decltype(c0.cend()), double const*>);\n+  static_assert(std::is_same_v<double const*, decltype(c0)::const_pointer>);\n+  static_assert(noexcept(c0.begin()));\n+  static_assert(noexcept(c0.end()));\n+  static_assert(noexcept(c0.cbegin()));\n+  static_assert(noexcept(c0.cend()));\n+\n+  [[maybe_unused]] Kokkos::Array<double, 1> n1{};\n+  static_assert(std::is_same_v<decltype(n1.begin()), double*>);\n+  static_assert(std::is_same_v<decltype(n1.end()), double*>);\n+  static_assert(std::is_same_v<decltype(n1.cbegin()), double const*>);\n+  static_assert(std::is_same_v<decltype(n1.cend()), double const*>);\n+  static_assert(std::is_same_v<double*, decltype(n1)::pointer>);\n+  static_assert(noexcept(n1.begin()));\n+  static_assert(noexcept(n1.end()));\n+  static_assert(noexcept(n1.cbegin()));\n+  static_assert(noexcept(n1.cend()));\n+\n+  [[maybe_unused]] Kokkos::Array<double, 1> const c1{};\n+  static_assert(std::is_same_v<decltype(c1.begin()), double const*>);\n+  static_assert(std::is_same_v<decltype(c1.end()), double const*>);\n+  static_assert(std::is_same_v<decltype(c1.cbegin()), double const*>);\n+  static_assert(std::is_same_v<decltype(c1.cend()), double const*>);\n+  static_assert(std::is_same_v<double const*, decltype(c1)::const_pointer>);\n+  static_assert(noexcept(c1.begin()));\n+  static_assert(noexcept(c1.end()));\n+  static_assert(noexcept(c1.cbegin()));\n+  static_assert(noexcept(c1.cend()));\n+\n+  return true;\n+}\n+\n+static_assert(test_begin_end_method());\n+\n constexpr bool test_array_equality_comparable() {\n   using C0 = Kokkos::Array<char, 0>;\n   using C2 = Kokkos::Array<char, 2>;\ndiff --git a/core/unit_test/TestArrayOps.hpp b/core/unit_test/TestArrayOps.hpp\nindex e21f73bfcd5..5f0c01ddbdc 100644\n--- a/core/unit_test/TestArrayOps.hpp\n+++ b/core/unit_test/TestArrayOps.hpp\n@@ -128,6 +128,17 @@ TEST(TEST_CATEGORY, array_zero_data_nullptr) {\n   ASSERT_EQ(ce.data(), nullptr);\n }\n \n+TEST(TEST_CATEGORY, array_stl_compatibility) {\n+  using A = Kokkos::Array<int, 3>;\n+  A a{1, 2, 3};\n+\n+  int sum  = std::reduce(a.begin(), a.end(), int{0}, std::plus<int>{});\n+  int csum = std::reduce(a.cbegin(), a.cend(), int{0}, std::plus<int>{});\n+  int expected_sum = 1 + 2 + 3;\n+  EXPECT_EQ(sum, expected_sum);\n+  EXPECT_EQ(csum, expected_sum);\n+}\n+\n #ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4\n #ifdef KOKKOS_ENABLE_DEPRECATION_WARNINGS\n KOKKOS_IMPL_DISABLE_DEPRECATED_WARNINGS_PUSH()\n",
+  "title": "Add begin()/end() methods to Kokkos::Array",
+  "version": "cpp17"
+}

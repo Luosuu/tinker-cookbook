@@ -1,0 +1,46 @@
+diff --git a/core/unit_test/CMakeLists.txt b/core/unit_test/CMakeLists.txt
+index fb73097b51a..22ecf40b63c 100644
+--- a/core/unit_test/CMakeLists.txt
++++ b/core/unit_test/CMakeLists.txt
+@@ -54,6 +54,7 @@ set(COMPILE_ONLY_SOURCES
+     TestTypeList.cpp
+     TestMDRangePolicyCTAD.cpp
+     TestTeamPolicyCTAD.cpp
++    TestTeamPolicyCompileOnly.cpp
+     TestTeamMDRangePolicyCTAD.cpp
+     TestNestedReducerCTAD.cpp
+     view/TestAccessorFromMemoryTraits.cpp
+diff --git a/core/unit_test/TestTeamPolicyCompileOnly.cpp b/core/unit_test/TestTeamPolicyCompileOnly.cpp
+new file mode 100644
+index 00000000000..6d69f87f754
+--- /dev/null
++++ b/core/unit_test/TestTeamPolicyCompileOnly.cpp
+@@ -0,0 +1,28 @@
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++// SPDX-FileCopyrightText: Copyright Contributors to the Kokkos project
++
++#include <Kokkos_Macros.hpp>
++#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
++import kokkos.core;
++#else
++#include <Kokkos_Core.hpp>
++#endif
++
++namespace {
++
++// In a research prototype where we derived from TeamPolicy we saw
++// an issue with copy construction that this test reproduces.
++struct DerivedPolicy : Kokkos::TeamPolicy<> {
++  using base = Kokkos::TeamPolicy<>;
++
++  using base::base;
++
++  explicit DerivedPolicy(const base& policy) : base(policy) {}
++};
++
++[[maybe_unused]] DerivedPolicy make_derived_policy(
++    const Kokkos::TeamPolicy<>& policy) {
++  return DerivedPolicy(policy);
++}
++
++}  // namespace

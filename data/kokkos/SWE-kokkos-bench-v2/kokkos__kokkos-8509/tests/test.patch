@@ -1,0 +1,26 @@
+diff --git a/core/unit_test/TestBitManipulation.cpp b/core/unit_test/TestBitManipulation.cpp
+index 3af1d1f28c1..851b853d3b3 100644
+--- a/core/unit_test/TestBitManipulation.cpp
++++ b/core/unit_test/TestBitManipulation.cpp
+@@ -392,7 +392,7 @@ constexpr auto test_bit_width(UInt x) -> decltype(Kokkos::bit_width(x)) {
+   using Kokkos::bit_width;
+ 
+   static_assert(noexcept(bit_width(x)));
+-  static_assert(std::is_same_v<decltype(bit_width(x)), UInt>);
++  static_assert(std::is_same_v<decltype(bit_width(x)), int>);
+ 
+   constexpr auto dig = Kokkos::Experimental::digits_v<UInt>;
+   constexpr auto max = Kokkos::Experimental::finite_max_v<UInt>;
+diff --git a/core/unit_test/TestBitManipulationBuiltins.hpp b/core/unit_test/TestBitManipulationBuiltins.hpp
+index 233098e8eec..7ed2722b16a 100644
+--- a/core/unit_test/TestBitManipulationBuiltins.hpp
++++ b/core/unit_test/TestBitManipulationBuiltins.hpp
+@@ -457,7 +457,7 @@ template <class UInt>
+ void test_bit_manip_bit_width() {
+   using Kokkos::Experimental::bit_width_builtin;
+   static_assert(noexcept(bit_width_builtin(UInt())));
+-  static_assert(std::is_same_v<decltype(bit_width_builtin(UInt())), UInt>);
++  static_assert(std::is_same_v<decltype(bit_width_builtin(UInt())), int>);
+   constexpr auto max = Kokkos::Experimental::finite_max_v<UInt>;
+   TEST_BIT_MANIP_FUNCTION(bit_width)
+   ({

@@ -1,0 +1,388 @@
+diff --git a/batched/dense/unit_test/Test_Batched_SerialCopy.hpp b/batched/dense/unit_test/Test_Batched_Copy.hpp
+similarity index 50%
+rename from batched/dense/unit_test/Test_Batched_SerialCopy.hpp
+rename to batched/dense/unit_test/Test_Batched_Copy.hpp
+index 8e21058f7f..34463aa289 100644
+--- a/batched/dense/unit_test/Test_Batched_SerialCopy.hpp
++++ b/batched/dense/unit_test/Test_Batched_Copy.hpp
+@@ -47,6 +47,52 @@ struct Functor_TestBatchedSerialCopy {
+   }
+ };
+ 
++template <typename DeviceType, typename AViewType, typename BViewType, typename ArgTrans, typename ArgMode>
++struct Functor_TestBatchedTeamCopy {
++  using execution_space = typename DeviceType::execution_space;
++  const AViewType m_A;
++  const BViewType m_B;
++
++  Functor_TestBatchedTeamCopy(const AViewType &A, const BViewType &B) : m_A(A), m_B(B) {}
++
++  template <typename MemberType>
++  KOKKOS_INLINE_FUNCTION void operator()(const MemberType &member) const {
++    const int k = member.league_rank();
++    if constexpr (AViewType::rank() == 3) {
++      auto sub_A = Kokkos::subview(m_A, k, Kokkos::ALL, Kokkos::ALL);
++      auto sub_B = Kokkos::subview(m_B, k, Kokkos::ALL, Kokkos::ALL);
++
++      if constexpr (std::is_same_v<ArgMode, KokkosBatched::Mode::Team>) {
++        KokkosBatched::TeamCopy<MemberType, ArgTrans>::invoke(member, sub_A, sub_B);
++      } else if constexpr (std::is_same_v<ArgMode, KokkosBatched::Mode::TeamVector>) {
++        KokkosBatched::TeamVectorCopy<MemberType, ArgTrans>::invoke(member, sub_A, sub_B);
++      }
++    } else {
++      auto sub_A = Kokkos::subview(m_A, k, Kokkos::ALL);
++      auto sub_B = Kokkos::subview(m_B, k, Kokkos::ALL);
++      if constexpr (std::is_same_v<ArgMode, KokkosBatched::Mode::Team>) {
++        KokkosBatched::TeamCopy<MemberType, ArgTrans>::invoke(member, sub_A, sub_B);
++      } else if constexpr (std::is_same_v<ArgMode, KokkosBatched::Mode::TeamVector>) {
++        KokkosBatched::TeamVectorCopy<MemberType, ArgTrans>::invoke(member, sub_A, sub_B);
++      }
++    }
++  }
++
++  inline void run() {
++    using value_type                  = typename AViewType::non_const_value_type;
++    std::string name_region           = std::is_same_v<ArgMode, KokkosBatched::Mode::Team>
++                                            ? "KokkosBatched::Test::TeamCopy"
++                                            : "KokkosBatched::Test::TeamVectorCopy";
++    const std::string name_value_type = Test::value_type_name<value_type>();
++    std::string name                  = name_region + name_value_type;
++    Kokkos::Profiling::pushRegion(name.c_str());
++    const int league_size = m_A.extent_int(0);
++    Kokkos::TeamPolicy<execution_space> policy(league_size, Kokkos::AUTO);
++    Kokkos::parallel_for(name.c_str(), policy, *this);
++    Kokkos::Profiling::popRegion();
++  }
++};
++
+ /// \brief Implementation details of batched copy analytical test
+ ///        Confirm B == A or B == A^T or A^H
+ ///
+@@ -62,8 +108,9 @@ struct Functor_TestBatchedSerialCopy {
+ /// \tparam LayoutType Layout type of input/output views
+ /// \tparam ArgTrans Type indicating whether the transpose (Trans::Transpose) or conjugate transpose
+ /// (Trans::ConjTranspose) of A is used
++/// \tparam ArgMode: one of Mode::Serial, Mode::Team, Mode::TeamVector
+ /// \param[in] N Batch size of matrices
+-template <typename DeviceType, typename ScalarType, typename LayoutType, typename ArgTrans>
++template <typename DeviceType, typename ScalarType, typename LayoutType, typename ArgTrans, typename ArgMode>
+ void impl_test_batched_copy_analytical(const std::size_t N) {
+   using ats               = typename KokkosKernels::ArithTraits<ScalarType>;
+   using RealType          = typename ats::mag_type;
+@@ -119,18 +166,26 @@ void impl_test_batched_copy_analytical(const std::size_t N) {
+   Kokkos::deep_copy(A0_s, A0);
+   Kokkos::deep_copy(A1_s, A1);
+ 
+-  auto info0 = Functor_TestBatchedSerialCopy<DeviceType, View2DType, View2DType, ArgTrans>(A0, B0).run();
+-  auto info1 = Functor_TestBatchedSerialCopy<DeviceType, View3DType, View3DType, ArgTrans>(A1, B1).run();
+-
+-  EXPECT_EQ(info0, 0);
+-  EXPECT_EQ(info1, 0);
+-
+-  // For strided views
+-  info0 = Functor_TestBatchedSerialCopy<DeviceType, StridedView2DType, StridedView2DType, ArgTrans>(A0_s, B0_s).run();
+-  info1 = Functor_TestBatchedSerialCopy<DeviceType, StridedView3DType, StridedView3DType, ArgTrans>(A1_s, B1_s).run();
+-
+-  EXPECT_EQ(info0, 0);
+-  EXPECT_EQ(info1, 0);
++  if constexpr (std::is_same_v<ArgMode, KokkosBatched::Mode::Serial>) {
++    auto info0 = Functor_TestBatchedSerialCopy<DeviceType, View2DType, View2DType, ArgTrans>(A0, B0).run();
++    auto info1 = Functor_TestBatchedSerialCopy<DeviceType, View3DType, View3DType, ArgTrans>(A1, B1).run();
++
++    EXPECT_EQ(info0, 0);
++    EXPECT_EQ(info1, 0);
++
++    // For strided views
++    info0 = Functor_TestBatchedSerialCopy<DeviceType, StridedView2DType, StridedView2DType, ArgTrans>(A0_s, B0_s).run();
++    info1 = Functor_TestBatchedSerialCopy<DeviceType, StridedView3DType, StridedView3DType, ArgTrans>(A1_s, B1_s).run();
++
++    EXPECT_EQ(info0, 0);
++    EXPECT_EQ(info1, 0);
++  } else {
++    // Team or TeamVector
++    Functor_TestBatchedTeamCopy<DeviceType, View2DType, View2DType, ArgTrans, ArgMode>(A0, B0).run();
++    Functor_TestBatchedTeamCopy<DeviceType, View3DType, View3DType, ArgTrans, ArgMode>(A1, B1).run();
++    Functor_TestBatchedTeamCopy<DeviceType, StridedView2DType, StridedView2DType, ArgTrans, ArgMode>(A0_s, B0_s).run();
++    Functor_TestBatchedTeamCopy<DeviceType, StridedView3DType, StridedView3DType, ArgTrans, ArgMode>(A1_s, B1_s).run();
++  }
+ 
+   RealType eps  = 1.0e1 * ats::epsilon();
+   auto h_B0     = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, B0);
+@@ -174,10 +229,11 @@ void impl_test_batched_copy_analytical(const std::size_t N) {
+ /// \tparam LayoutType Layout type of input/output views
+ /// \tparam ArgTrans Type indicating whether the transpose (Trans::Transpose) or conjugate transpose
+ /// (Trans::ConjTranspose) of A is used
++/// \tparam ArgMode: one of Mode::Serial, Mode::Team, Mode::TeamVector
+ /// \param[in] N Batch size of matrices
+ /// \param[in] m_A Number of rows of matrix A
+ /// \param[in] n_A Number of columns of matrix A
+-template <typename DeviceType, typename ScalarType, typename LayoutType, typename ArgTrans>
++template <typename DeviceType, typename ScalarType, typename LayoutType, typename ArgTrans, typename ArgMode>
+ void impl_test_batched_copy(const std::size_t N, const std::size_t m_A, const std::size_t n_A) {
+   using ats        = typename KokkosKernels::ArithTraits<ScalarType>;
+   using RealType   = typename ats::mag_type;
+@@ -220,11 +276,15 @@ void impl_test_batched_copy(const std::size_t N, const std::size_t m_A, const st
+   }
+ 
+   // Copy operations
+-  auto info0 = Functor_TestBatchedSerialCopy<DeviceType, View2DType, View2DType, ArgTrans>(A0, B0).run();
+-  auto info1 = Functor_TestBatchedSerialCopy<DeviceType, View3DType, View3DType, ArgTrans>(A1, B1).run();
+-
+-  EXPECT_EQ(info0, 0);
+-  EXPECT_EQ(info1, 0);
++  if constexpr (std::is_same_v<ArgMode, KokkosBatched::Mode::Serial>) {
++    auto info0 = Functor_TestBatchedSerialCopy<DeviceType, View2DType, View2DType, ArgTrans>(A0, B0).run();
++    auto info1 = Functor_TestBatchedSerialCopy<DeviceType, View3DType, View3DType, ArgTrans>(A1, B1).run();
++    EXPECT_EQ(info0, 0);
++    EXPECT_EQ(info1, 0);
++  } else {
++    Functor_TestBatchedTeamCopy<DeviceType, View2DType, View2DType, ArgTrans, ArgMode>(A0, B0).run();
++    Functor_TestBatchedTeamCopy<DeviceType, View3DType, View3DType, ArgTrans, ArgMode>(A1, B1).run();
++  }
+ 
+   RealType eps = 1.0e1 * ats::epsilon();
+   auto h_B0    = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, B0);
+@@ -246,31 +306,35 @@ void impl_test_batched_copy(const std::size_t N, const std::size_t m_A, const st
+ }  // namespace Copy
+ }  // namespace Test
+ 
+-template <typename DeviceType, typename ScalarType, typename ArgTrans>
++template <typename DeviceType, typename ScalarType, typename ArgTrans, typename ArgMode>
+ int test_batched_copy() {
+ #if defined(KOKKOSKERNELS_INST_LAYOUTLEFT)
+   {
+     using LayoutType = Kokkos::LayoutLeft;
+-    Test::Copy::impl_test_batched_copy_analytical<DeviceType, ScalarType, LayoutType, ArgTrans>(1);
+-    Test::Copy::impl_test_batched_copy_analytical<DeviceType, ScalarType, LayoutType, ArgTrans>(10);
+-
+-    for (std::size_t ib = 0; ib < 5; ib++) {
+-      const std::size_t m = ib;
+-      const std::size_t n = 2 * ib;
+-      Test::Copy::impl_test_batched_copy<DeviceType, ScalarType, LayoutType, ArgTrans>(ib, m, n);
++    Test::Copy::impl_test_batched_copy_analytical<DeviceType, ScalarType, LayoutType, ArgTrans, ArgMode>(1);
++    Test::Copy::impl_test_batched_copy_analytical<DeviceType, ScalarType, LayoutType, ArgTrans, ArgMode>(10);
++
++    for (std::size_t ib = 0; ib < 3; ib++) {
++      for (std::size_t m = 0; m <= 3; m++) {
++        for (std::size_t n = 0; n <= 3; n++) {
++          Test::Copy::impl_test_batched_copy<DeviceType, ScalarType, LayoutType, ArgTrans, ArgMode>(ib, m, n);
++        }
++      }
+     }
+   }
+ #endif
+ #if defined(KOKKOSKERNELS_INST_LAYOUTRIGHT)
+   {
+     using LayoutType = Kokkos::LayoutRight;
+-    Test::Copy::impl_test_batched_copy_analytical<DeviceType, ScalarType, LayoutType, ArgTrans>(1);
+-    Test::Copy::impl_test_batched_copy_analytical<DeviceType, ScalarType, LayoutType, ArgTrans>(10);
+-
+-    for (std::size_t ib = 0; ib < 5; ib++) {
+-      const std::size_t m = ib;
+-      const std::size_t n = 2 * ib;
+-      Test::Copy::impl_test_batched_copy<DeviceType, ScalarType, LayoutType, ArgTrans>(ib, m, n);
++    Test::Copy::impl_test_batched_copy_analytical<DeviceType, ScalarType, LayoutType, ArgTrans, ArgMode>(1);
++    Test::Copy::impl_test_batched_copy_analytical<DeviceType, ScalarType, LayoutType, ArgTrans, ArgMode>(10);
++
++    for (std::size_t ib = 0; ib < 3; ib++) {
++      for (std::size_t m = 0; m <= 3; m++) {
++        for (std::size_t n = 0; n <= 3; n++) {
++          Test::Copy::impl_test_batched_copy<DeviceType, ScalarType, LayoutType, ArgTrans, ArgMode>(ib, m, n);
++        }
++      }
+     }
+   }
+ #endif
+@@ -279,49 +343,155 @@ int test_batched_copy() {
+ }
+ 
+ #if defined(KOKKOSKERNELS_INST_FLOAT)
+-TEST_F(TestCategory, test_batched_copy_nt_float) {
+-  test_batched_copy<TestDevice, float, KokkosBatched::Trans::NoTranspose>();
++// Serial
++TEST_F(TestCategory, test_batched_serial_copy_nt_float) {
++  test_batched_copy<TestDevice, float, KokkosBatched::Trans::NoTranspose, KokkosBatched::Mode::Serial>();
++}
++TEST_F(TestCategory, test_batched_serial_copy_t_float) {
++  test_batched_copy<TestDevice, float, KokkosBatched::Trans::Transpose, KokkosBatched::Mode::Serial>();
++}
++TEST_F(TestCategory, test_batched_serial_copy_c_float) {
++  test_batched_copy<TestDevice, float, KokkosBatched::Trans::ConjTranspose, KokkosBatched::Mode::Serial>();
++}
++
++// Team
++TEST_F(TestCategory, test_batched_team_copy_nt_float) {
++  test_batched_copy<TestDevice, float, KokkosBatched::Trans::NoTranspose, KokkosBatched::Mode::Team>();
++}
++TEST_F(TestCategory, test_batched_team_copy_t_float) {
++  test_batched_copy<TestDevice, float, KokkosBatched::Trans::Transpose, KokkosBatched::Mode::Team>();
++}
++TEST_F(TestCategory, test_batched_team_copy_c_float) {
++  test_batched_copy<TestDevice, float, KokkosBatched::Trans::ConjTranspose, KokkosBatched::Mode::Team>();
++}
++
++// Team Vector
++TEST_F(TestCategory, test_batched_teamvector_copy_nt_float) {
++  test_batched_copy<TestDevice, float, KokkosBatched::Trans::NoTranspose, KokkosBatched::Mode::TeamVector>();
+ }
+-TEST_F(TestCategory, test_batched_copy_t_float) {
+-  test_batched_copy<TestDevice, float, KokkosBatched::Trans::Transpose>();
++TEST_F(TestCategory, test_batched_teamvector_copy_t_float) {
++  test_batched_copy<TestDevice, float, KokkosBatched::Trans::Transpose, KokkosBatched::Mode::TeamVector>();
+ }
+-TEST_F(TestCategory, test_batched_copy_c_float) {
+-  test_batched_copy<TestDevice, float, KokkosBatched::Trans::ConjTranspose>();
++TEST_F(TestCategory, test_batched_teamvector_copy_c_float) {
++  test_batched_copy<TestDevice, float, KokkosBatched::Trans::ConjTranspose, KokkosBatched::Mode::TeamVector>();
+ }
+ #endif
+ 
+ #if defined(KOKKOSKERNELS_INST_DOUBLE)
+-TEST_F(TestCategory, test_batched_copy_nt_double) {
+-  test_batched_copy<TestDevice, double, KokkosBatched::Trans::NoTranspose>();
++// Serial
++TEST_F(TestCategory, test_batched_serial_copy_nt_double) {
++  test_batched_copy<TestDevice, double, KokkosBatched::Trans::NoTranspose, KokkosBatched::Mode::Serial>();
++}
++TEST_F(TestCategory, test_batched_serial_copy_t_double) {
++  test_batched_copy<TestDevice, double, KokkosBatched::Trans::Transpose, KokkosBatched::Mode::Serial>();
++}
++TEST_F(TestCategory, test_batched_serial_copy_c_double) {
++  test_batched_copy<TestDevice, double, KokkosBatched::Trans::ConjTranspose, KokkosBatched::Mode::Serial>();
++}
++
++// Team
++TEST_F(TestCategory, test_batched_team_copy_nt_double) {
++  test_batched_copy<TestDevice, double, KokkosBatched::Trans::NoTranspose, KokkosBatched::Mode::Team>();
++}
++TEST_F(TestCategory, test_batched_team_copy_t_double) {
++  test_batched_copy<TestDevice, double, KokkosBatched::Trans::Transpose, KokkosBatched::Mode::Team>();
++}
++TEST_F(TestCategory, test_batched_team_copy_c_double) {
++  test_batched_copy<TestDevice, double, KokkosBatched::Trans::ConjTranspose, KokkosBatched::Mode::Team>();
++}
++
++// Team Vector
++TEST_F(TestCategory, test_batched_teamvector_copy_nt_double) {
++  test_batched_copy<TestDevice, double, KokkosBatched::Trans::NoTranspose, KokkosBatched::Mode::TeamVector>();
+ }
+-TEST_F(TestCategory, test_batched_copy_t_double) {
+-  test_batched_copy<TestDevice, double, KokkosBatched::Trans::Transpose>();
++TEST_F(TestCategory, test_batched_teamvector_copy_t_double) {
++  test_batched_copy<TestDevice, double, KokkosBatched::Trans::Transpose, KokkosBatched::Mode::TeamVector>();
+ }
+-TEST_F(TestCategory, test_batched_copy_c_double) {
+-  test_batched_copy<TestDevice, double, KokkosBatched::Trans::ConjTranspose>();
++TEST_F(TestCategory, test_batched_teamvector_copy_c_double) {
++  test_batched_copy<TestDevice, double, KokkosBatched::Trans::ConjTranspose, KokkosBatched::Mode::TeamVector>();
+ }
+ #endif
+ 
+ #if defined(KOKKOSKERNELS_INST_COMPLEX_FLOAT)
+-TEST_F(TestCategory, test_batched_copy_nt_fcomplex) {
+-  test_batched_copy<TestDevice, Kokkos::complex<float>, KokkosBatched::Trans::NoTranspose>();
++// Serial
++TEST_F(TestCategory, test_batched_serial_copy_nt_fcomplex) {
++  test_batched_copy<TestDevice, Kokkos::complex<float>, KokkosBatched::Trans::NoTranspose,
++                    KokkosBatched::Mode::Serial>();
+ }
+-TEST_F(TestCategory, test_batched_copy_t_fcomplex) {
+-  test_batched_copy<TestDevice, Kokkos::complex<float>, KokkosBatched::Trans::Transpose>();
++TEST_F(TestCategory, test_batched_serial_copy_t_fcomplex) {
++  test_batched_copy<TestDevice, Kokkos::complex<float>, KokkosBatched::Trans::Transpose, KokkosBatched::Mode::Serial>();
+ }
+-TEST_F(TestCategory, test_batched_copy_c_fcomplex) {
+-  test_batched_copy<TestDevice, Kokkos::complex<float>, KokkosBatched::Trans::ConjTranspose>();
++TEST_F(TestCategory, test_batched_serial_copy_c_fcomplex) {
++  test_batched_copy<TestDevice, Kokkos::complex<float>, KokkosBatched::Trans::ConjTranspose,
++                    KokkosBatched::Mode::Serial>();
++}
++
++// Team
++TEST_F(TestCategory, test_batched_team_copy_nt_fcomplex) {
++  test_batched_copy<TestDevice, Kokkos::complex<float>, KokkosBatched::Trans::NoTranspose, KokkosBatched::Mode::Team>();
++}
++TEST_F(TestCategory, test_batched_team_copy_t_fcomplex) {
++  test_batched_copy<TestDevice, Kokkos::complex<float>, KokkosBatched::Trans::Transpose, KokkosBatched::Mode::Team>();
++}
++TEST_F(TestCategory, test_batched_team_copy_c_fcomplex) {
++  test_batched_copy<TestDevice, Kokkos::complex<float>, KokkosBatched::Trans::ConjTranspose,
++                    KokkosBatched::Mode::Team>();
++}
++
++// Team Vector
++TEST_F(TestCategory, test_batched_teamvector_copy_nt_fcomplex) {
++  test_batched_copy<TestDevice, Kokkos::complex<float>, KokkosBatched::Trans::NoTranspose,
++                    KokkosBatched::Mode::TeamVector>();
++}
++TEST_F(TestCategory, test_batched_teamvector_copy_t_fcomplex) {
++  test_batched_copy<TestDevice, Kokkos::complex<float>, KokkosBatched::Trans::Transpose,
++                    KokkosBatched::Mode::TeamVector>();
++}
++TEST_F(TestCategory, test_batched_teamvector_copy_c_fcomplex) {
++  test_batched_copy<TestDevice, Kokkos::complex<float>, KokkosBatched::Trans::ConjTranspose,
++                    KokkosBatched::Mode::TeamVector>();
+ }
+ #endif
+ 
+ #if defined(KOKKOSKERNELS_INST_COMPLEX_DOUBLE)
+-TEST_F(TestCategory, test_batched_copy_nt_dcomplex) {
+-  test_batched_copy<TestDevice, Kokkos::complex<double>, KokkosBatched::Trans::NoTranspose>();
++// Serial
++TEST_F(TestCategory, test_batched_serial_copy_nt_dcomplex) {
++  test_batched_copy<TestDevice, Kokkos::complex<double>, KokkosBatched::Trans::NoTranspose,
++                    KokkosBatched::Mode::Serial>();
++}
++TEST_F(TestCategory, test_batched_serial_copy_t_dcomplex) {
++  test_batched_copy<TestDevice, Kokkos::complex<double>, KokkosBatched::Trans::Transpose,
++                    KokkosBatched::Mode::Serial>();
++}
++TEST_F(TestCategory, test_batched_serial_copy_c_dcomplex) {
++  test_batched_copy<TestDevice, Kokkos::complex<double>, KokkosBatched::Trans::ConjTranspose,
++                    KokkosBatched::Mode::Serial>();
++}
++
++// Team
++TEST_F(TestCategory, test_batched_team_copy_nt_dcomplex) {
++  test_batched_copy<TestDevice, Kokkos::complex<double>, KokkosBatched::Trans::NoTranspose,
++                    KokkosBatched::Mode::Team>();
++}
++TEST_F(TestCategory, test_batched_team_copy_t_dcomplex) {
++  test_batched_copy<TestDevice, Kokkos::complex<double>, KokkosBatched::Trans::Transpose, KokkosBatched::Mode::Team>();
++}
++TEST_F(TestCategory, test_batched_team_copy_c_dcomplex) {
++  test_batched_copy<TestDevice, Kokkos::complex<double>, KokkosBatched::Trans::ConjTranspose,
++                    KokkosBatched::Mode::Team>();
++}
++
++// Team Vector
++TEST_F(TestCategory, test_batched_teamvector_copy_nt_dcomplex) {
++  test_batched_copy<TestDevice, Kokkos::complex<double>, KokkosBatched::Trans::NoTranspose,
++                    KokkosBatched::Mode::TeamVector>();
+ }
+-TEST_F(TestCategory, test_batched_copy_t_dcomplex) {
+-  test_batched_copy<TestDevice, Kokkos::complex<double>, KokkosBatched::Trans::Transpose>();
++TEST_F(TestCategory, test_batched_teamvector_copy_t_dcomplex) {
++  test_batched_copy<TestDevice, Kokkos::complex<double>, KokkosBatched::Trans::Transpose,
++                    KokkosBatched::Mode::TeamVector>();
+ }
+-TEST_F(TestCategory, test_batched_copy_c_dcomplex) {
+-  test_batched_copy<TestDevice, Kokkos::complex<double>, KokkosBatched::Trans::ConjTranspose>();
++TEST_F(TestCategory, test_batched_teamvector_copy_c_dcomplex) {
++  test_batched_copy<TestDevice, Kokkos::complex<double>, KokkosBatched::Trans::ConjTranspose,
++                    KokkosBatched::Mode::TeamVector>();
+ }
+ #endif
+diff --git a/batched/dense/unit_test/Test_Batched_Dense.hpp b/batched/dense/unit_test/Test_Batched_Dense.hpp
+index 2c8b8cc8b0..952bc431bc 100644
+--- a/batched/dense/unit_test/Test_Batched_Dense.hpp
++++ b/batched/dense/unit_test/Test_Batched_Dense.hpp
+@@ -5,7 +5,7 @@
+ 
+ // Serial kernels
+ #include "Test_Batched_SerialAxpy.hpp"
+-#include "Test_Batched_SerialCopy.hpp"
++#include "Test_Batched_Copy.hpp"
+ #include "Test_Batched_SerialEigendecomposition.hpp"
+ #include "Test_Batched_SerialEigendecomposition_Real.hpp"
+ #include "Test_Batched_SerialGesv.hpp"

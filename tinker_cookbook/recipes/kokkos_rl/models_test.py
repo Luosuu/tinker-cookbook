@@ -20,8 +20,12 @@ def _instance() -> KokkosInstance:
         build_targets=("Kokkos_CoreUnitTest_Serial",),
         fail_to_pass=("Foo.Regression",),
         pass_to_pass=("Foo.Existing",),
-        f2p_commands=("./build/core/unit_test/Kokkos_CoreUnitTest_Serial --gtest_filter=Foo.Regression",),
-        p2p_commands=("./build/core/unit_test/Kokkos_CoreUnitTest_Serial --gtest_filter=Foo.Existing",),
+        f2p_commands=(
+            "./build/core/unit_test/Kokkos_CoreUnitTest_Serial --gtest_filter=Foo.Regression",
+        ),
+        p2p_commands=(
+            "./build/core/unit_test/Kokkos_CoreUnitTest_Serial --gtest_filter=Foo.Existing",
+        ),
     )
 
 
@@ -30,6 +34,9 @@ def test_round_trip_preserves_swe_compatibility_fields() -> None:
     value = original.to_dict()
     assert value["FAIL_TO_PASS"] == ["Foo.Regression"]
     assert value["PASS_TO_PASS"] == ["Foo.Existing"]
+    assert value["hints_text"] == ""
+    assert value["created_at"] == original.merged_at
+    assert value["version"] == original.era
     assert KokkosInstance.from_dict(value) == original
 
 

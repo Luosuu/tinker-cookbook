@@ -1,0 +1,93 @@
+{
+  "FAIL_TO_PASS": [
+    "serial.scratch_size_query"
+  ],
+  "PASS_TO_PASS": [
+    "Kokkos_CoreUnitTest_Serial2"
+  ],
+  "base_commit": "2fade9f093cec2e2e1d9ff696257c93775c11cd2",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreUnitTest_Serial2"
+  ],
+  "changed_files": [
+    {
+      "additions": 8,
+      "deletions": 0,
+      "filename": "core/src/HPX/Kokkos_HPX.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 6,
+      "deletions": 0,
+      "filename": "core/src/OpenACC/Kokkos_OpenACC_Team.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 6,
+      "deletions": 0,
+      "filename": "core/src/OpenMP/Kokkos_OpenMP_Team.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 6,
+      "deletions": 0,
+      "filename": "core/src/Serial/Kokkos_Serial_Parallel_Team.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 6,
+      "deletions": 0,
+      "filename": "core/src/Threads/Kokkos_Threads_Team.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 18,
+      "deletions": 0,
+      "filename": "core/unit_test/TestTeamScratch.hpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/HPX/Kokkos_HPX.hpp b/core/src/HPX/Kokkos_HPX.hpp\nindex 77f4b94e2a8..5ceda654755 100644\n--- a/core/src/HPX/Kokkos_HPX.hpp\n+++ b/core/src/HPX/Kokkos_HPX.hpp\n@@ -792,6 +792,14 @@ class TeamPolicyInternal<Kokkos::Experimental::HPX, Properties...>\n            team_size_ * m_thread_scratch_size[level];\n   }\n \n+  size_t team_scratch_size(int level) const {\n+    return m_team_scratch_size[level];\n+  }\n+\n+  size_t thread_scratch_size(int level) const {\n+    return m_thread_scratch_size[level];\n+  }\n+\n   inline static int scratch_size_max(int level) {\n     return (level == 0 ? 1024 * 32 :  // Roughly L1 size\n                 20 * 1024 * 1024);    // Limit to keep compatibility with CUDA\ndiff --git a/core/src/OpenACC/Kokkos_OpenACC_Team.hpp b/core/src/OpenACC/Kokkos_OpenACC_Team.hpp\nindex 46abe63e38a..7d97eff26e4 100644\n--- a/core/src/OpenACC/Kokkos_OpenACC_Team.hpp\n+++ b/core/src/OpenACC/Kokkos_OpenACC_Team.hpp\n@@ -229,6 +229,12 @@ class TeamPolicyInternal<Kokkos::Experimental::OpenACC, Properties...>\n     return m_team_scratch_size[level] +\n            team_size_ * m_thread_scratch_size[level];\n   }\n+  size_t team_scratch_size(int level) const {\n+    return m_team_scratch_size[level];\n+  }\n+  size_t thread_scratch_size(int level) const {\n+    return m_thread_scratch_size[level];\n+  }\n \n   Kokkos::Experimental::OpenACC space() const { return m_space; }\n \ndiff --git a/core/src/OpenMP/Kokkos_OpenMP_Team.hpp b/core/src/OpenMP/Kokkos_OpenMP_Team.hpp\nindex aeeebd51689..f7c7804fe24 100644\n--- a/core/src/OpenMP/Kokkos_OpenMP_Team.hpp\n+++ b/core/src/OpenMP/Kokkos_OpenMP_Team.hpp\n@@ -158,6 +158,12 @@ class TeamPolicyInternal<Kokkos::OpenMP, Properties...>\n     return m_team_scratch_size[level] +\n            team_size_ * m_thread_scratch_size[level];\n   }\n+  inline size_t team_scratch_size(int level) const {\n+    return m_team_scratch_size[level];\n+  }\n+  inline size_t thread_scratch_size(int level) const {\n+    return m_thread_scratch_size[level];\n+  }\n \n   /** \\brief  Specify league size, request team size */\n   TeamPolicyInternal(const typename traits::execution_space& space,\ndiff --git a/core/src/Serial/Kokkos_Serial_Parallel_Team.hpp b/core/src/Serial/Kokkos_Serial_Parallel_Team.hpp\nindex 152c6015df5..ad86a7a400b 100644\n--- a/core/src/Serial/Kokkos_Serial_Parallel_Team.hpp\n+++ b/core/src/Serial/Kokkos_Serial_Parallel_Team.hpp\n@@ -92,6 +92,12 @@ class TeamPolicyInternal<Kokkos::Serial, Properties...>\n   inline size_t scratch_size(const int& level, int = 0) const {\n     return m_team_scratch_size[level] + m_thread_scratch_size[level];\n   }\n+  inline size_t team_scratch_size(int level) const {\n+    return m_team_scratch_size[level];\n+  }\n+  inline size_t thread_scratch_size(int level) const {\n+    return m_thread_scratch_size[level];\n+  }\n \n   inline int impl_vector_length() const { return 1; }\n   inline static int vector_length_max() {\ndiff --git a/core/src/Threads/Kokkos_Threads_Team.hpp b/core/src/Threads/Kokkos_Threads_Team.hpp\nindex 84dd604e3d9..316c5645c0d 100644\n--- a/core/src/Threads/Kokkos_Threads_Team.hpp\n+++ b/core/src/Threads/Kokkos_Threads_Team.hpp\n@@ -662,6 +662,12 @@ class TeamPolicyInternal<Kokkos::Threads, Properties...>\n     return m_team_scratch_size[level] +\n            team_size_ * m_thread_scratch_size[level];\n   }\n+  inline size_t team_scratch_size(int level) const {\n+    return m_team_scratch_size[level];\n+  }\n+  inline size_t thread_scratch_size(int level) const {\n+    return m_thread_scratch_size[level];\n+  }\n \n   inline int team_iter() const { return m_team_iter; }\n \n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=OFF -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo",
+  "created_at": "2026-07-23T11:33:22Z",
+  "era": "cpp20",
+  "f2p_commands": [
+    "build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter=serial.scratch_size_query"
+  ],
+  "fail_to_pass": [
+    "serial.scratch_size_query"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-9344",
+  "labels": [
+    "Bug",
+    "SNL-CI-APPROVAL",
+    "Is trivial"
+  ],
+  "linked_issues": [],
+  "merge_commit": "34ef82786c4ac7bbccd576bfe6209187bfb0373c",
+  "merged_at": "2026-07-23T11:33:22Z",
+  "metadata": {
+    "difficulty": "easy",
+    "docker_validated": true,
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/9344",
+    "phase0_validated": true,
+    "validation_date": "2026-08-15",
+    "validation_platform": "macOS arm64 AppleClang 21; Linux arm64 GCC 13 Docker"
+  },
+  "p2p_commands": [
+    "ctest --test-dir build -R '^Kokkos_CoreUnitTest_Serial2$' --output-on-failure"
+  ],
+  "pass_to_pass": [
+    "Kokkos_CoreUnitTest_Serial2"
+  ],
+  "patch": "diff --git a/core/src/HPX/Kokkos_HPX.hpp b/core/src/HPX/Kokkos_HPX.hpp\nindex 77f4b94e2a8..5ceda654755 100644\n--- a/core/src/HPX/Kokkos_HPX.hpp\n+++ b/core/src/HPX/Kokkos_HPX.hpp\n@@ -792,6 +792,14 @@ class TeamPolicyInternal<Kokkos::Experimental::HPX, Properties...>\n            team_size_ * m_thread_scratch_size[level];\n   }\n \n+  size_t team_scratch_size(int level) const {\n+    return m_team_scratch_size[level];\n+  }\n+\n+  size_t thread_scratch_size(int level) const {\n+    return m_thread_scratch_size[level];\n+  }\n+\n   inline static int scratch_size_max(int level) {\n     return (level == 0 ? 1024 * 32 :  // Roughly L1 size\n                 20 * 1024 * 1024);    // Limit to keep compatibility with CUDA\ndiff --git a/core/src/OpenACC/Kokkos_OpenACC_Team.hpp b/core/src/OpenACC/Kokkos_OpenACC_Team.hpp\nindex 46abe63e38a..7d97eff26e4 100644\n--- a/core/src/OpenACC/Kokkos_OpenACC_Team.hpp\n+++ b/core/src/OpenACC/Kokkos_OpenACC_Team.hpp\n@@ -229,6 +229,12 @@ class TeamPolicyInternal<Kokkos::Experimental::OpenACC, Properties...>\n     return m_team_scratch_size[level] +\n            team_size_ * m_thread_scratch_size[level];\n   }\n+  size_t team_scratch_size(int level) const {\n+    return m_team_scratch_size[level];\n+  }\n+  size_t thread_scratch_size(int level) const {\n+    return m_thread_scratch_size[level];\n+  }\n \n   Kokkos::Experimental::OpenACC space() const { return m_space; }\n \ndiff --git a/core/src/OpenMP/Kokkos_OpenMP_Team.hpp b/core/src/OpenMP/Kokkos_OpenMP_Team.hpp\nindex aeeebd51689..f7c7804fe24 100644\n--- a/core/src/OpenMP/Kokkos_OpenMP_Team.hpp\n+++ b/core/src/OpenMP/Kokkos_OpenMP_Team.hpp\n@@ -158,6 +158,12 @@ class TeamPolicyInternal<Kokkos::OpenMP, Properties...>\n     return m_team_scratch_size[level] +\n            team_size_ * m_thread_scratch_size[level];\n   }\n+  inline size_t team_scratch_size(int level) const {\n+    return m_team_scratch_size[level];\n+  }\n+  inline size_t thread_scratch_size(int level) const {\n+    return m_thread_scratch_size[level];\n+  }\n \n   /** \\brief  Specify league size, request team size */\n   TeamPolicyInternal(const typename traits::execution_space& space,\ndiff --git a/core/src/Serial/Kokkos_Serial_Parallel_Team.hpp b/core/src/Serial/Kokkos_Serial_Parallel_Team.hpp\nindex 152c6015df5..ad86a7a400b 100644\n--- a/core/src/Serial/Kokkos_Serial_Parallel_Team.hpp\n+++ b/core/src/Serial/Kokkos_Serial_Parallel_Team.hpp\n@@ -92,6 +92,12 @@ class TeamPolicyInternal<Kokkos::Serial, Properties...>\n   inline size_t scratch_size(const int& level, int = 0) const {\n     return m_team_scratch_size[level] + m_thread_scratch_size[level];\n   }\n+  inline size_t team_scratch_size(int level) const {\n+    return m_team_scratch_size[level];\n+  }\n+  inline size_t thread_scratch_size(int level) const {\n+    return m_thread_scratch_size[level];\n+  }\n \n   inline int impl_vector_length() const { return 1; }\n   inline static int vector_length_max() {\ndiff --git a/core/src/Threads/Kokkos_Threads_Team.hpp b/core/src/Threads/Kokkos_Threads_Team.hpp\nindex 84dd604e3d9..316c5645c0d 100644\n--- a/core/src/Threads/Kokkos_Threads_Team.hpp\n+++ b/core/src/Threads/Kokkos_Threads_Team.hpp\n@@ -662,6 +662,12 @@ class TeamPolicyInternal<Kokkos::Threads, Properties...>\n     return m_team_scratch_size[level] +\n            team_size_ * m_thread_scratch_size[level];\n   }\n+  inline size_t team_scratch_size(int level) const {\n+    return m_team_scratch_size[level];\n+  }\n+  inline size_t thread_scratch_size(int level) const {\n+    return m_thread_scratch_size[level];\n+  }\n \n   inline int team_iter() const { return m_team_iter; }\n \ndiff --git a/core/unit_test/TestTeamScratch.hpp b/core/unit_test/TestTeamScratch.hpp\nindex 6d64ff575a0..dc83a01f414 100644\n--- a/core/unit_test/TestTeamScratch.hpp\n+++ b/core/unit_test/TestTeamScratch.hpp\n@@ -52,5 +52,23 @@ TEST(TEST_CATEGORY, team_scratch_memory_index_parallel_for) {\n   Kokkos::parallel_for(\"kernel\", policy, DummyTeamParallelForFunctor());\n }\n \n+TEST(TEST_CATEGORY, scratch_size_query) {\n+  const int thread_scratch[] = {4, 32};\n+  const int team_scratch[]   = {64, 256};\n+  const int league_size      = 10;\n+  const int team_size        = 1;\n+\n+  Kokkos::TeamPolicy<TEST_EXECSPACE> policy(league_size, team_size);\n+  policy.set_scratch_size(0, Kokkos::PerTeam(team_scratch[0]),\n+                          Kokkos::PerThread(thread_scratch[0]));\n+  policy.set_scratch_size(1, Kokkos::PerTeam(team_scratch[1]),\n+                          Kokkos::PerThread(thread_scratch[1]));\n+\n+  ASSERT_EQ(policy.team_scratch_size(0), team_scratch[0]);\n+  ASSERT_EQ(policy.team_scratch_size(1), team_scratch[1]);\n+  ASSERT_EQ(policy.thread_scratch_size(0), thread_scratch[0]);\n+  ASSERT_EQ(policy.thread_scratch_size(1), thread_scratch[1]);\n+}\n+\n }  // namespace Test\n #endif\n",
+  "pr_number": 9344,
+  "problem_statement": "`team_scratch_size(int)` and `thread_scratch_size(int)` are currently only implemented for the CUDA, HIP and SYCL backends, this PR adds the function for the remaining backends (host backends and OpenACC) and adds a test for these two functions.\r\n\r\n### Related issues / PRs\r\n\r\n### Changelog Entry\r\n\r\nAdd support for querying the team and thread level scratch size on all backends",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/TestTeamScratch.hpp b/core/unit_test/TestTeamScratch.hpp\nindex 6d64ff575a0..dc83a01f414 100644\n--- a/core/unit_test/TestTeamScratch.hpp\n+++ b/core/unit_test/TestTeamScratch.hpp\n@@ -52,5 +52,23 @@ TEST(TEST_CATEGORY, team_scratch_memory_index_parallel_for) {\n   Kokkos::parallel_for(\"kernel\", policy, DummyTeamParallelForFunctor());\n }\n \n+TEST(TEST_CATEGORY, scratch_size_query) {\n+  const int thread_scratch[] = {4, 32};\n+  const int team_scratch[]   = {64, 256};\n+  const int league_size      = 10;\n+  const int team_size        = 1;\n+\n+  Kokkos::TeamPolicy<TEST_EXECSPACE> policy(league_size, team_size);\n+  policy.set_scratch_size(0, Kokkos::PerTeam(team_scratch[0]),\n+                          Kokkos::PerThread(thread_scratch[0]));\n+  policy.set_scratch_size(1, Kokkos::PerTeam(team_scratch[1]),\n+                          Kokkos::PerThread(thread_scratch[1]));\n+\n+  ASSERT_EQ(policy.team_scratch_size(0), team_scratch[0]);\n+  ASSERT_EQ(policy.team_scratch_size(1), team_scratch[1]);\n+  ASSERT_EQ(policy.thread_scratch_size(0), thread_scratch[0]);\n+  ASSERT_EQ(policy.thread_scratch_size(1), thread_scratch[1]);\n+}\n+\n }  // namespace Test\n #endif\n",
+  "title": "Add missing TeamPolicy.team/thread_scratch_size() for some backends",
+  "version": "cpp20"
+}

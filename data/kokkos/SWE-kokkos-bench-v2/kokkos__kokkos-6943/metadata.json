@@ -1,0 +1,67 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "PASS_TO_PASS": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "base_commit": "e2b7bb99ef9abd4e914e3554174696912939bdb1",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "changed_files": [
+    {
+      "additions": 14,
+      "deletions": 0,
+      "filename": "core/src/Kokkos_Array.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 33,
+      "deletions": 0,
+      "filename": "core/unit_test/TestArray.cpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/Kokkos_Array.hpp b/core/src/Kokkos_Array.hpp\nindex 461b98f6a72..09681c18842 100644\n--- a/core/src/Kokkos_Array.hpp\n+++ b/core/src/Kokkos_Array.hpp\n@@ -133,6 +133,16 @@ struct Array {\n   KOKKOS_INLINE_FUNCTION constexpr const_pointer data() const {\n     return &m_internal_implementation_private_member_data[0];\n   }\n+\n+ private:\n+  friend KOKKOS_INLINE_FUNCTION constexpr std::enable_if_t<\n+      Impl::is_swappable<T>::value>\n+  kokkos_swap(Array<T, N>& a,\n+              Array<T, N>& b) noexcept(Impl::is_nothrow_swappable_v<T>) {\n+    for (std::size_t i = 0; i < N; ++i) {\n+      kokkos_swap(a[i], b[i]);\n+    }\n+  }\n };\n \n #ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4\n@@ -185,6 +195,10 @@ struct Array<T, 0> {\n   // for default move constructor and move assignment operator.\n   // Array( Array && ) = default ;\n   // Array & operator = ( Array && ) = default ;\n+\n+ private:\n+  friend KOKKOS_INLINE_FUNCTION constexpr void kokkos_swap(\n+      Array<T, 0>&, Array<T, 0>&) noexcept {}\n };\n \n #ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+  "created_at": "2024-04-23T22:11:51Z",
+  "era": "cpp17",
+  "f2p_commands": [
+    "cmake --build build --target Kokkos_CoreTestCompileOnly"
+  ],
+  "fail_to_pass": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-6943",
+  "labels": [
+    "Enhancement",
+    "Kokkos-Core"
+  ],
+  "linked_issues": [],
+  "merge_commit": "cf59f3120ed5cd0ef6e223519de02b7d2b30193a",
+  "merged_at": "2024-04-23T22:11:51Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/6943",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "cmake --build build --target Kokkos_CoreTestCompileOnly"
+  ],
+  "pass_to_pass": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "patch": "diff --git a/core/src/Kokkos_Array.hpp b/core/src/Kokkos_Array.hpp\nindex 461b98f6a72..09681c18842 100644\n--- a/core/src/Kokkos_Array.hpp\n+++ b/core/src/Kokkos_Array.hpp\n@@ -133,6 +133,16 @@ struct Array {\n   KOKKOS_INLINE_FUNCTION constexpr const_pointer data() const {\n     return &m_internal_implementation_private_member_data[0];\n   }\n+\n+ private:\n+  friend KOKKOS_INLINE_FUNCTION constexpr std::enable_if_t<\n+      Impl::is_swappable<T>::value>\n+  kokkos_swap(Array<T, N>& a,\n+              Array<T, N>& b) noexcept(Impl::is_nothrow_swappable_v<T>) {\n+    for (std::size_t i = 0; i < N; ++i) {\n+      kokkos_swap(a[i], b[i]);\n+    }\n+  }\n };\n \n #ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4\n@@ -185,6 +195,10 @@ struct Array<T, 0> {\n   // for default move constructor and move assignment operator.\n   // Array( Array && ) = default ;\n   // Array & operator = ( Array && ) = default ;\n+\n+ private:\n+  friend KOKKOS_INLINE_FUNCTION constexpr void kokkos_swap(\n+      Array<T, 0>&, Array<T, 0>&) noexcept {}\n };\n \n #ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4\ndiff --git a/core/unit_test/TestArray.cpp b/core/unit_test/TestArray.cpp\nindex e138a64d6db..e691d83ebe2 100644\n--- a/core/unit_test/TestArray.cpp\n+++ b/core/unit_test/TestArray.cpp\n@@ -120,4 +120,37 @@ static_assert(test_array_aggregate_initialization());\n   }\n }\n \n+// User-defined type providing a sepcialization of kokkos_swap\n+struct MyInt {\n+  int i;\n+\n+ private:\n+  friend constexpr void kokkos_swap(MyInt& lhs, MyInt& rhs) noexcept {\n+    lhs.i = 255;\n+    rhs.i = 127;\n+  }\n+};\n+\n+constexpr bool test_array_specialization_kokkos_swap() {\n+  Kokkos::Array<MyInt, 2> a{MyInt{1}, MyInt{2}};\n+  Kokkos::Array<MyInt, 2> b{MyInt{11}, MyInt{22}};\n+\n+  // sanity check\n+  if (a[0].i != 1 || a[1].i != 2 || b[0].i != 11 || b[1].i != 22) {\n+    return false;\n+  }\n+\n+  using Kokkos::kokkos_swap;\n+  kokkos_swap(a, b);\n+\n+  // check that the user-definied kokkos_swap(MyInt) overload was called\n+  if (a[0].i != 255 || a[1].i != 255 || b[0].i != 127 || b[1].i != 127) {\n+    return false;\n+  }\n+\n+  return true;\n+}\n+\n+static_assert(test_array_specialization_kokkos_swap());\n+\n }  // namespace\n",
+  "pr_number": 6943,
+  "problem_statement": "Specializing the swap algorithm for Kokkos arrays was initially proposed in #6697 but we dropped it to focus on the Kokkos swap ADL ordeal. Somehow we overlooked a stray <Kokkos_Swap.hpp> header include in the Kokkos::Array header file.  This PR reintroduce a\r\n`Kokkos::kokkos_swap(Kokkos::Array)` specialization, following closely what the standard library does for `std::swap(std::array)`.",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/TestArray.cpp b/core/unit_test/TestArray.cpp\nindex e138a64d6db..e691d83ebe2 100644\n--- a/core/unit_test/TestArray.cpp\n+++ b/core/unit_test/TestArray.cpp\n@@ -120,4 +120,37 @@ static_assert(test_array_aggregate_initialization());\n   }\n }\n \n+// User-defined type providing a sepcialization of kokkos_swap\n+struct MyInt {\n+  int i;\n+\n+ private:\n+  friend constexpr void kokkos_swap(MyInt& lhs, MyInt& rhs) noexcept {\n+    lhs.i = 255;\n+    rhs.i = 127;\n+  }\n+};\n+\n+constexpr bool test_array_specialization_kokkos_swap() {\n+  Kokkos::Array<MyInt, 2> a{MyInt{1}, MyInt{2}};\n+  Kokkos::Array<MyInt, 2> b{MyInt{11}, MyInt{22}};\n+\n+  // sanity check\n+  if (a[0].i != 1 || a[1].i != 2 || b[0].i != 11 || b[1].i != 22) {\n+    return false;\n+  }\n+\n+  using Kokkos::kokkos_swap;\n+  kokkos_swap(a, b);\n+\n+  // check that the user-definied kokkos_swap(MyInt) overload was called\n+  if (a[0].i != 255 || a[1].i != 255 || b[0].i != 127 || b[1].i != 127) {\n+    return false;\n+  }\n+\n+  return true;\n+}\n+\n+static_assert(test_array_specialization_kokkos_swap());\n+\n }  // namespace\n",
+  "title": "Add `kokkos_swap(Array<T, N>)` specialization",
+  "version": "cpp17"
+}

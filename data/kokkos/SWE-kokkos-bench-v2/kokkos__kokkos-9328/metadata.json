@@ -1,0 +1,71 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreTestCompileOnly (TestTeamPolicyCompileOnly.cpp)"
+  ],
+  "PASS_TO_PASS": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "base_commit": "f49389f483ede597a109d954bdd33dfef808f03b",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "changed_files": [
+    {
+      "additions": 1,
+      "deletions": 1,
+      "filename": "core/src/Kokkos_ExecPolicy.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 1,
+      "deletions": 0,
+      "filename": "core/unit_test/CMakeLists.txt",
+      "status": "modified"
+    },
+    {
+      "additions": 28,
+      "deletions": 0,
+      "filename": "core/unit_test/TestTeamPolicyCompileOnly.cpp",
+      "status": "added"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/Kokkos_ExecPolicy.hpp b/core/src/Kokkos_ExecPolicy.hpp\nindex 0eb65c53683..2cf7de7ffa5 100644\n--- a/core/src/Kokkos_ExecPolicy.hpp\n+++ b/core/src/Kokkos_ExecPolicy.hpp\n@@ -691,7 +691,7 @@ class TeamPolicy\n                         validate_team_size_argument(team_size), Kokkos::AUTO) {}\n \n   template <class... OtherProperties>\n-  TeamPolicy(const TeamPolicy<OtherProperties...> p) : internal_policy(p) {\n+  TeamPolicy(const TeamPolicy<OtherProperties...>& p) : internal_policy(p) {\n     // Cannot call converting constructor in the member initializer list because\n     // it is not a direct base.\n     internal_policy::traits::operator=(p);\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_CUDA=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER=/workspace/repo/bin/nvcc_wrapper -DKokkos_ARCH_ADA89=ON",
+  "created_at": "2026-08-06T13:33:44Z",
+  "era": "cpp20",
+  "f2p_commands": [
+    "cmake --build build --target Kokkos_CoreTestCompileOnly"
+  ],
+  "fail_to_pass": [
+    "Kokkos_CoreTestCompileOnly (TestTeamPolicyCompileOnly.cpp)"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-9328",
+  "labels": [],
+  "linked_issues": [],
+  "merge_commit": "3292af3aae14c1294e2e47d63944bcefe7f2038c",
+  "merged_at": "2026-08-06T13:33:44Z",
+  "metadata": {
+    "accelerator": "cuda",
+    "build_system": "cmake",
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/9328",
+    "modal_gpu": "L4",
+    "requires_gpu": false,
+    "toolchain": "cuda"
+  },
+  "p2p_commands": [
+    "cmake --build build --target Kokkos_CoreTestCompileOnly"
+  ],
+  "pass_to_pass": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "patch": "diff --git a/core/src/Kokkos_ExecPolicy.hpp b/core/src/Kokkos_ExecPolicy.hpp\nindex 0eb65c53683..2cf7de7ffa5 100644\n--- a/core/src/Kokkos_ExecPolicy.hpp\n+++ b/core/src/Kokkos_ExecPolicy.hpp\n@@ -691,7 +691,7 @@ class TeamPolicy\n                         validate_team_size_argument(team_size), Kokkos::AUTO) {}\n \n   template <class... OtherProperties>\n-  TeamPolicy(const TeamPolicy<OtherProperties...> p) : internal_policy(p) {\n+  TeamPolicy(const TeamPolicy<OtherProperties...>& p) : internal_policy(p) {\n     // Cannot call converting constructor in the member initializer list because\n     // it is not a direct base.\n     internal_policy::traits::operator=(p);\ndiff --git a/core/unit_test/CMakeLists.txt b/core/unit_test/CMakeLists.txt\nindex fb73097b51a..22ecf40b63c 100644\n--- a/core/unit_test/CMakeLists.txt\n+++ b/core/unit_test/CMakeLists.txt\n@@ -54,6 +54,7 @@ set(COMPILE_ONLY_SOURCES\n     TestTypeList.cpp\n     TestMDRangePolicyCTAD.cpp\n     TestTeamPolicyCTAD.cpp\n+    TestTeamPolicyCompileOnly.cpp\n     TestTeamMDRangePolicyCTAD.cpp\n     TestNestedReducerCTAD.cpp\n     view/TestAccessorFromMemoryTraits.cpp\ndiff --git a/core/unit_test/TestTeamPolicyCompileOnly.cpp b/core/unit_test/TestTeamPolicyCompileOnly.cpp\nnew file mode 100644\nindex 00000000000..6d69f87f754\n--- /dev/null\n+++ b/core/unit_test/TestTeamPolicyCompileOnly.cpp\n@@ -0,0 +1,28 @@\n+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception\n+// SPDX-FileCopyrightText: Copyright Contributors to the Kokkos project\n+\n+#include <Kokkos_Macros.hpp>\n+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES\n+import kokkos.core;\n+#else\n+#include <Kokkos_Core.hpp>\n+#endif\n+\n+namespace {\n+\n+// In a research prototype where we derived from TeamPolicy we saw\n+// an issue with copy construction that this test reproduces.\n+struct DerivedPolicy : Kokkos::TeamPolicy<> {\n+  using base = Kokkos::TeamPolicy<>;\n+\n+  using base::base;\n+\n+  explicit DerivedPolicy(const base& policy) : base(policy) {}\n+};\n+\n+[[maybe_unused]] DerivedPolicy make_derived_policy(\n+    const Kokkos::TeamPolicy<>& policy) {\n+  return DerivedPolicy(policy);\n+}\n+\n+}  // namespace\n",
+  "pr_number": 9328,
+  "problem_statement": "When `OtherProperties...` is `<>`, nvcc saw it as `TeamPolicy(const TeamPolicy<> p)`, which is not a valid copy-ctor. For some reason my Serial build was happy with that, but `nvcc` was not.",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/CMakeLists.txt b/core/unit_test/CMakeLists.txt\nindex fb73097b51a..22ecf40b63c 100644\n--- a/core/unit_test/CMakeLists.txt\n+++ b/core/unit_test/CMakeLists.txt\n@@ -54,6 +54,7 @@ set(COMPILE_ONLY_SOURCES\n     TestTypeList.cpp\n     TestMDRangePolicyCTAD.cpp\n     TestTeamPolicyCTAD.cpp\n+    TestTeamPolicyCompileOnly.cpp\n     TestTeamMDRangePolicyCTAD.cpp\n     TestNestedReducerCTAD.cpp\n     view/TestAccessorFromMemoryTraits.cpp\ndiff --git a/core/unit_test/TestTeamPolicyCompileOnly.cpp b/core/unit_test/TestTeamPolicyCompileOnly.cpp\nnew file mode 100644\nindex 00000000000..6d69f87f754\n--- /dev/null\n+++ b/core/unit_test/TestTeamPolicyCompileOnly.cpp\n@@ -0,0 +1,28 @@\n+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception\n+// SPDX-FileCopyrightText: Copyright Contributors to the Kokkos project\n+\n+#include <Kokkos_Macros.hpp>\n+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES\n+import kokkos.core;\n+#else\n+#include <Kokkos_Core.hpp>\n+#endif\n+\n+namespace {\n+\n+// In a research prototype where we derived from TeamPolicy we saw\n+// an issue with copy construction that this test reproduces.\n+struct DerivedPolicy : Kokkos::TeamPolicy<> {\n+  using base = Kokkos::TeamPolicy<>;\n+\n+  using base::base;\n+\n+  explicit DerivedPolicy(const base& policy) : base(policy) {}\n+};\n+\n+[[maybe_unused]] DerivedPolicy make_derived_policy(\n+    const Kokkos::TeamPolicy<>& policy) {\n+  return DerivedPolicy(policy);\n+}\n+\n+}  // namespace\n",
+  "title": "TeamPolicy copy-ctor by reference rather than value",
+  "version": "cpp20"
+}

@@ -1,0 +1,88 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreUnitTest_Serial1"
+  ],
+  "PASS_TO_PASS": [
+    "Kokkos_CoreUnitTest_Serial1"
+  ],
+  "base_commit": "ad29c5b2177b08f265cf509ba59be0524a6cf475",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreUnitTest_Serial1"
+  ],
+  "changed_files": [
+    {
+      "additions": 2,
+      "deletions": 1,
+      "filename": ".jenkins",
+      "status": "modified"
+    },
+    {
+      "additions": 12,
+      "deletions": 0,
+      "filename": "core/src/Kokkos_Macros.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 5,
+      "deletions": 2,
+      "filename": "core/unit_test/TestNumericTraits.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 4,
+      "deletions": 1,
+      "filename": "core/unit_test/incremental/Test12a_ThreadScratch.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 4,
+      "deletions": 1,
+      "filename": "core/unit_test/incremental/Test12b_TeamScratch.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 4,
+      "deletions": 4,
+      "filename": "tpls/mdspan/include/experimental/__p2642_bits/layout_padded.hpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/.jenkins b/.jenkins\nindex b96b313a2ee..25a8f0c0951 100644\n--- a/.jenkins\n+++ b/.jenkins\n@@ -49,6 +49,7 @@ pipeline {\n                               /opt/cmake/bin/cmake \\\n                                 -DCMAKE_CXX_COMPILER=nvc++ \\\n                                 -DCMAKE_CXX_STANDARD=17 \\\n+                                -DCMAKE_CXX_FLAGS=-Werror \\\n                                 -DKokkos_ARCH_NATIVE=ON \\\n                                 -DKokkos_ENABLE_COMPILER_WARNINGS=ON \\\n                                 -DKokkos_ENABLE_TESTS=ON \\\n@@ -82,7 +83,7 @@ pipeline {\n                                 -DCMAKE_BUILD_TYPE=RelWithDebInfo \\\n                                 -DCMAKE_CXX_COMPILER=nvc++ \\\n                                 -DCMAKE_CXX_STANDARD=17 \\\n-                                -DCMAKE_CXX_FLAGS=\"--diag_suppress=implicit_return_from_non_void_function\" \\\n+                                -DCMAKE_CXX_FLAGS=\"-Werror --diag_suppress=implicit_return_from_non_void_function\" \\\n                                 -DKokkos_ARCH_NATIVE=ON \\\n                                 -DKokkos_ENABLE_COMPILER_WARNINGS=ON \\\n                                 -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF \\\ndiff --git a/core/src/Kokkos_Macros.hpp b/core/src/Kokkos_Macros.hpp\nindex 3b6b251713a..798698d8fbf 100644\n--- a/core/src/Kokkos_Macros.hpp\n+++ b/core/src/Kokkos_Macros.hpp\n@@ -607,6 +607,18 @@ static constexpr bool kokkos_omp_on_host() { return false; }\n   #define KOKKOS_IMPL_DISABLE_DEPRECATED_WARNINGS_PUSH()\n   #define KOKKOS_IMPL_DISABLE_DEPRECATED_WARNINGS_POP()\n #endif\n+\n+#if defined(__NVCOMPILER)\n+#define KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_PUSH() \\\n+  _Pragma(\"diag_suppress code_is_unreachable\")          \\\n+  _Pragma(\"diag_suppress initialization_not_reachable\")\n+#define KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_POP() \\\n+  _Pragma(\"diag_default code_is_unreachable\")          \\\n+  _Pragma(\"diag_default initialization_not_reachable\")\n+#else\n+#define KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_PUSH()\n+#define KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_POP()\n+#endif\n // clang-format on\n \n #define KOKKOS_ATTRIBUTE_NODISCARD [[nodiscard]]\ndiff --git a/tpls/mdspan/include/experimental/__p2642_bits/layout_padded.hpp b/tpls/mdspan/include/experimental/__p2642_bits/layout_padded.hpp\nindex e5f7bee4cad..ef10e0ed7e3 100644\n--- a/tpls/mdspan/include/experimental/__p2642_bits/layout_padded.hpp\n+++ b/tpls/mdspan/include/experimental/__p2642_bits/layout_padded.hpp\n@@ -60,7 +60,7 @@ MDSPAN_INLINE_FUNCTION constexpr size_t get_actual_static_padding_value() {\n     return dynamic_extent;\n   }\n   // Missing return statement warning from NVCC and ICC\n-#if defined(__NVCC__) || defined(__INTEL_COMPILER)\n+#if (defined(__NVCC__) || defined(__INTEL_COMPILER)) && !defined(__NVCOMPILER)\n   return 0;\n #endif\n }\n@@ -106,7 +106,7 @@ struct padded_extent {\n       return init_padding(exts, padding_value);\n     }\n     // Missing return statement warning from NVCC and ICC\n-#if defined(__NVCC__) || defined(__INTEL_COMPILER)\n+#if (defined(__NVCC__) || defined(__INTEL_COMPILER)) && !defined(__NVCOMPILER)\n     return {};\n #endif\n   }\n@@ -121,7 +121,7 @@ struct padded_extent {\n       return {};\n     }\n     // Missing return statement warning from NVCC and ICC\n-#if defined(__NVCC__) || defined(__INTEL_COMPILER)\n+#if (defined(__NVCC__) || defined(__INTEL_COMPILER)) && !defined(__NVCOMPILER)\n     return {};\n #endif\n   }\n@@ -136,7 +136,7 @@ struct padded_extent {\n       return {};\n     }\n     // Missing return statement warning from NVCC and ICC\n-#if defined(__NVCC__) || defined(__INTEL_COMPILER)\n+#if (defined(__NVCC__) || defined(__INTEL_COMPILER)) && !defined(__NVCOMPILER)\n     return {};\n #endif\n   }\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+  "created_at": "2024-08-29T15:53:55Z",
+  "era": "cpp17",
+  "f2p_commands": [
+    "cmake --build build --target Kokkos_CoreUnitTest_Serial1 --parallel"
+  ],
+  "fail_to_pass": [
+    "Kokkos_CoreUnitTest_Serial1"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-7250",
+  "labels": [],
+  "linked_issues": [],
+  "merge_commit": "9fcef9978f226c21ba9903164241889d4715c90c",
+  "merged_at": "2024-08-29T15:53:55Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/7250",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "cmake --build build --target Kokkos_CoreUnitTest_Serial1 --parallel"
+  ],
+  "pass_to_pass": [
+    "Kokkos_CoreUnitTest_Serial1"
+  ],
+  "patch": "diff --git a/.jenkins b/.jenkins\nindex b96b313a2ee..25a8f0c0951 100644\n--- a/.jenkins\n+++ b/.jenkins\n@@ -49,6 +49,7 @@ pipeline {\n                               /opt/cmake/bin/cmake \\\n                                 -DCMAKE_CXX_COMPILER=nvc++ \\\n                                 -DCMAKE_CXX_STANDARD=17 \\\n+                                -DCMAKE_CXX_FLAGS=-Werror \\\n                                 -DKokkos_ARCH_NATIVE=ON \\\n                                 -DKokkos_ENABLE_COMPILER_WARNINGS=ON \\\n                                 -DKokkos_ENABLE_TESTS=ON \\\n@@ -82,7 +83,7 @@ pipeline {\n                                 -DCMAKE_BUILD_TYPE=RelWithDebInfo \\\n                                 -DCMAKE_CXX_COMPILER=nvc++ \\\n                                 -DCMAKE_CXX_STANDARD=17 \\\n-                                -DCMAKE_CXX_FLAGS=\"--diag_suppress=implicit_return_from_non_void_function\" \\\n+                                -DCMAKE_CXX_FLAGS=\"-Werror --diag_suppress=implicit_return_from_non_void_function\" \\\n                                 -DKokkos_ARCH_NATIVE=ON \\\n                                 -DKokkos_ENABLE_COMPILER_WARNINGS=ON \\\n                                 -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF \\\ndiff --git a/core/src/Kokkos_Macros.hpp b/core/src/Kokkos_Macros.hpp\nindex 3b6b251713a..798698d8fbf 100644\n--- a/core/src/Kokkos_Macros.hpp\n+++ b/core/src/Kokkos_Macros.hpp\n@@ -607,6 +607,18 @@ static constexpr bool kokkos_omp_on_host() { return false; }\n   #define KOKKOS_IMPL_DISABLE_DEPRECATED_WARNINGS_PUSH()\n   #define KOKKOS_IMPL_DISABLE_DEPRECATED_WARNINGS_POP()\n #endif\n+\n+#if defined(__NVCOMPILER)\n+#define KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_PUSH() \\\n+  _Pragma(\"diag_suppress code_is_unreachable\")          \\\n+  _Pragma(\"diag_suppress initialization_not_reachable\")\n+#define KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_POP() \\\n+  _Pragma(\"diag_default code_is_unreachable\")          \\\n+  _Pragma(\"diag_default initialization_not_reachable\")\n+#else\n+#define KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_PUSH()\n+#define KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_POP()\n+#endif\n // clang-format on\n \n #define KOKKOS_ATTRIBUTE_NODISCARD [[nodiscard]]\ndiff --git a/core/unit_test/TestNumericTraits.hpp b/core/unit_test/TestNumericTraits.hpp\nindex 04d8de81729..ecee23390b9 100644\n--- a/core/unit_test/TestNumericTraits.hpp\n+++ b/core/unit_test/TestNumericTraits.hpp\n@@ -405,11 +405,13 @@ TEST(TEST_CATEGORY, numeric_traits_min_max_exponent10) {\n   TestNumericTraits<TEST_EXECSPACE, long double, MaxExponent10>();\n #endif\n }\n+\n+KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_PUSH()\n TEST(TEST_CATEGORY, numeric_traits_quiet_and_signaling_nan) {\n-// FIXME_NVHPC\n-#ifdef KOKKOS_COMPILER_NVHPC\n+#ifdef KOKKOS_COMPILER_NVHPC  // FIXME_NVHPC\n   GTEST_SKIP() << \"This test is known to fail with the NVHPC compiler\";\n #endif\n+\n   TestNumericTraits<TEST_EXECSPACE, Kokkos::Experimental::half_t, QuietNaN>();\n   TestNumericTraits<TEST_EXECSPACE, Kokkos::Experimental::half_t,\n                     SignalingNaN>();\n@@ -426,6 +428,7 @@ TEST(TEST_CATEGORY, numeric_traits_quiet_and_signaling_nan) {\n   TestNumericTraits<TEST_EXECSPACE, long double, SignalingNaN>();\n #endif\n }\n+KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_POP()\n \n namespace NumericTraitsSFINAE {\n \ndiff --git a/core/unit_test/incremental/Test12a_ThreadScratch.hpp b/core/unit_test/incremental/Test12a_ThreadScratch.hpp\nindex 8c97043f300..61d2fd30763 100644\n--- a/core/unit_test/incremental/Test12a_ThreadScratch.hpp\n+++ b/core/unit_test/incremental/Test12a_ThreadScratch.hpp\n@@ -96,12 +96,14 @@ struct ThreadScratch {\n   }\n };\n \n+KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_PUSH()\n TEST(TEST_CATEGORY, IncrTest_12a_ThreadScratch) {\n-  ThreadScratch<TEST_EXECSPACE> test;\n #ifdef KOKKOS_ENABLE_OPENACC  // FIXME_OPENACC\n   GTEST_SKIP() << \"skipping since scratch memory is not yet implemented in the \"\n                   \"OpenACC backend\";\n #endif\n+\n+  ThreadScratch<TEST_EXECSPACE> test;\n   // FIXME_OPENMPTARGET - team_size has to be a multiple of 32 for the tests to\n   // pass in the Release and RelWithDebInfo builds. Does not need the team_size\n   // to be a multiple of 32 for the Debug builds.\n@@ -115,5 +117,6 @@ TEST(TEST_CATEGORY, IncrTest_12a_ThreadScratch) {\n   test.run(14, 277, 321);\n #endif\n }\n+KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_POP()\n \n }  // namespace Test\ndiff --git a/core/unit_test/incremental/Test12b_TeamScratch.hpp b/core/unit_test/incremental/Test12b_TeamScratch.hpp\nindex 0ebb5c50fbc..4f042f256a8 100644\n--- a/core/unit_test/incremental/Test12b_TeamScratch.hpp\n+++ b/core/unit_test/incremental/Test12b_TeamScratch.hpp\n@@ -86,12 +86,14 @@ struct TeamScratch {\n   }\n };\n \n+KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_PUSH()\n TEST(TEST_CATEGORY, IncrTest_12b_TeamScratch) {\n-  TeamScratch<TEST_EXECSPACE> test;\n #ifdef KOKKOS_ENABLE_OPENACC  // FIXME_OPENACC\n   GTEST_SKIP() << \"skipping since scratch memory is not yet implemented in the \"\n                   \"OpenACC backend\";\n #endif\n+\n+  TeamScratch<TEST_EXECSPACE> test;\n   // FIXME_OPENMPTARGET - team_size has to be a multiple of 32 for the tests to\n   // pass in the Release and RelWithDebInfo builds. Does not need the team_size\n   // to be a multiple of 32 for the Debug builds.\n@@ -105,5 +107,6 @@ TEST(TEST_CATEGORY, IncrTest_12b_TeamScratch) {\n   test.run(14, 277, 321);\n #endif\n }\n+KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_POP()\n \n }  // namespace Test\ndiff --git a/tpls/mdspan/include/experimental/__p2642_bits/layout_padded.hpp b/tpls/mdspan/include/experimental/__p2642_bits/layout_padded.hpp\nindex e5f7bee4cad..ef10e0ed7e3 100644\n--- a/tpls/mdspan/include/experimental/__p2642_bits/layout_padded.hpp\n+++ b/tpls/mdspan/include/experimental/__p2642_bits/layout_padded.hpp\n@@ -60,7 +60,7 @@ MDSPAN_INLINE_FUNCTION constexpr size_t get_actual_static_padding_value() {\n     return dynamic_extent;\n   }\n   // Missing return statement warning from NVCC and ICC\n-#if defined(__NVCC__) || defined(__INTEL_COMPILER)\n+#if (defined(__NVCC__) || defined(__INTEL_COMPILER)) && !defined(__NVCOMPILER)\n   return 0;\n #endif\n }\n@@ -106,7 +106,7 @@ struct padded_extent {\n       return init_padding(exts, padding_value);\n     }\n     // Missing return statement warning from NVCC and ICC\n-#if defined(__NVCC__) || defined(__INTEL_COMPILER)\n+#if (defined(__NVCC__) || defined(__INTEL_COMPILER)) && !defined(__NVCOMPILER)\n     return {};\n #endif\n   }\n@@ -121,7 +121,7 @@ struct padded_extent {\n       return {};\n     }\n     // Missing return statement warning from NVCC and ICC\n-#if defined(__NVCC__) || defined(__INTEL_COMPILER)\n+#if (defined(__NVCC__) || defined(__INTEL_COMPILER)) && !defined(__NVCOMPILER)\n     return {};\n #endif\n   }\n@@ -136,7 +136,7 @@ struct padded_extent {\n       return {};\n     }\n     // Missing return statement warning from NVCC and ICC\n-#if defined(__NVCC__) || defined(__INTEL_COMPILER)\n+#if (defined(__NVCC__) || defined(__INTEL_COMPILER)) && !defined(__NVCOMPILER)\n     return {};\n #endif\n   }\n",
+  "pr_number": 7250,
+  "problem_statement": "Address NVHPC CI warnings and add `-Werror` to jenkins build.",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/TestNumericTraits.hpp b/core/unit_test/TestNumericTraits.hpp\nindex 04d8de81729..ecee23390b9 100644\n--- a/core/unit_test/TestNumericTraits.hpp\n+++ b/core/unit_test/TestNumericTraits.hpp\n@@ -405,11 +405,13 @@ TEST(TEST_CATEGORY, numeric_traits_min_max_exponent10) {\n   TestNumericTraits<TEST_EXECSPACE, long double, MaxExponent10>();\n #endif\n }\n+\n+KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_PUSH()\n TEST(TEST_CATEGORY, numeric_traits_quiet_and_signaling_nan) {\n-// FIXME_NVHPC\n-#ifdef KOKKOS_COMPILER_NVHPC\n+#ifdef KOKKOS_COMPILER_NVHPC  // FIXME_NVHPC\n   GTEST_SKIP() << \"This test is known to fail with the NVHPC compiler\";\n #endif\n+\n   TestNumericTraits<TEST_EXECSPACE, Kokkos::Experimental::half_t, QuietNaN>();\n   TestNumericTraits<TEST_EXECSPACE, Kokkos::Experimental::half_t,\n                     SignalingNaN>();\n@@ -426,6 +428,7 @@ TEST(TEST_CATEGORY, numeric_traits_quiet_and_signaling_nan) {\n   TestNumericTraits<TEST_EXECSPACE, long double, SignalingNaN>();\n #endif\n }\n+KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_POP()\n \n namespace NumericTraitsSFINAE {\n \ndiff --git a/core/unit_test/incremental/Test12a_ThreadScratch.hpp b/core/unit_test/incremental/Test12a_ThreadScratch.hpp\nindex 8c97043f300..61d2fd30763 100644\n--- a/core/unit_test/incremental/Test12a_ThreadScratch.hpp\n+++ b/core/unit_test/incremental/Test12a_ThreadScratch.hpp\n@@ -96,12 +96,14 @@ struct ThreadScratch {\n   }\n };\n \n+KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_PUSH()\n TEST(TEST_CATEGORY, IncrTest_12a_ThreadScratch) {\n-  ThreadScratch<TEST_EXECSPACE> test;\n #ifdef KOKKOS_ENABLE_OPENACC  // FIXME_OPENACC\n   GTEST_SKIP() << \"skipping since scratch memory is not yet implemented in the \"\n                   \"OpenACC backend\";\n #endif\n+\n+  ThreadScratch<TEST_EXECSPACE> test;\n   // FIXME_OPENMPTARGET - team_size has to be a multiple of 32 for the tests to\n   // pass in the Release and RelWithDebInfo builds. Does not need the team_size\n   // to be a multiple of 32 for the Debug builds.\n@@ -115,5 +117,6 @@ TEST(TEST_CATEGORY, IncrTest_12a_ThreadScratch) {\n   test.run(14, 277, 321);\n #endif\n }\n+KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_POP()\n \n }  // namespace Test\ndiff --git a/core/unit_test/incremental/Test12b_TeamScratch.hpp b/core/unit_test/incremental/Test12b_TeamScratch.hpp\nindex 0ebb5c50fbc..4f042f256a8 100644\n--- a/core/unit_test/incremental/Test12b_TeamScratch.hpp\n+++ b/core/unit_test/incremental/Test12b_TeamScratch.hpp\n@@ -86,12 +86,14 @@ struct TeamScratch {\n   }\n };\n \n+KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_PUSH()\n TEST(TEST_CATEGORY, IncrTest_12b_TeamScratch) {\n-  TeamScratch<TEST_EXECSPACE> test;\n #ifdef KOKKOS_ENABLE_OPENACC  // FIXME_OPENACC\n   GTEST_SKIP() << \"skipping since scratch memory is not yet implemented in the \"\n                   \"OpenACC backend\";\n #endif\n+\n+  TeamScratch<TEST_EXECSPACE> test;\n   // FIXME_OPENMPTARGET - team_size has to be a multiple of 32 for the tests to\n   // pass in the Release and RelWithDebInfo builds. Does not need the team_size\n   // to be a multiple of 32 for the Debug builds.\n@@ -105,5 +107,6 @@ TEST(TEST_CATEGORY, IncrTest_12b_TeamScratch) {\n   test.run(14, 277, 321);\n #endif\n }\n+KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_POP()\n \n }  // namespace Test\n",
+  "title": "Address NVHPC CI warnings",
+  "version": "cpp17"
+}

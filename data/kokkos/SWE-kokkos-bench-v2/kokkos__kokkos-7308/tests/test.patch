@@ -1,0 +1,108 @@
+diff --git a/core/unit_test/TestMDSpanConversion.hpp b/core/unit_test/TestMDSpanConversion.hpp
+index 10123901c43..b6b6acd800c 100644
+--- a/core/unit_test/TestMDSpanConversion.hpp
++++ b/core/unit_test/TestMDSpanConversion.hpp
+@@ -81,6 +81,8 @@ struct TestViewMDSpanConversion {
+     for (std::size_t r = 0; r < mdspan_type::rank(); ++r) {
+       ASSERT_EQ(test_view.extent(r), ref.extent(r));
+       ASSERT_EQ(test_view.extent(r), exts.extent(r));
++      ASSERT_EQ(test_view.stride(r), ref.stride(r));
++      ASSERT_EQ(test_view.stride(r), mapping.stride(r));
+     }
+   }
+ 
+@@ -504,4 +506,53 @@ TEST(TEST_CATEGORY, view_mdspan_conversion) {
+   TestViewMDSpanConversion<int, TEST_EXECSPACE>::run_test();
+ }
+ 
++TEST(TEST_CATEGORY, view_mdspan_conversion_with_stride) {
++  {
++    Kokkos::View<int ***, Kokkos::LayoutLeft> source("S", 20, 40, 70);
++    auto sub_v   = Kokkos::subview(source, Kokkos::pair{5, 15}, Kokkos::ALL(),
++                                   Kokkos::pair{2, 38});
++    auto sub_mds = sub_v.to_mdspan();
++    Kokkos::View<int ***, Kokkos::LayoutLeft> sub_v2(sub_mds);
++    ASSERT_EQ(static_cast<int>(sub_v.extent(0)), 10);
++    ASSERT_EQ(static_cast<int>(sub_v.extent(1)), 40);
++    ASSERT_EQ(static_cast<int>(sub_v.extent(2)), 36);
++    ASSERT_EQ(static_cast<int>(sub_v.stride(0)), 1);
++    ASSERT_EQ(static_cast<int>(sub_v.stride(1)), 20);
++    ASSERT_EQ(static_cast<int>(sub_v.stride(2)), 800);
++    ASSERT_EQ(static_cast<int>(sub_mds.extent(0)), 10);
++    ASSERT_EQ(static_cast<int>(sub_mds.extent(1)), 40);
++    ASSERT_EQ(static_cast<int>(sub_mds.extent(2)), 36);
++    ASSERT_EQ(static_cast<int>(sub_mds.stride(0)), 1);
++    ASSERT_EQ(static_cast<int>(sub_mds.stride(1)), 20);
++    ASSERT_EQ(static_cast<int>(sub_mds.stride(2)), 800);
++    ASSERT_EQ(static_cast<int>(sub_v2.extent(0)), 10);
++    ASSERT_EQ(static_cast<int>(sub_v2.extent(1)), 40);
++    ASSERT_EQ(static_cast<int>(sub_v2.extent(2)), 36);
++    ASSERT_EQ(static_cast<int>(sub_v2.stride(0)), 1);
++    ASSERT_EQ(static_cast<int>(sub_v2.stride(1)), 20);
++    ASSERT_EQ(static_cast<int>(sub_v2.stride(2)), 800);
++  }
++  {
++    // layout_right_padded<dynamic_extent> has a custom stride for
++    // stride(rank-2) LayoutRight has a custom stride for stride(0) That means
++    // the "padding" only matches up for Rank-2 Views
++    Kokkos::View<int **, Kokkos::LayoutRight> source("S", 20, 40);
++    auto sub_v =
++        Kokkos::subview(source, Kokkos::pair{5, 15}, Kokkos::pair{2, 38});
++    auto sub_mds = sub_v.to_mdspan();
++    Kokkos::View<int **, Kokkos::LayoutRight> sub_v2(sub_mds);
++    ASSERT_EQ(static_cast<int>(sub_v.extent(0)), 10);
++    ASSERT_EQ(static_cast<int>(sub_v.extent(1)), 36);
++    ASSERT_EQ(static_cast<int>(sub_v.stride(0)), 40);
++    ASSERT_EQ(static_cast<int>(sub_v.stride(1)), 1);
++    ASSERT_EQ(static_cast<int>(sub_mds.extent(0)), 10);
++    ASSERT_EQ(static_cast<int>(sub_mds.extent(1)), 36);
++    ASSERT_EQ(static_cast<int>(sub_mds.stride(0)), 40);
++    ASSERT_EQ(static_cast<int>(sub_mds.stride(1)), 1);
++    ASSERT_EQ(static_cast<int>(sub_v2.extent(0)), 10);
++    ASSERT_EQ(static_cast<int>(sub_v2.extent(1)), 36);
++    ASSERT_EQ(static_cast<int>(sub_v2.stride(0)), 40);
++    ASSERT_EQ(static_cast<int>(sub_v2.stride(1)), 1);
++  }
++}
+ }  // namespace
+diff --git a/core/unit_test/TestViewAPI_b.hpp b/core/unit_test/TestViewAPI_b.hpp
+index e66ed70ef49..b372e822705 100644
+--- a/core/unit_test/TestViewAPI_b.hpp
++++ b/core/unit_test/TestViewAPI_b.hpp
+@@ -18,6 +18,36 @@
+ 
+ namespace Test {
+ 
++TEST(TEST_CATEGORY, view_layout_left_with_stride) {
++  Kokkos::LayoutLeft ll(10, 20);
++  ll.stride = 15;
++  Kokkos::View<int**, Kokkos::LayoutLeft> a("A", ll);
++  ASSERT_EQ(static_cast<int>(a.extent(0)), 10);
++  ASSERT_EQ(static_cast<int>(a.extent(1)), 20);
++  ASSERT_EQ(static_cast<int>(a.stride(0)), 1);
++  ASSERT_EQ(static_cast<int>(a.stride(1)), 15);
++
++  auto ll2 = a.layout();
++  ASSERT_EQ(static_cast<int>(ll2.dimension[0]), 10);
++  ASSERT_EQ(static_cast<int>(ll2.dimension[1]), 20);
++  ASSERT_EQ(static_cast<int>(ll2.stride), 15);
++}
++
++TEST(TEST_CATEGORY, view_layout_right_with_stride) {
++  Kokkos::LayoutRight lr(10, 20);
++  lr.stride = 25;
++  Kokkos::View<int**, Kokkos::LayoutRight> a("A", lr);
++  ASSERT_EQ(static_cast<int>(a.extent(0)), 10);
++  ASSERT_EQ(static_cast<int>(a.extent(1)), 20);
++  ASSERT_EQ(static_cast<int>(a.stride(0)), 25);
++  ASSERT_EQ(static_cast<int>(a.stride(1)), 1);
++
++  auto lr2 = a.layout();
++  ASSERT_EQ(static_cast<int>(lr2.dimension[0]), 10);
++  ASSERT_EQ(static_cast<int>(lr2.dimension[1]), 20);
++  ASSERT_EQ(static_cast<int>(lr2.stride), 25);
++}
++
+ TEST(TEST_CATEGORY, view_api_b) {
+   TestViewAPI<double, TEST_EXECSPACE>::run_test_view_operator_a();
+   TestViewAPI<double, TEST_EXECSPACE>::run_test_mirror();

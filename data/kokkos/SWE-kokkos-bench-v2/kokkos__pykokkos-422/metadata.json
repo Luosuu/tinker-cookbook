@@ -1,0 +1,62 @@
+{
+  "FAIL_TO_PASS": [
+    "tests/test_typeinference.py::TestTypeInference::test_numpy_noncontiguous"
+  ],
+  "PASS_TO_PASS": [
+    "Python bytecode compilation of pykokkos/interface/views.py and tests/test_typeinference.py"
+  ],
+  "base_commit": "933cbcb26b6b56bf1c027ce137afc1c54ba73dcd",
+  "build_command": "python -m compileall -q pykokkos/interface/views.py tests/test_typeinference.py",
+  "build_targets": [],
+  "changed_files": [
+    {
+      "additions": 21,
+      "deletions": 5,
+      "filename": "pykokkos/interface/views.py",
+      "status": "modified"
+    },
+    {
+      "additions": 6,
+      "deletions": 0,
+      "filename": "tests/test_typeinference.py",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/pykokkos/interface/views.py b/pykokkos/interface/views.py\nindex e1f4afec..8859a20b 100644\n--- a/pykokkos/interface/views.py\n+++ b/pykokkos/interface/views.py\n@@ -785,8 +785,10 @@ def from_numpy(\n     if layout is None and array.ndim > 1:\n         if array.flags[\"F_CONTIGUOUS\"]:\n             layout = Layout.LayoutLeft\n-        else:\n+        elif array.flags[\"C_CONTIGUOUS\"]:\n             layout = Layout.LayoutRight\n+        else:\n+            raise ValueError(f\"numpy array is not contiguous\")\n \n     if space is None:\n         space = MemorySpace.MemorySpaceDefault\n@@ -914,8 +916,10 @@ def from_array(array) -> ViewType:\n     layout: Layout\n     if array.flags[\"F_CONTIGUOUS\"]:\n         layout = Layout.LayoutLeft\n-    else:\n+    elif array.flags[\"C_CONTIGUOUS\"]:\n         layout = Layout.LayoutRight\n+    else:\n+        raise ValueError(\"array is not contiguous\")\n \n     memory_space: MemorySpace\n     if km.get_gpu_framework() is pk.Cuda:\n@@ -960,15 +964,27 @@ def array(\n     :returns: a PyKokkos View wrapping the array\n     \"\"\"\n \n+    # if an array is not a recognized type, try coasting it to a numpy array\n+    if (\n+        not isinstance(array, np.ndarray)\n+        and not np.isscalar(array)\n+        and not is_array(array)\n+    ):\n+        array = np.asarray(array)\n+\n+    # check that the array is contiguous\n+    if not array.flags[\"F_CONTIGUOUS\"] and not array.flags[\"C_CONTIGUOUS\"]:\n+        raise ValueError(f\"numpy array is not contiguous\")\n+\n     # if numpy array, use from_numpy()\n     if isinstance(array, np.ndarray) or np.isscalar(array):\n         return from_numpy(array, space, layout)\n     # test if the input array can duck-type to a numpy-like array\n     # and run from_array to preprocess the array to numpy\n-    if is_array(array):\n+    elif is_array(array):\n         return from_array(array)\n-    # try converting the input data to numpy and using that route to convert\n-    return from_numpy(np.asarray(array), space, layout)\n+    else:\n+        raise TypeError(f\"array of type {type(array)} not supported\")\n \n \n # asarray is required for comformance with the array API:\n",
+  "configure_command": "python -m pip install --break-system-packages -e . --no-deps",
+  "created_at": "2026-06-01T19:49:59Z",
+  "era": "cpp20",
+  "f2p_commands": [
+    "python -m pytest -q tests/test_typeinference.py -k test_numpy_noncontiguous"
+  ],
+  "fail_to_pass": [
+    "tests/test_typeinference.py::TestTypeInference::test_numpy_noncontiguous"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__pykokkos-422",
+  "labels": [],
+  "linked_issues": [],
+  "merge_commit": "0b5d8ca0c1a178ad47348e12dedcf7691b2bbd51",
+  "merged_at": "2026-06-01T19:49:59Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "python",
+    "f2p_stage": "test",
+    "html_url": "https://github.com/kokkos/pykokkos/pull/422",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "python -m compileall -q pykokkos/interface/views.py tests/test_typeinference.py"
+  ],
+  "pass_to_pass": [
+    "Python bytecode compilation of pykokkos/interface/views.py and tests/test_typeinference.py"
+  ],
+  "patch": "diff --git a/pykokkos/interface/views.py b/pykokkos/interface/views.py\nindex e1f4afec..8859a20b 100644\n--- a/pykokkos/interface/views.py\n+++ b/pykokkos/interface/views.py\n@@ -785,8 +785,10 @@ def from_numpy(\n     if layout is None and array.ndim > 1:\n         if array.flags[\"F_CONTIGUOUS\"]:\n             layout = Layout.LayoutLeft\n-        else:\n+        elif array.flags[\"C_CONTIGUOUS\"]:\n             layout = Layout.LayoutRight\n+        else:\n+            raise ValueError(f\"numpy array is not contiguous\")\n \n     if space is None:\n         space = MemorySpace.MemorySpaceDefault\n@@ -914,8 +916,10 @@ def from_array(array) -> ViewType:\n     layout: Layout\n     if array.flags[\"F_CONTIGUOUS\"]:\n         layout = Layout.LayoutLeft\n-    else:\n+    elif array.flags[\"C_CONTIGUOUS\"]:\n         layout = Layout.LayoutRight\n+    else:\n+        raise ValueError(\"array is not contiguous\")\n \n     memory_space: MemorySpace\n     if km.get_gpu_framework() is pk.Cuda:\n@@ -960,15 +964,27 @@ def array(\n     :returns: a PyKokkos View wrapping the array\n     \"\"\"\n \n+    # if an array is not a recognized type, try coasting it to a numpy array\n+    if (\n+        not isinstance(array, np.ndarray)\n+        and not np.isscalar(array)\n+        and not is_array(array)\n+    ):\n+        array = np.asarray(array)\n+\n+    # check that the array is contiguous\n+    if not array.flags[\"F_CONTIGUOUS\"] and not array.flags[\"C_CONTIGUOUS\"]:\n+        raise ValueError(f\"numpy array is not contiguous\")\n+\n     # if numpy array, use from_numpy()\n     if isinstance(array, np.ndarray) or np.isscalar(array):\n         return from_numpy(array, space, layout)\n     # test if the input array can duck-type to a numpy-like array\n     # and run from_array to preprocess the array to numpy\n-    if is_array(array):\n+    elif is_array(array):\n         return from_array(array)\n-    # try converting the input data to numpy and using that route to convert\n-    return from_numpy(np.asarray(array), space, layout)\n+    else:\n+        raise TypeError(f\"array of type {type(array)} not supported\")\n \n \n # asarray is required for comformance with the array API:\ndiff --git a/tests/test_typeinference.py b/tests/test_typeinference.py\nindex 0193c6b9..d18c31d4 100644\n--- a/tests/test_typeinference.py\n+++ b/tests/test_typeinference.py\n@@ -695,6 +695,12 @@ def test_list_3d_python_list(self):\n         expected = sum(sum(sum(row) for row in plane) for plane in python_3d)\n         self.assertEqual(result[0], expected)\n \n+    def test_numpy_noncontiguous(self):\n+        contiguous = np.arange(10)\n+        noncontiguous = contiguous[::2]\n+        with pytest.raises(ValueError):\n+            pk.parallel_for(len(noncontiguous), init_view, view=noncontiguous, init=0)\n+\n \n if __name__ == \"__main__\":\n     unittest.main()\n",
+  "pr_number": 422,
+  "problem_statement": "This stems form an issue where a PyKokkos kernel was passed a non-contiguous numpy array, leading to a segfault. This should be caught on the PyKokkos side.",
+  "repo": "kokkos/pykokkos",
+  "test_patch": "diff --git a/tests/test_typeinference.py b/tests/test_typeinference.py\nindex 0193c6b9..d18c31d4 100644\n--- a/tests/test_typeinference.py\n+++ b/tests/test_typeinference.py\n@@ -695,6 +695,12 @@ def test_list_3d_python_list(self):\n         expected = sum(sum(sum(row) for row in plane) for plane in python_3d)\n         self.assertEqual(result[0], expected)\n \n+    def test_numpy_noncontiguous(self):\n+        contiguous = np.arange(10)\n+        noncontiguous = contiguous[::2]\n+        with pytest.raises(ValueError):\n+            pk.parallel_for(len(noncontiguous), init_view, view=noncontiguous, init=0)\n+\n \n if __name__ == \"__main__\":\n     unittest.main()\n",
+  "title": "Assert that numpy-like arrays are contiguous",
+  "version": "cpp20"
+}

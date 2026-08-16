@@ -1,0 +1,64 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "PASS_TO_PASS": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "base_commit": "6bf93e5554ef13c8d08c5b21d36f275c569e9aa5",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "changed_files": [
+    {
+      "additions": 33,
+      "deletions": 0,
+      "filename": "core/src/impl/Kokkos_Utilities.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 42,
+      "deletions": 0,
+      "filename": "core/unit_test/TestTypeList.cpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/impl/Kokkos_Utilities.hpp b/core/src/impl/Kokkos_Utilities.hpp\nindex 0fe05002c34..c54732e015a 100644\n--- a/core/src/impl/Kokkos_Utilities.hpp\n+++ b/core/src/impl/Kokkos_Utilities.hpp\n@@ -175,6 +175,9 @@ template <template <class> class UnaryPred, class... Ts>\n struct type_list_any<UnaryPred, type_list<Ts...>>\n     : std::bool_constant<(UnaryPred<Ts>::value || ...)> {};\n \n+template <template <class> class UnaryPred, class... Ts>\n+constexpr bool type_list_any_v = type_list_any<UnaryPred, Ts...>::value;\n+\n // </editor-fold> end type_list_any }}}2\n //------------------------------------------------------------------------------\n \n@@ -226,6 +229,36 @@ using filter_type_list_t =\n // </editor-fold> end filter_type_list }}}2\n //------------------------------------------------------------------------------\n \n+//------------------------------------------------------------------------------\n+// <editor-fold desc=\"type_list_contains\"> {{{2\n+//  type_list_contains checks if a type is contained in the list.\n+template <typename, typename...>\n+struct type_list_contains;\n+\n+template <typename U, typename... Ts>\n+struct type_list_contains<U, type_list<Ts...>>\n+    : std::disjunction<std::is_same<U, Ts>...> {};\n+\n+template <typename U, typename... Ts>\n+constexpr bool type_list_contains_v = type_list_contains<U, Ts...>::value;\n+// </editor-fold> end type_list_contains }}}2\n+//------------------------------------------------------------------------------\n+\n+//------------------------------------------------------------------------------\n+// <editor-fold desc=\"type_list_size\"> {{{2\n+//  type_list_size returns the size of a type list.\n+template <typename>\n+struct type_list_size;\n+\n+template <typename... Ts>\n+struct type_list_size<type_list<Ts...>>\n+    : std::integral_constant<std::size_t, sizeof...(Ts)> {};\n+\n+template <typename T>\n+constexpr std::size_t type_list_size_v = type_list_size<T>::value;\n+// </editor-fold> end type_list_size }}}2\n+//------------------------------------------------------------------------------\n+\n // </editor-fold> end type_list }}}1\n //==============================================================================\n \n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+  "created_at": "2025-08-27T15:24:48Z",
+  "era": "cpp17",
+  "f2p_commands": [
+    "cmake --build build --target Kokkos_CoreTestCompileOnly"
+  ],
+  "fail_to_pass": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-8364",
+  "labels": [],
+  "linked_issues": [],
+  "merge_commit": "0a4828c1236c1476a5a73cde34bb5df3e808daa3",
+  "merged_at": "2025-08-27T15:24:48Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/8364",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "cmake --build build --target Kokkos_CoreTestCompileOnly"
+  ],
+  "pass_to_pass": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "patch": "diff --git a/core/src/impl/Kokkos_Utilities.hpp b/core/src/impl/Kokkos_Utilities.hpp\nindex 0fe05002c34..c54732e015a 100644\n--- a/core/src/impl/Kokkos_Utilities.hpp\n+++ b/core/src/impl/Kokkos_Utilities.hpp\n@@ -175,6 +175,9 @@ template <template <class> class UnaryPred, class... Ts>\n struct type_list_any<UnaryPred, type_list<Ts...>>\n     : std::bool_constant<(UnaryPred<Ts>::value || ...)> {};\n \n+template <template <class> class UnaryPred, class... Ts>\n+constexpr bool type_list_any_v = type_list_any<UnaryPred, Ts...>::value;\n+\n // </editor-fold> end type_list_any }}}2\n //------------------------------------------------------------------------------\n \n@@ -226,6 +229,36 @@ using filter_type_list_t =\n // </editor-fold> end filter_type_list }}}2\n //------------------------------------------------------------------------------\n \n+//------------------------------------------------------------------------------\n+// <editor-fold desc=\"type_list_contains\"> {{{2\n+//  type_list_contains checks if a type is contained in the list.\n+template <typename, typename...>\n+struct type_list_contains;\n+\n+template <typename U, typename... Ts>\n+struct type_list_contains<U, type_list<Ts...>>\n+    : std::disjunction<std::is_same<U, Ts>...> {};\n+\n+template <typename U, typename... Ts>\n+constexpr bool type_list_contains_v = type_list_contains<U, Ts...>::value;\n+// </editor-fold> end type_list_contains }}}2\n+//------------------------------------------------------------------------------\n+\n+//------------------------------------------------------------------------------\n+// <editor-fold desc=\"type_list_size\"> {{{2\n+//  type_list_size returns the size of a type list.\n+template <typename>\n+struct type_list_size;\n+\n+template <typename... Ts>\n+struct type_list_size<type_list<Ts...>>\n+    : std::integral_constant<std::size_t, sizeof...(Ts)> {};\n+\n+template <typename T>\n+constexpr std::size_t type_list_size_v = type_list_size<T>::value;\n+// </editor-fold> end type_list_size }}}2\n+//------------------------------------------------------------------------------\n+\n // </editor-fold> end type_list }}}1\n //==============================================================================\n \ndiff --git a/core/unit_test/TestTypeList.cpp b/core/unit_test/TestTypeList.cpp\nindex e0f45d2454a..c5f367de4b2 100644\n--- a/core/unit_test/TestTypeList.cpp\n+++ b/core/unit_test/TestTypeList.cpp\n@@ -16,6 +16,8 @@\n \n #include <impl/Kokkos_Utilities.hpp>\n \n+using type_list_empty_t = Kokkos::Impl::type_list<>;\n+\n using TypeList2 = Kokkos::Impl::type_list<void, bool>;\n using TypeList3 = Kokkos::Impl::type_list<char, short, int>;\n using TypeList223 =\n@@ -43,3 +45,43 @@ using FilterTypeList223NoVoid =\n     Kokkos::Impl::filter_type_list_t<std::is_void, TypeList223, false>;\n static_assert(std::is_same_v<TypeList223NoVoid, FilterTypeList223NoVoid>,\n               \"filter_type_list with predicate value==false failed\");\n+\n+constexpr bool test_type_list_any() {\n+  using Kokkos::Impl::type_list;\n+  using Kokkos::Impl::type_list_any_v;\n+\n+  static_assert(!type_list_any_v<std::is_enum, type_list_empty_t>);\n+  static_assert(type_list_any_v<std::is_floating_point,\n+                                type_list<float, double, char, int>>);\n+  static_assert(type_list_any_v<std::is_integral,\n+                                type_list<float, char, int, std::size_t>>);\n+  static_assert(!type_list_any_v<std::is_enum, type_list<float, char, int>>);\n+\n+  return true;\n+}\n+static_assert(test_type_list_any());\n+\n+constexpr bool test_type_list_size() {\n+  using Kokkos::Impl::type_list_size_v;\n+\n+  static_assert(type_list_size_v<type_list_empty_t> == 0);\n+  static_assert(type_list_size_v<TypeList2> == 2);\n+  static_assert(type_list_size_v<TypeList3> == 3);\n+\n+  return true;\n+}\n+static_assert(test_type_list_size());\n+\n+constexpr bool test_type_list_contains() {\n+  using Kokkos::Impl::type_list_contains_v;\n+\n+  static_assert(!type_list_contains_v<int, type_list_empty_t>);\n+\n+  static_assert(type_list_contains_v<char, TypeList3>);\n+  static_assert(type_list_contains_v<short, TypeList3>);\n+  static_assert(type_list_contains_v<int, TypeList3>);\n+  static_assert(!type_list_contains_v<double, TypeList3>);\n+\n+  return true;\n+}\n+static_assert(test_type_list_contains());\n",
+  "pr_number": 8364,
+  "problem_statement": "This PR adds 2 new helpers for `Kokkos::Impl::type_list`:\r\n1. `type_list_size_v` to get its size.\r\n2. `type_list_contains_v` to know if it contains a type.\r\n\r\nRelated to:\r\n- #8191",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/TestTypeList.cpp b/core/unit_test/TestTypeList.cpp\nindex e0f45d2454a..c5f367de4b2 100644\n--- a/core/unit_test/TestTypeList.cpp\n+++ b/core/unit_test/TestTypeList.cpp\n@@ -16,6 +16,8 @@\n \n #include <impl/Kokkos_Utilities.hpp>\n \n+using type_list_empty_t = Kokkos::Impl::type_list<>;\n+\n using TypeList2 = Kokkos::Impl::type_list<void, bool>;\n using TypeList3 = Kokkos::Impl::type_list<char, short, int>;\n using TypeList223 =\n@@ -43,3 +45,43 @@ using FilterTypeList223NoVoid =\n     Kokkos::Impl::filter_type_list_t<std::is_void, TypeList223, false>;\n static_assert(std::is_same_v<TypeList223NoVoid, FilterTypeList223NoVoid>,\n               \"filter_type_list with predicate value==false failed\");\n+\n+constexpr bool test_type_list_any() {\n+  using Kokkos::Impl::type_list;\n+  using Kokkos::Impl::type_list_any_v;\n+\n+  static_assert(!type_list_any_v<std::is_enum, type_list_empty_t>);\n+  static_assert(type_list_any_v<std::is_floating_point,\n+                                type_list<float, double, char, int>>);\n+  static_assert(type_list_any_v<std::is_integral,\n+                                type_list<float, char, int, std::size_t>>);\n+  static_assert(!type_list_any_v<std::is_enum, type_list<float, char, int>>);\n+\n+  return true;\n+}\n+static_assert(test_type_list_any());\n+\n+constexpr bool test_type_list_size() {\n+  using Kokkos::Impl::type_list_size_v;\n+\n+  static_assert(type_list_size_v<type_list_empty_t> == 0);\n+  static_assert(type_list_size_v<TypeList2> == 2);\n+  static_assert(type_list_size_v<TypeList3> == 3);\n+\n+  return true;\n+}\n+static_assert(test_type_list_size());\n+\n+constexpr bool test_type_list_contains() {\n+  using Kokkos::Impl::type_list_contains_v;\n+\n+  static_assert(!type_list_contains_v<int, type_list_empty_t>);\n+\n+  static_assert(type_list_contains_v<char, TypeList3>);\n+  static_assert(type_list_contains_v<short, TypeList3>);\n+  static_assert(type_list_contains_v<int, TypeList3>);\n+  static_assert(!type_list_contains_v<double, TypeList3>);\n+\n+  return true;\n+}\n+static_assert(test_type_list_contains());\n",
+  "title": "core(typelist): new features (size and contains)",
+  "version": "cpp17"
+}

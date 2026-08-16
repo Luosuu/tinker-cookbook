@@ -1,0 +1,22 @@
+diff --git a/containers/unit_tests/TestScatterView.hpp b/containers/unit_tests/TestScatterView.hpp
+index d6c08e4eb0a..be965ecdafc 100644
+--- a/containers/unit_tests/TestScatterView.hpp
++++ b/containers/unit_tests/TestScatterView.hpp
+@@ -79,6 +79,8 @@ struct test_scatter_view_impl_cls<DeviceType, Layout, Duplication, Contribution,
+       --scatter_access_atomic(k, 9);
+       ++scatter_access_atomic(k, 10);
+       scatter_access(k, 11) -= 3;
++      scatter_access(k, 0).update(0);
++      scatter_access_atomic(k, 0).update(0);
+     }
+   }
+ 
+@@ -175,6 +177,8 @@ struct test_scatter_view_impl_cls<DeviceType, Layout, Duplication, Contribution,
+       scatter_access(k, 0) *= 4.0;
+       scatter_access_atomic(k, 1) *= 2.0;
+       scatter_access(k, 2) *= 1.0;
++      scatter_access(k, 2).update(1.0);
++      scatter_access_atomic(k, 1).update(1.0);
+     }
+   }
+ 

@@ -1,0 +1,52 @@
+diff --git a/core/src/Kokkos_GraphNode.hpp b/core/src/Kokkos_GraphNode.hpp
+index e1c81e93648..917a8caf0af 100644
+--- a/core/src/Kokkos_GraphNode.hpp
++++ b/core/src/Kokkos_GraphNode.hpp
+@@ -104,6 +104,8 @@ class GraphNodeRef {
+   //              it.
+   using node_impl_t =
+       Kokkos::Impl::GraphNodeImpl<ExecutionSpace, Kernel, Predecessor>;
++  using node_details_t =
++      Kokkos::Impl::GraphNodeBackendSpecificDetails<ExecutionSpace>;
+   std::shared_ptr<node_impl_t> m_node_impl;
+ 
+   // </editor-fold> end Private Data Members }}}2
+@@ -316,6 +318,38 @@ class GraphNodeRef {
+     return rv;
+   }
+ 
++#if defined(KOKKOS_ENABLE_CUDA)
++  cudaGraphNode_t cuda_node() const
++    requires std::same_as<ExecutionSpace, Kokkos::Cuda>
++  {
++    KOKKOS_EXPECTS(bool(m_node_impl));
++    cudaGraphNode_t impl =
++        std::static_pointer_cast<node_details_t>(m_node_impl)->node;
++    KOKKOS_EXPECTS(impl != nullptr);
++    return impl;
++  }
++#elif defined(KOKKOS_ENABLE_HIP)
++  hipGraphNode_t hip_node() const
++    requires std::same_as<ExecutionSpace, Kokkos::HIP>
++  {
++    KOKKOS_EXPECTS(bool(m_node_impl));
++    hipGraphNode_t impl =
++        std::static_pointer_cast<node_details_t>(m_node_impl)->node;
++    KOKKOS_EXPECTS(impl != nullptr);
++    return impl;
++  }
++#elif defined(KOKKOS_ENABLE_SYCL) && defined(KOKKOS_IMPL_SYCL_GRAPH_SUPPORT)
++  const auto& sycl_node() const
++    requires std::same_as<ExecutionSpace, Kokkos::SYCL>
++  {
++    KOKKOS_EXPECTS(bool(m_node_impl));
++    const auto& impl =
++        std::static_pointer_cast<node_details_t>(m_node_impl)->node;
++    KOKKOS_EXPECTS(impl.has_value());
++    return *impl;  // NOLINT(bugprone-unchecked-optional-access)
++  }
++#endif
++
+ #if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP) || \
+     (defined(KOKKOS_ENABLE_SYCL) && defined(KOKKOS_IMPL_SYCL_GRAPH_SUPPORT))
+   template <

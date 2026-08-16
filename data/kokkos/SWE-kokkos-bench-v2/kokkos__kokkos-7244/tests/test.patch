@@ -1,0 +1,14 @@
+diff --git a/core/unit_test/TestViewAPI.hpp b/core/unit_test/TestViewAPI.hpp
+index 1ee68965149..6a40d95777e 100644
+--- a/core/unit_test/TestViewAPI.hpp
++++ b/core/unit_test/TestViewAPI.hpp
+@@ -955,6 +955,9 @@ class TestViewAPI {
+     using view_type   = Kokkos::View<int, host>;
+     using mirror_type = typename view_type::HostMirror;
+ 
++    static_assert(std::is_same_v<typename view_type::HostMirror,
++                                 typename view_type::host_mirror_type>);
++
+     static_assert(std::is_same<typename view_type::memory_space,
+                                typename mirror_type::memory_space>::value);
+ 

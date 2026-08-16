@@ -1,0 +1,76 @@
+diff --git a/containers/src/Kokkos_DynRankView.hpp b/containers/src/Kokkos_DynRankView.hpp
+index 10c5cdafc5c..41fb6347611 100644
+--- a/containers/src/Kokkos_DynRankView.hpp
++++ b/containers/src/Kokkos_DynRankView.hpp
+@@ -1762,6 +1762,13 @@ auto create_mirror_view_and_copy(const Space&,
+       Kokkos::view_alloc(typename Space::memory_space{}, name), src);
+ }
+ 
++template <class T, class... P>
++auto create_mirror_view_and_copy(const Kokkos::DynRankView<T, P...>& src) {
++  return create_mirror_view_and_copy(
++      typename Kokkos::DynRankView<T, P...>::host_mirror_type::memory_space{},
++      src);
++}
++
+ }  // namespace Kokkos
+ 
+ //----------------------------------------------------------------------------
+diff --git a/containers/src/Kokkos_DynamicView.hpp b/containers/src/Kokkos_DynamicView.hpp
+index 6bd0da12670..faffadcd101 100644
+--- a/containers/src/Kokkos_DynamicView.hpp
++++ b/containers/src/Kokkos_DynamicView.hpp
+@@ -978,6 +978,15 @@ auto create_mirror_view_and_copy(
+       Kokkos::view_alloc(typename Space::memory_space{}, name), src);
+ }
+ 
++template <class T, class... P>
++auto create_mirror_view_and_copy(
++    const Kokkos::Experimental::DynamicView<T, P...>& src) {
++  return create_mirror_view_and_copy(
++      typename Kokkos::Experimental::DynamicView<
++          T, P...>::host_mirror_type::memory_space{},
++      src);
++}
++
+ }  // namespace Kokkos
+ 
+ #ifdef KOKKOS_IMPL_PUBLIC_INCLUDE_NOTDEFINED_DYNAMICVIEW
+diff --git a/containers/src/Kokkos_OffsetView.hpp b/containers/src/Kokkos_OffsetView.hpp
+index 0bccd292468..7db5a7cf56c 100644
+--- a/containers/src/Kokkos_OffsetView.hpp
++++ b/containers/src/Kokkos_OffsetView.hpp
+@@ -1462,6 +1462,16 @@ create_mirror_view_and_copy(
+     std::string const& name = "") {
+   return {create_mirror_view_and_copy(space, src.view(), name), src.begins()};
+ }
++
++template <class T, class... P>
++auto create_mirror_view_and_copy(
++    const Kokkos::Experimental::OffsetView<T, P...>& src) {
++  return create_mirror_view_and_copy(
++      typename Kokkos::Experimental::OffsetView<
++          T, P...>::host_mirror_type::memory_space{},
++      src);
++}
++
+ } /* namespace Kokkos */
+ 
+ //----------------------------------------------------------------------------
+diff --git a/core/src/Kokkos_CopyViews.hpp b/core/src/Kokkos_CopyViews.hpp
+index a13bb902ee3..ad0ef7c547c 100644
+--- a/core/src/Kokkos_CopyViews.hpp
++++ b/core/src/Kokkos_CopyViews.hpp
+@@ -3396,6 +3396,12 @@ create_mirror_view_and_copy(
+       Kokkos::view_alloc(typename Space::memory_space{}, name), src);
+ }
+ 
++template <class T, class... P>
++auto create_mirror_view_and_copy(const Kokkos::View<T, P...>& src) {
++  return create_mirror_view_and_copy(
++      typename Kokkos::View<T, P...>::host_mirror_type::memory_space{}, src);
++}
++
+ } /* namespace Kokkos */
+ 
+ //----------------------------------------------------------------------------

@@ -1,0 +1,91 @@
+diff --git a/core/unit_test/TestSubView_a.hpp b/core/unit_test/TestSubView_a.hpp
+index 6ce680200c9..3e66579156e 100644
+--- a/core/unit_test/TestSubView_a.hpp
++++ b/core/unit_test/TestSubView_a.hpp
+@@ -74,5 +74,25 @@ TEST(TEST_CATEGORY, view_static_tests) {
+   TestViewSubview::TestExtentsStaticTests<TEST_EXECSPACE>();
+ }
+ 
++TEST(TEST_CATEGORY_DEATH, view_subview_wrong_extents) {
++  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
++
++#ifndef KOKKOS_ENABLE_DEBUG_BOUNDS_CHECK
++  GTEST_SKIP() << "only enforced when debug bound checks is enabled";
++#ifdef KOKKOS_COMPILER_NVHPC
++  __builtin_unreachable();
++#endif
++#endif
++
++  TestViewSubview::test_subview_extents<1, TEST_EXECSPACE>();
++  TestViewSubview::test_subview_extents<2, TEST_EXECSPACE>();
++  TestViewSubview::test_subview_extents<3, TEST_EXECSPACE>();
++  TestViewSubview::test_subview_extents<4, TEST_EXECSPACE>();
++  TestViewSubview::test_subview_extents<5, TEST_EXECSPACE>();
++  TestViewSubview::test_subview_extents<6, TEST_EXECSPACE>();
++  TestViewSubview::test_subview_extents<7, TEST_EXECSPACE>();
++  TestViewSubview::test_subview_extents<8, TEST_EXECSPACE>();
++}
++
+ }  // namespace Test
+ #endif
+diff --git a/core/unit_test/TestViewSubview.hpp b/core/unit_test/TestViewSubview.hpp
+index ebe3b2d7d20..e6f9205a0fb 100644
+--- a/core/unit_test/TestViewSubview.hpp
++++ b/core/unit_test/TestViewSubview.hpp
+@@ -2320,6 +2320,56 @@ struct TestExtentsStaticTests {
+       typename Kokkos::Impl::ParseViewExtents<double>::type>::type;
+ };
+ 
++template <class ExecutionSpace, class RankType, std::size_t... Is>
++void test_subview_extents_helper_index(std::index_sequence<Is...>) {
++  using view_type =
++      Kokkos::View<RankType, typename ExecutionSpace::memory_space>;
++  view_type v("v", ((Is * 0) + 1)...);
++
++  auto sv = Kokkos::subview(v, (Is * 0)...);
++  ASSERT_DEATH({ auto sv_fail = Kokkos::subview(v, ((Is * 0) + 1)...); },
++               "Kokkos::subview bounds error");
++}
++
++template <class ExecutionSpace, class RankType, std::size_t... Is>
++void test_subview_extents_helper_range(std::index_sequence<Is...>) {
++  using view_type =
++      Kokkos::View<RankType, typename ExecutionSpace::memory_space>;
++  view_type v("v", 1, ((Is * 0) + 1)...);
++
++  auto sv = Kokkos::subview(v, std::pair{0, 1}, (Is * 0)...);
++  ASSERT_DEATH(
++      {
++        auto sv_fail = Kokkos::subview(v, std::pair{0, 2}, (Is * 0)...);
++      },
++      "Kokkos::subview bounds error");
++  ASSERT_DEATH(
++      {
++        auto sv_fail = Kokkos::subview(v, Kokkos::pair{0, 2}, (Is * 0)...);
++      },
++      "Kokkos::subview bounds error");
++}
++
++template <int rank>
++struct DynamicRank {
++  using type = typename DynamicRank<rank - 1>::type*;
++};
++
++template <>
++struct DynamicRank<0> {
++  using type = int;
++};
++
++template <int rank, class ExecutionSpace>
++void test_subview_extents() {
++  test_subview_extents_helper_index<ExecutionSpace,
++                                    typename DynamicRank<rank>::type>(
++      std::make_index_sequence<rank>());
++  test_subview_extents_helper_range<ExecutionSpace,
++                                    typename DynamicRank<rank>::type>(
++      std::make_index_sequence<rank - 1>());
++}
++
+ }  // namespace TestViewSubview
+ 
+ #endif

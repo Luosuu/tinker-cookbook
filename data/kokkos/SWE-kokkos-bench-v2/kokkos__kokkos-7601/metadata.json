@@ -1,0 +1,68 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreUnitTest_Serial1 compilation with static_assert in TestComplex.hpp"
+  ],
+  "PASS_TO_PASS": [
+    "Kokkos_CoreUnitTest_Serial1"
+  ],
+  "base_commit": "438881d3f16332afd4277a7d6b29ace639f920b0",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreUnitTest_Serial1"
+  ],
+  "changed_files": [
+    {
+      "additions": 5,
+      "deletions": 3,
+      "filename": "core/src/Kokkos_Complex.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 40,
+      "deletions": 1,
+      "filename": "core/unit_test/TestComplex.hpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/Kokkos_Complex.hpp b/core/src/Kokkos_Complex.hpp\nindex 8233c30b243..cd8c3e926f8 100644\n--- a/core/src/Kokkos_Complex.hpp\n+++ b/core/src/Kokkos_Complex.hpp\n@@ -106,15 +106,17 @@ class\n \n   /// \\brief Constructor that takes just the real part, and sets the\n   ///   imaginary part to zero.\n-  KOKKOS_INLINE_FUNCTION complex(const RealType& val) noexcept\n+  KOKKOS_INLINE_FUNCTION constexpr complex(const RealType& val) noexcept\n       : re_(val), im_(static_cast<RealType>(0)) {}\n \n   //! Constructor that takes the real and imaginary parts.\n   KOKKOS_INLINE_FUNCTION\n-  complex(const RealType& re, const RealType& im) noexcept : re_(re), im_(im) {}\n+  constexpr complex(const RealType& re, const RealType& im) noexcept\n+      : re_(re), im_(im) {}\n \n   //! Assignment operator (from a real number).\n-  KOKKOS_INLINE_FUNCTION complex& operator=(const RealType& val) noexcept {\n+  KOKKOS_INLINE_FUNCTION constexpr complex& operator=(\n+      const RealType& val) noexcept {\n     re_ = val;\n     im_ = RealType(0);\n     return *this;\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+  "created_at": "2024-12-17T03:18:34Z",
+  "era": "cpp17",
+  "f2p_commands": [
+    "cmake --build build --target Kokkos_CoreUnitTest_Serial1"
+  ],
+  "fail_to_pass": [
+    "Kokkos_CoreUnitTest_Serial1 compilation with static_assert in TestComplex.hpp"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-7601",
+  "labels": [
+    "SNL-CI-APPROVAL"
+  ],
+  "linked_issues": [
+    6281
+  ],
+  "merge_commit": "9ca729c6c42b36b65811e69ed7f500fd81f4a36f",
+  "merged_at": "2024-12-17T03:18:34Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/7601",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "cmake --build build --target Kokkos_CoreUnitTest_Serial1"
+  ],
+  "pass_to_pass": [
+    "Kokkos_CoreUnitTest_Serial1"
+  ],
+  "patch": "diff --git a/core/src/Kokkos_Complex.hpp b/core/src/Kokkos_Complex.hpp\nindex 8233c30b243..cd8c3e926f8 100644\n--- a/core/src/Kokkos_Complex.hpp\n+++ b/core/src/Kokkos_Complex.hpp\n@@ -106,15 +106,17 @@ class\n \n   /// \\brief Constructor that takes just the real part, and sets the\n   ///   imaginary part to zero.\n-  KOKKOS_INLINE_FUNCTION complex(const RealType& val) noexcept\n+  KOKKOS_INLINE_FUNCTION constexpr complex(const RealType& val) noexcept\n       : re_(val), im_(static_cast<RealType>(0)) {}\n \n   //! Constructor that takes the real and imaginary parts.\n   KOKKOS_INLINE_FUNCTION\n-  complex(const RealType& re, const RealType& im) noexcept : re_(re), im_(im) {}\n+  constexpr complex(const RealType& re, const RealType& im) noexcept\n+      : re_(re), im_(im) {}\n \n   //! Assignment operator (from a real number).\n-  KOKKOS_INLINE_FUNCTION complex& operator=(const RealType& val) noexcept {\n+  KOKKOS_INLINE_FUNCTION constexpr complex& operator=(\n+      const RealType& val) noexcept {\n     re_ = val;\n     im_ = RealType(0);\n     return *this;\ndiff --git a/core/unit_test/TestComplex.hpp b/core/unit_test/TestComplex.hpp\nindex 185df52a50b..ab4159f283f 100644\n--- a/core/unit_test/TestComplex.hpp\n+++ b/core/unit_test/TestComplex.hpp\n@@ -367,7 +367,6 @@ struct TestComplexSpecialFunctions {\n   KOKKOS_INLINE_FUNCTION\n   void operator()(const int & /*i*/) const {\n     Kokkos::complex<double> a(1.5, 2.5);\n-    Kokkos::complex<double> b(3.25, 5.75);\n     double c = 9.3;\n \n     d_results(0)  = Kokkos::complex<double>(Kokkos::real(a), Kokkos::imag(a));\n@@ -688,6 +687,46 @@ TEST(TEST_CATEGORY, complex_structured_bindings) {\n   test.testit();\n }\n \n+#define CHECK_COMPLEX(_value_, _real_, _imag_) \\\n+  (void)_value_;                               \\\n+  if (_value_.real() != _real_) return false;  \\\n+  if (_value_.imag() != _imag_) return false;\n+\n+constexpr bool can_appear_in_constant_expressions() {\n+  const Kokkos::complex<double> from_single{1.2};\n+  const Kokkos::complex<double> from_both{1.2, 3.4};\n+  const Kokkos::complex<double> from_none{};\n+\n+  CHECK_COMPLEX(from_single, 1.2, 0.);\n+  CHECK_COMPLEX(from_both, 1.2, 3.4);\n+  CHECK_COMPLEX(from_none, 0., 0.);\n+\n+  Kokkos::complex<double> from_copy_assign;\n+  from_copy_assign = from_both;\n+  const auto from_copy_constr(from_both);\n+\n+  CHECK_COMPLEX(from_copy_assign, 1.2, 3.4);\n+  CHECK_COMPLEX(from_copy_constr, 1.2, 3.4);\n+\n+  Kokkos::complex<double> from_move_assign;\n+  from_move_assign = std::move(from_both);\n+  const auto from_move_constr(std::move(from_copy_assign));\n+\n+  CHECK_COMPLEX(from_move_assign, 1.2, 3.4);\n+  CHECK_COMPLEX(from_move_constr, 1.2, 3.4);\n+\n+  Kokkos::complex<double> from_real;\n+  from_real = 4.;\n+\n+  CHECK_COMPLEX(from_real, 4., 0.);\n+\n+  return true;\n+}\n+\n+#undef CHECK_COMPLEX\n+\n+static_assert(can_appear_in_constant_expressions());\n+\n }  // namespace Test\n \n #ifdef KOKKOS_COMPILER_NVCC\n",
+  "pr_number": 7601,
+  "problem_statement": "`Kokkos::complex` should have `constexpr` constructor as well\n\nIf I'm not mistaken, according to https://en.cppreference.com/w/cpp/numeric/complex/complex there are several constructors of `std::complex` that are declared `constexpr` already in the `c++14` standard.\r\n\r\nLooking at\r\n[source location omitted]\r\nit seems it is not the case for `Kokkos::complex`, and `constexpr` needs to be explicitly added.\r\n\r\nHere is a small code to test `constexpr`-ness:\r\n[implementation suggestion omitted]\r\n\r\nThis should show (at least for `g++ 11.3.0`):\r\n[implementation suggestion omitted]\r\n\r\nIf you agree on the changes, I can open a PR.",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/TestComplex.hpp b/core/unit_test/TestComplex.hpp\nindex 185df52a50b..ab4159f283f 100644\n--- a/core/unit_test/TestComplex.hpp\n+++ b/core/unit_test/TestComplex.hpp\n@@ -367,7 +367,6 @@ struct TestComplexSpecialFunctions {\n   KOKKOS_INLINE_FUNCTION\n   void operator()(const int & /*i*/) const {\n     Kokkos::complex<double> a(1.5, 2.5);\n-    Kokkos::complex<double> b(3.25, 5.75);\n     double c = 9.3;\n \n     d_results(0)  = Kokkos::complex<double>(Kokkos::real(a), Kokkos::imag(a));\n@@ -688,6 +687,46 @@ TEST(TEST_CATEGORY, complex_structured_bindings) {\n   test.testit();\n }\n \n+#define CHECK_COMPLEX(_value_, _real_, _imag_) \\\n+  (void)_value_;                               \\\n+  if (_value_.real() != _real_) return false;  \\\n+  if (_value_.imag() != _imag_) return false;\n+\n+constexpr bool can_appear_in_constant_expressions() {\n+  const Kokkos::complex<double> from_single{1.2};\n+  const Kokkos::complex<double> from_both{1.2, 3.4};\n+  const Kokkos::complex<double> from_none{};\n+\n+  CHECK_COMPLEX(from_single, 1.2, 0.);\n+  CHECK_COMPLEX(from_both, 1.2, 3.4);\n+  CHECK_COMPLEX(from_none, 0., 0.);\n+\n+  Kokkos::complex<double> from_copy_assign;\n+  from_copy_assign = from_both;\n+  const auto from_copy_constr(from_both);\n+\n+  CHECK_COMPLEX(from_copy_assign, 1.2, 3.4);\n+  CHECK_COMPLEX(from_copy_constr, 1.2, 3.4);\n+\n+  Kokkos::complex<double> from_move_assign;\n+  from_move_assign = std::move(from_both);\n+  const auto from_move_constr(std::move(from_copy_assign));\n+\n+  CHECK_COMPLEX(from_move_assign, 1.2, 3.4);\n+  CHECK_COMPLEX(from_move_constr, 1.2, 3.4);\n+\n+  Kokkos::complex<double> from_real;\n+  from_real = 4.;\n+\n+  CHECK_COMPLEX(from_real, 4., 0.);\n+\n+  return true;\n+}\n+\n+#undef CHECK_COMPLEX\n+\n+static_assert(can_appear_in_constant_expressions());\n+\n }  // namespace Test\n \n #ifdef KOKKOS_COMPILER_NVCC\n",
+  "title": "core(complex): constexpr",
+  "version": "cpp17"
+}

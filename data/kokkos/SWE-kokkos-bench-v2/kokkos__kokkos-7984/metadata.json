@@ -1,0 +1,64 @@
+{
+  "FAIL_TO_PASS": [
+    "TEST_CATEGORY.view_stride_method"
+  ],
+  "PASS_TO_PASS": [
+    "TEST_CATEGORY.view_stride_method"
+  ],
+  "base_commit": "c363ab151b1847ceb5da98926d57271a8d6d8cc3",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreUnitTest_Serial2"
+  ],
+  "changed_files": [
+    {
+      "additions": 28,
+      "deletions": 2,
+      "filename": "core/src/Kokkos_View.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 52,
+      "deletions": 0,
+      "filename": "core/unit_test/TestViewAPI_e.hpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/Kokkos_View.hpp b/core/src/Kokkos_View.hpp\nindex 50397127b10..57dfa80618f 100644\n--- a/core/src/Kokkos_View.hpp\n+++ b/core/src/Kokkos_View.hpp\n@@ -264,14 +264,40 @@ class View : public Impl::BasicViewFromTraits<DataType, Properties...>::type {\n     // base class doesn't have constraint\n     // FIXME: Eventually we need to deprecate this behavior and just use\n     // BasicView implementation\n+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4\n+    using LayoutType = typename mdspan_type::layout_type;\n+    if (r >= static_cast<iType>(rank())) {\n+      if constexpr (std::is_same_v<LayoutType, layout_right> ||\n+                    Impl::IsLayoutRightPadded<LayoutType>::value) {\n+        return 1;\n+      }\n+      if constexpr (std::is_same_v<LayoutType, layout_left> ||\n+                    Impl::IsLayoutLeftPadded<LayoutType>::value) {\n+        return stride(rank() - 1) * extent(rank() - 1);\n+      }\n+      if constexpr (std::is_same_v<LayoutType, layout_stride>) {\n+        return 0;\n+      }\n+    }\n+#else\n+    KOKKOS_ASSERT(r < static_cast<iType>(rank()));\n+#endif\n     return base_t::stride(r);\n   }\n \n   template <typename iType>\n   KOKKOS_INLINE_FUNCTION void stride([[maybe_unused]] iType* const s) const {\n     if constexpr (rank() > 0) {\n-      for (size_t r = 0; r < rank(); r++) s[r] = base_t::stride(r);\n-      s[rank()] = s[rank() - 1] * base_t::extent(rank() - 1);\n+      size_t max_stride     = 0;\n+      size_t max_stride_idx = 0;\n+      for (size_t r = 0; r < rank(); r++) {\n+        s[r] = base_t::stride(r);\n+        if (s[r] > static_cast<iType>(max_stride)) {\n+          max_stride     = s[r];\n+          max_stride_idx = r;\n+        }\n+      }\n+      s[rank()] = max_stride * base_t::extent(max_stride_idx);\n     }\n   }\n \n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+  "created_at": "2025-04-15T17:46:33Z",
+  "era": "cpp17",
+  "f2p_commands": [
+    "\"$(find build -type f -name Kokkos_CoreUnitTest_Serial2 -perm -111 -print -quit)\" --gtest_filter='*view_stride_method*'"
+  ],
+  "fail_to_pass": [
+    "TEST_CATEGORY.view_stride_method"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-7984",
+  "labels": [],
+  "linked_issues": [],
+  "merge_commit": "cf8ff35c906e1b5150a85fa0171d8f8686f606c8",
+  "merged_at": "2025-04-15T17:46:33Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "test",
+    "html_url": "https://github.com/kokkos/kokkos/pull/7984",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "\"$(find build -type f -name Kokkos_CoreUnitTest_Serial2 -perm -111 -print -quit)\" --gtest_filter='*view_stride_method*'"
+  ],
+  "pass_to_pass": [
+    "TEST_CATEGORY.view_stride_method"
+  ],
+  "patch": "diff --git a/core/src/Kokkos_View.hpp b/core/src/Kokkos_View.hpp\nindex 50397127b10..57dfa80618f 100644\n--- a/core/src/Kokkos_View.hpp\n+++ b/core/src/Kokkos_View.hpp\n@@ -264,14 +264,40 @@ class View : public Impl::BasicViewFromTraits<DataType, Properties...>::type {\n     // base class doesn't have constraint\n     // FIXME: Eventually we need to deprecate this behavior and just use\n     // BasicView implementation\n+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4\n+    using LayoutType = typename mdspan_type::layout_type;\n+    if (r >= static_cast<iType>(rank())) {\n+      if constexpr (std::is_same_v<LayoutType, layout_right> ||\n+                    Impl::IsLayoutRightPadded<LayoutType>::value) {\n+        return 1;\n+      }\n+      if constexpr (std::is_same_v<LayoutType, layout_left> ||\n+                    Impl::IsLayoutLeftPadded<LayoutType>::value) {\n+        return stride(rank() - 1) * extent(rank() - 1);\n+      }\n+      if constexpr (std::is_same_v<LayoutType, layout_stride>) {\n+        return 0;\n+      }\n+    }\n+#else\n+    KOKKOS_ASSERT(r < static_cast<iType>(rank()));\n+#endif\n     return base_t::stride(r);\n   }\n \n   template <typename iType>\n   KOKKOS_INLINE_FUNCTION void stride([[maybe_unused]] iType* const s) const {\n     if constexpr (rank() > 0) {\n-      for (size_t r = 0; r < rank(); r++) s[r] = base_t::stride(r);\n-      s[rank()] = s[rank() - 1] * base_t::extent(rank() - 1);\n+      size_t max_stride     = 0;\n+      size_t max_stride_idx = 0;\n+      for (size_t r = 0; r < rank(); r++) {\n+        s[r] = base_t::stride(r);\n+        if (s[r] > static_cast<iType>(max_stride)) {\n+          max_stride     = s[r];\n+          max_stride_idx = r;\n+        }\n+      }\n+      s[rank()] = max_stride * base_t::extent(max_stride_idx);\n     }\n   }\n \ndiff --git a/core/unit_test/TestViewAPI_e.hpp b/core/unit_test/TestViewAPI_e.hpp\nindex 98166e65264..92467356884 100644\n--- a/core/unit_test/TestViewAPI_e.hpp\n+++ b/core/unit_test/TestViewAPI_e.hpp\n@@ -104,6 +104,13 @@ void test_left_stride(Extents... extents) {\n     ASSERT_EQ(all_strides[i], expected_stride);\n     expected_stride *= view.extent(i);\n   }\n+  ASSERT_EQ(all_strides[view_type::rank()], expected_stride);\n+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4\n+  for (size_t i = view_type::rank(); i < size_t(8); ++i) {\n+    ASSERT_EQ(view.stride(i), view.stride(view_type::rank() - 1) *\n+                                  view.extent(view_type::rank() - 1));\n+  }\n+#endif\n }\n \n template <typename DataType, typename... Extents>\n@@ -120,12 +127,57 @@ void test_right_stride(Extents... extents) {\n     ASSERT_EQ(all_strides[i], expected_stride);\n     expected_stride *= view.extent(i);\n   }\n+  ASSERT_EQ(all_strides[view_type::rank()], expected_stride);\n+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4\n+  for (size_t i = view_type::rank(); i < size_t(8); ++i) {\n+    ASSERT_EQ(view.stride(i), size_t(1));\n+  }\n+#endif\n+}\n+\n+template <typename DataType, typename... Extents>\n+void test_stride_stride(Extents... extents) {\n+  using view_type =\n+      Kokkos::View<DataType, Kokkos::LayoutStride, Kokkos::HostSpace>;\n+\n+  auto test = [](auto view_org) {\n+    view_type view(view_org);\n+\n+    size_t all_strides[view_type::rank() + 1];\n+    view.stride(all_strides);\n+\n+    size_t max_stride     = 0;\n+    size_t max_stride_idx = 0;\n+    for (size_t i = 0; i < view_type::rank(); ++i) {\n+      ASSERT_EQ(view.stride(i), view_org.stride(i));\n+      ASSERT_EQ(all_strides[i], view_org.stride(i));\n+      if (view.stride(i) > max_stride) {\n+        max_stride     = view.stride(i);\n+        max_stride_idx = i;\n+      }\n+    }\n+    ASSERT_EQ(all_strides[view_type::rank()],\n+              max_stride * view.extent(max_stride_idx));\n+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4\n+    for (size_t i = view_type::rank(); i < size_t(8); ++i) {\n+      ASSERT_EQ(view.stride(i), size_t(0));\n+    }\n+#endif\n+  };\n+\n+  Kokkos::View<DataType, Kokkos::LayoutRight, Kokkos::HostSpace> view_right(\n+      \"view\", extents...);\n+  test(view_right);\n+  Kokkos::View<DataType, Kokkos::LayoutRight, Kokkos::HostSpace> view_left(\n+      \"view\", extents...);\n+  test(view_left);\n }\n \n template <typename DataType, typename... Extents>\n void test_stride(Extents... extents) {\n   test_right_stride<DataType>(extents...);\n   test_left_stride<DataType>(extents...);\n+  test_stride_stride<DataType>(extents...);\n }\n \n TEST(TEST_CATEGORY, view_stride_method) {\n",
+  "pr_number": 7984,
+  "problem_statement": "We didn't test v.stride(r) with r>= rank, we didn't test stride() for layout_stride at all, and we didn't test that the last value in the array overload of stride() is correct.\r\n\r\nI added the tests and made the new view implementation match the behavior of the legacy implementation. \r\n\r\nNote: our documentation says you can't use r>=rank for stride(r): https://kokkos.org/kokkos-core-wiki/API/core/view/view.html#_CPPv4I0ENK6strideE6size_tRK5iType.\r\n\r\nI reintroduced this behavior under deprecation.",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/TestViewAPI_e.hpp b/core/unit_test/TestViewAPI_e.hpp\nindex 98166e65264..92467356884 100644\n--- a/core/unit_test/TestViewAPI_e.hpp\n+++ b/core/unit_test/TestViewAPI_e.hpp\n@@ -104,6 +104,13 @@ void test_left_stride(Extents... extents) {\n     ASSERT_EQ(all_strides[i], expected_stride);\n     expected_stride *= view.extent(i);\n   }\n+  ASSERT_EQ(all_strides[view_type::rank()], expected_stride);\n+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4\n+  for (size_t i = view_type::rank(); i < size_t(8); ++i) {\n+    ASSERT_EQ(view.stride(i), view.stride(view_type::rank() - 1) *\n+                                  view.extent(view_type::rank() - 1));\n+  }\n+#endif\n }\n \n template <typename DataType, typename... Extents>\n@@ -120,12 +127,57 @@ void test_right_stride(Extents... extents) {\n     ASSERT_EQ(all_strides[i], expected_stride);\n     expected_stride *= view.extent(i);\n   }\n+  ASSERT_EQ(all_strides[view_type::rank()], expected_stride);\n+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4\n+  for (size_t i = view_type::rank(); i < size_t(8); ++i) {\n+    ASSERT_EQ(view.stride(i), size_t(1));\n+  }\n+#endif\n+}\n+\n+template <typename DataType, typename... Extents>\n+void test_stride_stride(Extents... extents) {\n+  using view_type =\n+      Kokkos::View<DataType, Kokkos::LayoutStride, Kokkos::HostSpace>;\n+\n+  auto test = [](auto view_org) {\n+    view_type view(view_org);\n+\n+    size_t all_strides[view_type::rank() + 1];\n+    view.stride(all_strides);\n+\n+    size_t max_stride     = 0;\n+    size_t max_stride_idx = 0;\n+    for (size_t i = 0; i < view_type::rank(); ++i) {\n+      ASSERT_EQ(view.stride(i), view_org.stride(i));\n+      ASSERT_EQ(all_strides[i], view_org.stride(i));\n+      if (view.stride(i) > max_stride) {\n+        max_stride     = view.stride(i);\n+        max_stride_idx = i;\n+      }\n+    }\n+    ASSERT_EQ(all_strides[view_type::rank()],\n+              max_stride * view.extent(max_stride_idx));\n+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4\n+    for (size_t i = view_type::rank(); i < size_t(8); ++i) {\n+      ASSERT_EQ(view.stride(i), size_t(0));\n+    }\n+#endif\n+  };\n+\n+  Kokkos::View<DataType, Kokkos::LayoutRight, Kokkos::HostSpace> view_right(\n+      \"view\", extents...);\n+  test(view_right);\n+  Kokkos::View<DataType, Kokkos::LayoutRight, Kokkos::HostSpace> view_left(\n+      \"view\", extents...);\n+  test(view_left);\n }\n \n template <typename DataType, typename... Extents>\n void test_stride(Extents... extents) {\n   test_right_stride<DataType>(extents...);\n   test_left_stride<DataType>(extents...);\n+  test_stride_stride<DataType>(extents...);\n }\n \n TEST(TEST_CATEGORY, view_stride_method) {\n",
+  "title": "Fix and test stride for r>=rank",
+  "version": "cpp17"
+}

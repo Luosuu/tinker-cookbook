@@ -1,0 +1,261 @@
+diff --git a/batched/KokkosBatched_Util.hpp b/batched/KokkosBatched_Util.hpp
+index c99561e7e9..a73327c7df 100644
+--- a/batched/KokkosBatched_Util.hpp
++++ b/batched/KokkosBatched_Util.hpp
+@@ -244,8 +244,27 @@ struct Norm {
+   struct L1 {};
+   struct L2 {};
+   struct LInf {};
++  struct ScaledL2 {};
+ };
+ 
++template <class T>
++struct is_norm : std::false_type {};
++
++template <>
++struct is_norm<Norm::L1> : std::true_type {};
++
++template <>
++struct is_norm<Norm::L2> : std::true_type {};
++
++template <>
++struct is_norm<Norm::LInf> : std::true_type {};
++
++template <>
++struct is_norm<Norm::ScaledL2> : std::true_type {};
++
++template <class T>
++constexpr bool is_norm_v = is_norm<T>::value;
++
+ /// BatchLayout class used to specify where the batch dimension is
+ /// allocated in the input views for host-level Batched BLAS/LAPACK routines.
+ struct BatchLayout {
+diff --git a/batched/dense/impl/KokkosBatched_Nrm_Impl.hpp b/batched/dense/impl/KokkosBatched_Nrm_Impl.hpp
+index 9e7aff317a..cc886c5860 100644
+--- a/batched/dense/impl/KokkosBatched_Nrm_Impl.hpp
++++ b/batched/dense/impl/KokkosBatched_Nrm_Impl.hpp
+@@ -66,7 +66,6 @@ template <typename XViewType, typename NormViewType>
+ KOKKOS_INLINE_FUNCTION int TeamVectorNrm<MemberType, NrmType>::invoke(const MemberType &member, const XViewType &x,
+                                                                       const NormViewType &norm) {
+   Impl::checkNrmInput(x, norm);
+-
+   const int n = x.extent_int(0);
+   if (n == 0) {
+     norm() = KokkosKernels::ArithTraits<typename NormViewType::non_const_value_type>::zero();
+diff --git a/batched/dense/impl/KokkosBatched_Nrm_Internal.hpp b/batched/dense/impl/KokkosBatched_Nrm_Internal.hpp
+index 24143ca0e2..661952c18a 100644
+--- a/batched/dense/impl/KokkosBatched_Nrm_Internal.hpp
++++ b/batched/dense/impl/KokkosBatched_Nrm_Internal.hpp
+@@ -28,6 +28,96 @@ KOKKOS_INLINE_FUNCTION NrmValueType square(const ValueType &x) {
+   }
+ }
+ 
++template <typename NrmValueType, typename ExecutionSpace>
++struct NormAccumulator {
++ public:
++  using value_type = Kokkos::pair<NrmValueType, NrmValueType>;
++  using reducer    = NormAccumulator<NrmValueType, ExecutionSpace>;
++
++ private:
++  value_type &m_accum;  // (scale, sumsq)
++
++ public:
++  KOKKOS_INLINE_FUNCTION NormAccumulator(value_type &val) : m_accum(val) {}
++  KOKKOS_INLINE_FUNCTION
++  void join(value_type &dest, const value_type &src) const {
++    if (src.first == KokkosKernels::ArithTraits<NrmValueType>::zero()) {
++      return;
++    }
++    if (dest.first == KokkosKernels::ArithTraits<NrmValueType>::zero()) {
++      dest = src;
++      return;
++    }
++
++    if (dest.first >= src.first) {
++      auto r = src.first / dest.first;
++      dest.second += src.second * square<NrmValueType>(r);
++    } else {
++      auto r      = dest.first / src.first;
++      dest.second = src.second + dest.second * square<NrmValueType>(r);
++      dest.first  = src.first;
++    }
++  }
++
++  KOKKOS_INLINE_FUNCTION
++  void init(value_type &val) const {
++    val.first  = KokkosKernels::ArithTraits<NrmValueType>::zero();
++    val.second = KokkosKernels::ArithTraits<NrmValueType>::one();
++  }
++
++  KOKKOS_INLINE_FUNCTION
++  value_type &reference() const { return m_accum; }
++};
++
++/// \brief Helper function to compute scaled square for ScaledL2 norm. It updates the scale and sumsq values based on
++/// the input x.
++/// Reference:
++/// dnrm2: https://www.netlib.org/lapack/lapack-3.1.1/html/dnrm2.f.html,
++/// dznrm2: https://www.netlib.org/lapack/lapack-3.1.1/html/dznrm2.f.html
++/// \tparam NrmValueType: Value type for the norm (e.g., double)
++/// \tparam ValueType: Value type for the input (e.g., Kokkos::complex<double>)
++/// \param[in] x Input value for which the scaled square is computed
++/// \param[in,out] scale Current scale value, which is updated if the absolute value of x
++/// is greater than the current scale
++/// \param[in,out] sumsq Current sum of squares, which is updated if the absolute
++/// value of x is greater than the current scale
++template <typename NrmValueType, typename ValueType>
++KOKKOS_INLINE_FUNCTION void scaled_square(const ValueType &x, NrmValueType &scale, NrmValueType &sumsq) {
++  if constexpr (KokkosKernels::ArithTraits<ValueType>::is_complex) {
++    using mag_type = typename KokkosKernels::ArithTraits<ValueType>::mag_type;
++    auto x_real    = KokkosKernels::ArithTraits<ValueType>::real(x);
++    if (x_real != KokkosKernels::ArithTraits<mag_type>::zero()) {
++      const NrmValueType abs_val = KokkosKernels::ArithTraits<mag_type>::abs(x_real);
++      if (scale < abs_val) {
++        sumsq = KokkosKernels::ArithTraits<mag_type>::one() + sumsq * square<NrmValueType>(scale / abs_val);
++        scale = abs_val;
++      } else {
++        sumsq += square<NrmValueType>(abs_val / scale);
++      }
++    }
++    auto x_imag = KokkosKernels::ArithTraits<ValueType>::imag(x);
++    if (x_imag != KokkosKernels::ArithTraits<mag_type>::zero()) {
++      const NrmValueType abs_val = KokkosKernels::ArithTraits<mag_type>::abs(x_imag);
++      if (scale < abs_val) {
++        sumsq = KokkosKernels::ArithTraits<mag_type>::one() + sumsq * square<NrmValueType>(scale / abs_val);
++        scale = abs_val;
++      } else {
++        sumsq += square<NrmValueType>(abs_val / scale);
++      }
++    }
++  } else {
++    if (x != KokkosKernels::ArithTraits<ValueType>::zero()) {
++      const NrmValueType abs_val = KokkosKernels::ArithTraits<ValueType>::abs(x);
++      if (scale < abs_val) {
++        sumsq = KokkosKernels::ArithTraits<NrmValueType>::one() + sumsq * square<NrmValueType>(scale / abs_val);
++        scale = abs_val;
++      } else {
++        sumsq += square<NrmValueType>(abs_val / scale);
++      }
++    }
++  }
++}
++
+ ///
+ /// Serial Internal Impl
+ /// ====================
+@@ -58,6 +148,17 @@ KOKKOS_INLINE_FUNCTION void SerialNrmInternal<NrmType>::invoke(const int n, cons
+       const NrmValueType abs_val = KokkosKernels::ArithTraits<ValueType>::abs(x[i * xs0]);
+       if (abs_val > nrm) nrm = abs_val;
+     }
++  } else if constexpr (std::is_same_v<NrmType, Norm::ScaledL2>) {
++    if (n == 1) {
++      nrm = KokkosKernels::ArithTraits<ValueType>::abs(x[0]);
++    } else {
++      NrmValueType scale = KokkosKernels::ArithTraits<NrmValueType>::zero();
++      NrmValueType sumsq = KokkosKernels::ArithTraits<NrmValueType>::one();
++      for (int i = 0; i < n; ++i) {
++        scaled_square(x[i * xs0], scale, sumsq);
++      }
++      nrm = scale * KokkosKernels::ArithTraits<NrmValueType>::sqrt(sumsq);
++    }
+   }
+ 
+   *norm = nrm;
+@@ -99,6 +200,23 @@ KOKKOS_INLINE_FUNCTION void TeamNrmInternal<MemberType, NrmType>::invoke(const M
+           if (abs_val > thread_nrm) thread_nrm = abs_val;
+         },
+         max_nrm);
++  } else if constexpr (std::is_same_v<NrmType, Norm::ScaledL2>) {
++    if (n == 1) {
++      nrm = KokkosKernels::ArithTraits<ValueType>::abs(x[0]);
++    } else {
++      Kokkos::pair<NrmValueType, NrmValueType> init_val{KokkosKernels::ArithTraits<NrmValueType>::zero(),
++                                                        KokkosKernels::ArithTraits<NrmValueType>::one()};
++      NormAccumulator<NrmValueType, typename MemberType::execution_space> accumulator(init_val);
++      Kokkos::parallel_reduce(
++          Kokkos::TeamThreadRange(member, n),
++          [&](const int i,
++              typename NormAccumulator<NrmValueType, typename MemberType::execution_space>::value_type &thread_accum) {
++            scaled_square(x[i * xs0], thread_accum.first, thread_accum.second);
++          },
++          accumulator);
++      const auto [scale, sumsq] = accumulator.reference();
++      nrm                       = scale * KokkosKernels::ArithTraits<NrmValueType>::sqrt(sumsq);
++    }
+   }
+ 
+   *norm = nrm;
+@@ -140,6 +258,23 @@ KOKKOS_INLINE_FUNCTION void TeamVectorNrmInternal<MemberType, NrmType>::invoke(c
+           if (abs_val > thread_nrm) thread_nrm = abs_val;
+         },
+         max_nrm);
++  } else if constexpr (std::is_same_v<NrmType, Norm::ScaledL2>) {
++    if (n == 1) {
++      nrm = KokkosKernels::ArithTraits<ValueType>::abs(x[0]);
++    } else {
++      Kokkos::pair<NrmValueType, NrmValueType> init_val{KokkosKernels::ArithTraits<NrmValueType>::zero(),
++                                                        KokkosKernels::ArithTraits<NrmValueType>::one()};
++      NormAccumulator<NrmValueType, typename MemberType::execution_space> accumulator(init_val);
++      Kokkos::parallel_reduce(
++          Kokkos::TeamVectorRange(member, n),
++          [&](const int i,
++              typename NormAccumulator<NrmValueType, typename MemberType::execution_space>::value_type &thread_accum) {
++            scaled_square(x[i * xs0], thread_accum.first, thread_accum.second);
++          },
++          accumulator);
++      const auto [scale, sumsq] = accumulator.reference();
++      nrm                       = scale * KokkosKernels::ArithTraits<NrmValueType>::sqrt(sumsq);
++    }
+   }
+   *norm = nrm;
+ }
+diff --git a/batched/dense/src/KokkosBatched_Nrm.hpp b/batched/dense/src/KokkosBatched_Nrm.hpp
+index 0061c9dccf..2920bb153f 100644
+--- a/batched/dense/src/KokkosBatched_Nrm.hpp
++++ b/batched/dense/src/KokkosBatched_Nrm.hpp
+@@ -10,13 +10,13 @@ namespace KokkosBatched {
+ /// If NrmType == Norm::L1, compute L1 norm of each vector in the batch
+ /// If NrmType == Norm::L2, compute L2 norm of each vector in the batch
+ /// If NrmType == Norm::LInf, compute Linf norm of each vector in the batch
++/// If NrmType == Norm::ScaledL2, compute ScaledL2 norm of each vector in the batch
+ /// No nested parallel_for is used inside of the function.
+-/// \tparam NrmType: one of Norm::L1, Norm::L2, Norm::LInf
++/// \tparam NrmType: one of Norm::L1, Norm::L2, Norm::LInf, Norm::ScaledL2
+ template <typename NrmType>
+ struct SerialNrm {
+-  static_assert(std::is_same_v<NrmType, Norm::L1> || std::is_same_v<NrmType, Norm::L2> ||
+-                    std::is_same_v<NrmType, Norm::LInf>,
+-                "KokkosBatched::SerialNrm: NrmType must be one of Norm::L1, Norm::L2, Norm::LInf");
++  static_assert(is_norm_v<NrmType>,
++                "KokkosBatched::SerialNrm: NrmType must be one of Norm::L1, Norm::L2, Norm::LInf, Norm::ScaledL2");
+   /// \tparam XViewType: Type for input X, needs to be a 1D view
+   /// \tparam NormViewType: Type for output norm, needs to be a 0D view
+   ///
+@@ -35,9 +35,8 @@ struct SerialNrm {
+ /// \tparam NrmType: one of Norm::L1, Norm::L2, Norm::LInf
+ template <typename MemberType, typename NrmType>
+ struct TeamNrm {
+-  static_assert(std::is_same_v<NrmType, Norm::L1> || std::is_same_v<NrmType, Norm::L2> ||
+-                    std::is_same_v<NrmType, Norm::LInf>,
+-                "KokkosBatched::TeamNrm: NrmType must be one of Norm::L1, Norm::L2, Norm::LInf");
++  static_assert(is_norm_v<NrmType>,
++                "KokkosBatched::TeamNrm: NrmType must be one of Norm::L1, Norm::L2, Norm::LInf, Norm::ScaledL2");
+   /// \tparam XViewType: Type for input X, needs to be a 1D view
+   /// \tparam NormViewType: Type for output norm, needs to be a 0D view
+   ///
+@@ -54,12 +53,11 @@ struct TeamNrm {
+ /// If NrmType == Norm::LInf, compute Linf norm of each vector in the batch
+ /// A nested parallel_for with TeamVectorRange is used.
+ /// \tparam MemberType: Kokkos TeamPolicy member type
+-/// \tparam NrmType: one of Norm::L1, Norm::L2, Norm::LInf
++/// \tparam NrmType: one of Norm::L1, Norm::L2, Norm::LInf, Norm::ScaledL2
+ template <typename MemberType, typename NrmType>
+ struct TeamVectorNrm {
+-  static_assert(std::is_same_v<NrmType, Norm::L1> || std::is_same_v<NrmType, Norm::L2> ||
+-                    std::is_same_v<NrmType, Norm::LInf>,
+-                "KokkosBatched::TeamVectorNrm: NrmType must be one of Norm::L1, Norm::L2, Norm::LInf");
++  static_assert(is_norm_v<NrmType>,
++                "KokkosBatched::TeamVectorNrm: NrmType must be one of Norm::L1, Norm::L2, Norm::LInf, Norm::ScaledL2");
+   /// \tparam XViewType: Type for input X, needs to be a 1D view
+   /// \tparam NormViewType: Type for output norm, needs to be a 0D view
+   ///

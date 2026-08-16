@@ -1,0 +1,82 @@
+diff --git a/core/unit_test/TestNumericTraits.hpp b/core/unit_test/TestNumericTraits.hpp
+index 04d8de81729..ecee23390b9 100644
+--- a/core/unit_test/TestNumericTraits.hpp
++++ b/core/unit_test/TestNumericTraits.hpp
+@@ -405,11 +405,13 @@ TEST(TEST_CATEGORY, numeric_traits_min_max_exponent10) {
+   TestNumericTraits<TEST_EXECSPACE, long double, MaxExponent10>();
+ #endif
+ }
++
++KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_PUSH()
+ TEST(TEST_CATEGORY, numeric_traits_quiet_and_signaling_nan) {
+-// FIXME_NVHPC
+-#ifdef KOKKOS_COMPILER_NVHPC
++#ifdef KOKKOS_COMPILER_NVHPC  // FIXME_NVHPC
+   GTEST_SKIP() << "This test is known to fail with the NVHPC compiler";
+ #endif
++
+   TestNumericTraits<TEST_EXECSPACE, Kokkos::Experimental::half_t, QuietNaN>();
+   TestNumericTraits<TEST_EXECSPACE, Kokkos::Experimental::half_t,
+                     SignalingNaN>();
+@@ -426,6 +428,7 @@ TEST(TEST_CATEGORY, numeric_traits_quiet_and_signaling_nan) {
+   TestNumericTraits<TEST_EXECSPACE, long double, SignalingNaN>();
+ #endif
+ }
++KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_POP()
+ 
+ namespace NumericTraitsSFINAE {
+ 
+diff --git a/core/unit_test/incremental/Test12a_ThreadScratch.hpp b/core/unit_test/incremental/Test12a_ThreadScratch.hpp
+index 8c97043f300..61d2fd30763 100644
+--- a/core/unit_test/incremental/Test12a_ThreadScratch.hpp
++++ b/core/unit_test/incremental/Test12a_ThreadScratch.hpp
+@@ -96,12 +96,14 @@ struct ThreadScratch {
+   }
+ };
+ 
++KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_PUSH()
+ TEST(TEST_CATEGORY, IncrTest_12a_ThreadScratch) {
+-  ThreadScratch<TEST_EXECSPACE> test;
+ #ifdef KOKKOS_ENABLE_OPENACC  // FIXME_OPENACC
+   GTEST_SKIP() << "skipping since scratch memory is not yet implemented in the "
+                   "OpenACC backend";
+ #endif
++
++  ThreadScratch<TEST_EXECSPACE> test;
+   // FIXME_OPENMPTARGET - team_size has to be a multiple of 32 for the tests to
+   // pass in the Release and RelWithDebInfo builds. Does not need the team_size
+   // to be a multiple of 32 for the Debug builds.
+@@ -115,5 +117,6 @@ TEST(TEST_CATEGORY, IncrTest_12a_ThreadScratch) {
+   test.run(14, 277, 321);
+ #endif
+ }
++KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_POP()
+ 
+ }  // namespace Test
+diff --git a/core/unit_test/incremental/Test12b_TeamScratch.hpp b/core/unit_test/incremental/Test12b_TeamScratch.hpp
+index 0ebb5c50fbc..4f042f256a8 100644
+--- a/core/unit_test/incremental/Test12b_TeamScratch.hpp
++++ b/core/unit_test/incremental/Test12b_TeamScratch.hpp
+@@ -86,12 +86,14 @@ struct TeamScratch {
+   }
+ };
+ 
++KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_PUSH()
+ TEST(TEST_CATEGORY, IncrTest_12b_TeamScratch) {
+-  TeamScratch<TEST_EXECSPACE> test;
+ #ifdef KOKKOS_ENABLE_OPENACC  // FIXME_OPENACC
+   GTEST_SKIP() << "skipping since scratch memory is not yet implemented in the "
+                   "OpenACC backend";
+ #endif
++
++  TeamScratch<TEST_EXECSPACE> test;
+   // FIXME_OPENMPTARGET - team_size has to be a multiple of 32 for the tests to
+   // pass in the Release and RelWithDebInfo builds. Does not need the team_size
+   // to be a multiple of 32 for the Debug builds.
+@@ -105,5 +107,6 @@ TEST(TEST_CATEGORY, IncrTest_12b_TeamScratch) {
+   test.run(14, 277, 321);
+ #endif
+ }
++KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_POP()
+ 
+ }  // namespace Test

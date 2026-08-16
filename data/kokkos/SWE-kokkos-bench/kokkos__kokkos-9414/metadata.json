@@ -1,0 +1,59 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "PASS_TO_PASS": [],
+  "base_commit": "c7b82d6ff1a34282be4421605a9a63a59eb507fa",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "changed_files": [
+    {
+      "additions": 5,
+      "deletions": 3,
+      "filename": "core/src/View/MDSpan/Kokkos_MDSpan_Accessor.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 21,
+      "deletions": 0,
+      "filename": "core/unit_test/view/TestAccessorFromMemoryTraits.cpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/View/MDSpan/Kokkos_MDSpan_Accessor.hpp b/core/src/View/MDSpan/Kokkos_MDSpan_Accessor.hpp\nindex db66c0be369..7f456ab8d72 100644\n--- a/core/src/View/MDSpan/Kokkos_MDSpan_Accessor.hpp\n+++ b/core/src/View/MDSpan/Kokkos_MDSpan_Accessor.hpp\n@@ -508,13 +508,15 @@ using CheckedReferenceCountedAccessor =\n template <class ElementType, class MemorySpace,\n           class MemoryScope = desul::MemoryScopeDevice>\n using CheckedRelaxedAtomicAccessor =\n-    SpaceAwareAccessor<MemorySpace, AtomicAccessorRelaxed<ElementType>>;\n+    SpaceAwareAccessor<MemorySpace,\n+                       AtomicAccessorRelaxed<ElementType, MemoryScope>>;\n \n template <class ElementType, class MemorySpace,\n           class MemoryScope = desul::MemoryScopeDevice>\n using CheckedReferenceCountedRelaxedAtomicAccessor = SpaceAwareAccessor<\n-    MemorySpace, ReferenceCountedAccessor<ElementType, MemorySpace,\n-                                          AtomicAccessorRelaxed<ElementType>>>;\n+    MemorySpace,\n+    ReferenceCountedAccessor<ElementType, MemorySpace,\n+                             AtomicAccessorRelaxed<ElementType, MemoryScope>>>;\n \n // Implements the deduction of accessors from ElementType, Space, and MemTraits\n template <class ElementType, class Space, class MemTraits>\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=OFF -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo",
+  "created_at": "2026-08-10T16:28:05Z",
+  "era": "cpp20",
+  "f2p_commands": [],
+  "fail_to_pass": [
+    "Kokkos_CoreTestCompileOnly"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-9414",
+  "labels": [],
+  "linked_issues": [
+    9413
+  ],
+  "merge_commit": "452bd8da157808dd615f1199fc3850346f929b5a",
+  "merged_at": "2026-08-10T16:28:05Z",
+  "metadata": {
+    "difficulty": "easy",
+    "docker_validated": true,
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/9414",
+    "phase0_validated": true,
+    "validation_date": "2026-08-15",
+    "validation_platform": "macOS arm64 AppleClang 21; Linux arm64 GCC 13 Docker"
+  },
+  "p2p_commands": [],
+  "pass_to_pass": [],
+  "patch": "diff --git a/core/src/View/MDSpan/Kokkos_MDSpan_Accessor.hpp b/core/src/View/MDSpan/Kokkos_MDSpan_Accessor.hpp\nindex db66c0be369..7f456ab8d72 100644\n--- a/core/src/View/MDSpan/Kokkos_MDSpan_Accessor.hpp\n+++ b/core/src/View/MDSpan/Kokkos_MDSpan_Accessor.hpp\n@@ -508,13 +508,15 @@ using CheckedReferenceCountedAccessor =\n template <class ElementType, class MemorySpace,\n           class MemoryScope = desul::MemoryScopeDevice>\n using CheckedRelaxedAtomicAccessor =\n-    SpaceAwareAccessor<MemorySpace, AtomicAccessorRelaxed<ElementType>>;\n+    SpaceAwareAccessor<MemorySpace,\n+                       AtomicAccessorRelaxed<ElementType, MemoryScope>>;\n \n template <class ElementType, class MemorySpace,\n           class MemoryScope = desul::MemoryScopeDevice>\n using CheckedReferenceCountedRelaxedAtomicAccessor = SpaceAwareAccessor<\n-    MemorySpace, ReferenceCountedAccessor<ElementType, MemorySpace,\n-                                          AtomicAccessorRelaxed<ElementType>>>;\n+    MemorySpace,\n+    ReferenceCountedAccessor<ElementType, MemorySpace,\n+                             AtomicAccessorRelaxed<ElementType, MemoryScope>>>;\n \n // Implements the deduction of accessors from ElementType, Space, and MemTraits\n template <class ElementType, class Space, class MemTraits>\ndiff --git a/core/unit_test/view/TestAccessorFromMemoryTraits.cpp b/core/unit_test/view/TestAccessorFromMemoryTraits.cpp\nindex 76370e7ab84..890cd0d59bb 100644\n--- a/core/unit_test/view/TestAccessorFromMemoryTraits.cpp\n+++ b/core/unit_test/view/TestAccessorFromMemoryTraits.cpp\n@@ -82,6 +82,27 @@ constexpr bool test_equivalence() {\n   return true;\n }\n \n+using memory_scope = desul::MemoryScopeCore;\n+\n+// Check that CheckedRelaxedAtomicAccessor preserves memory scope.\n+static_assert(std::is_same_v<\n+              Kokkos::Impl::CheckedRelaxedAtomicAccessor<\n+                  float, Kokkos::HostSpace, memory_scope>,\n+              Kokkos::Impl::SpaceAwareAccessor<\n+                  Kokkos::HostSpace,\n+                  Kokkos::Impl::AtomicAccessorRelaxed<float, memory_scope>>>);\n+// Check that CheckedReferenceCountedRelaxedAtomicAccessor preserves memory\n+// scope.\n+static_assert(\n+    std::is_same_v<\n+        Kokkos::Impl::CheckedReferenceCountedRelaxedAtomicAccessor<\n+            float, Kokkos::HostSpace, memory_scope>,\n+        Kokkos::Impl::SpaceAwareAccessor<\n+            Kokkos::HostSpace,\n+            Kokkos::Impl::ReferenceCountedAccessor<\n+                float, Kokkos::HostSpace,\n+                Kokkos::Impl::AtomicAccessorRelaxed<float, memory_scope>>>>);\n+\n static_assert(test_equivalence<float, Kokkos::DefaultExecutionSpace>());\n static_assert(\n     test_equivalence<const float, Kokkos::DefaultHostExecutionSpace>());\n",
+  "pr_number": 9414,
+  "problem_statement": "`CheckedRelaxedAtomicAccessor` ignores `MemoryScope` parameter\n\n[source location omitted]\n\n`AtomicAccessorRelaxed` has a MemoryScope argument:\n\n[source location omitted]\n\nI think we just need to use it:\n\n[implementation suggestion omitted]\n\n(same for `CheckedReferenceCountedRelaxedAtomicAccessor`)",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/view/TestAccessorFromMemoryTraits.cpp b/core/unit_test/view/TestAccessorFromMemoryTraits.cpp\nindex 76370e7ab84..890cd0d59bb 100644\n--- a/core/unit_test/view/TestAccessorFromMemoryTraits.cpp\n+++ b/core/unit_test/view/TestAccessorFromMemoryTraits.cpp\n@@ -82,6 +82,27 @@ constexpr bool test_equivalence() {\n   return true;\n }\n \n+using memory_scope = desul::MemoryScopeCore;\n+\n+// Check that CheckedRelaxedAtomicAccessor preserves memory scope.\n+static_assert(std::is_same_v<\n+              Kokkos::Impl::CheckedRelaxedAtomicAccessor<\n+                  float, Kokkos::HostSpace, memory_scope>,\n+              Kokkos::Impl::SpaceAwareAccessor<\n+                  Kokkos::HostSpace,\n+                  Kokkos::Impl::AtomicAccessorRelaxed<float, memory_scope>>>);\n+// Check that CheckedReferenceCountedRelaxedAtomicAccessor preserves memory\n+// scope.\n+static_assert(\n+    std::is_same_v<\n+        Kokkos::Impl::CheckedReferenceCountedRelaxedAtomicAccessor<\n+            float, Kokkos::HostSpace, memory_scope>,\n+        Kokkos::Impl::SpaceAwareAccessor<\n+            Kokkos::HostSpace,\n+            Kokkos::Impl::ReferenceCountedAccessor<\n+                float, Kokkos::HostSpace,\n+                Kokkos::Impl::AtomicAccessorRelaxed<float, memory_scope>>>>);\n+\n static_assert(test_equivalence<float, Kokkos::DefaultExecutionSpace>());\n static_assert(\n     test_equivalence<const float, Kokkos::DefaultHostExecutionSpace>());\n",
+  "title": "propagate memory scope in accessor aliases",
+  "version": "cpp20"
+}

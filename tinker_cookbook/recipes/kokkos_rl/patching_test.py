@@ -60,6 +60,43 @@ def test_candidate_filter_requires_host_source_and_tests() -> None:
     )
 
 
+def test_ecosystem_profiles_classify_source_and_tests() -> None:
+    kernels_files = (
+        ChangedFile("sparse/src/KokkosSparse_spmv.hpp", "modified", 8, 2),
+        ChangedFile("sparse/unit_test/Test_Sparse_spmv.hpp", "modified", 12, 0),
+    )
+    assert candidate_rejection_reasons(kernels_files, repo="kokkos/kokkos-kernels") == ()
+
+    pykokkos_files = (
+        ChangedFile("pykokkos/core/compiler.py", "modified", 8, 2),
+        ChangedFile("tests/test_regressions.py", "modified", 12, 0),
+    )
+    assert candidate_rejection_reasons(pykokkos_files, repo="kokkos/pykokkos") == ()
+
+
+def test_gpu_candidates_can_be_retained_for_modal_validation() -> None:
+    files = (
+        ChangedFile("core/src/Cuda/Kokkos_Cuda.hpp", "modified", 8, 2),
+        ChangedFile("core/unit_test/cuda/TestCuda.cpp", "modified", 12, 0),
+    )
+    assert "gpu-backend-only" in candidate_rejection_reasons(files)
+    assert candidate_rejection_reasons(files, include_gpu=True) == ()
+
+
+def test_precommit_maintenance_is_rejected() -> None:
+    files = (
+        ChangedFile("common/tool.cpp", "modified", 5, 2),
+        ChangedFile("tests/test_tool.cpp", "modified", 5, 2),
+    )
+    reasons = candidate_rejection_reasons(
+        files,
+        title="Add pre-commit check",
+        repo="kokkos/kokkos-tools",
+        include_gpu=True,
+    )
+    assert "maintenance-cleanup" in reasons
+
+
 def test_issue_references_are_deduplicated_in_order() -> None:
     assert linked_issue_numbers("Fixes #12, resolves: #9 and closes #12") == (12, 9)
     assert linked_issue_numbers("Fixes https://github.com/kokkos/kokkos/issues/9413") == (9413,)

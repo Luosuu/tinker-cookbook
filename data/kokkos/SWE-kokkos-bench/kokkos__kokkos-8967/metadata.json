@@ -1,0 +1,78 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreUnitTest_Serial2 (TestSubView_c16)"
+  ],
+  "PASS_TO_PASS": [
+    "SerialDeath.view_subview_constructor_layout_compatibility"
+  ],
+  "base_commit": "f58d70314ce28b4ccff5b078e2187226e48f09b2",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreUnitTest_Serial2"
+  ],
+  "changed_files": [
+    {
+      "additions": 2,
+      "deletions": 1,
+      "filename": "core/src/View/Kokkos_BasicView.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 10,
+      "deletions": 1,
+      "filename": "core/unit_test/CMakeLists.txt",
+      "status": "modified"
+    },
+    {
+      "additions": 1,
+      "deletions": 1,
+      "filename": "core/unit_test/TestSubView_c15.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 55,
+      "deletions": 0,
+      "filename": "core/unit_test/TestSubView_c16.hpp",
+      "status": "added"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/View/Kokkos_BasicView.hpp b/core/src/View/Kokkos_BasicView.hpp\nindex a67ce315d35..65c659364e8 100644\n--- a/core/src/View/Kokkos_BasicView.hpp\n+++ b/core/src/View/Kokkos_BasicView.hpp\n@@ -597,7 +597,8 @@ class BasicView {\n     // Explicit cast is needed because submdspan_mapping may return a different\n     // layout type.\n     using sub_accessor_t = typename OtherAccessorPolicy::offset_policy;\n-    m_ptr = src_view.m_acc.offset(src_view.m_ptr, sub_mapping_result.offset);\n+    m_ptr                = static_cast<data_handle_type>(\n+        src_view.m_acc.offset(src_view.m_ptr, sub_mapping_result.offset));\n     m_map = mapping_type(sub_mapping_result.mapping);\n     m_acc = sub_accessor_t(src_view.m_acc);\n \n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+  "created_at": "2026-03-25T15:35:13Z",
+  "era": "cpp20",
+  "f2p_commands": [],
+  "fail_to_pass": [
+    "Kokkos_CoreUnitTest_Serial2 (TestSubView_c16)"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-8967",
+  "labels": [
+    "Blocks Promotion"
+  ],
+  "linked_issues": [
+    8965
+  ],
+  "merge_commit": "fdc2eabb11ee4d28726ae50efe7424f598c08a93",
+  "merged_at": "2026-03-25T15:35:13Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/8967",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "./build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter=SerialDeath.view_subview_constructor_layout_compatibility"
+  ],
+  "pass_to_pass": [
+    "SerialDeath.view_subview_constructor_layout_compatibility"
+  ],
+  "patch": "diff --git a/core/src/View/Kokkos_BasicView.hpp b/core/src/View/Kokkos_BasicView.hpp\nindex a67ce315d35..65c659364e8 100644\n--- a/core/src/View/Kokkos_BasicView.hpp\n+++ b/core/src/View/Kokkos_BasicView.hpp\n@@ -597,7 +597,8 @@ class BasicView {\n     // Explicit cast is needed because submdspan_mapping may return a different\n     // layout type.\n     using sub_accessor_t = typename OtherAccessorPolicy::offset_policy;\n-    m_ptr = src_view.m_acc.offset(src_view.m_ptr, sub_mapping_result.offset);\n+    m_ptr                = static_cast<data_handle_type>(\n+        src_view.m_acc.offset(src_view.m_ptr, sub_mapping_result.offset));\n     m_map = mapping_type(sub_mapping_result.mapping);\n     m_acc = sub_accessor_t(src_view.m_acc);\n \ndiff --git a/core/unit_test/CMakeLists.txt b/core/unit_test/CMakeLists.txt\nindex d6539dc9daa..0ec1d3cccee 100644\n--- a/core/unit_test/CMakeLists.txt\n+++ b/core/unit_test/CMakeLists.txt\n@@ -299,7 +299,16 @@ foreach(Tag Threads;Serial;OpenMP;Cuda;HPX;OpenACC;HIP;SYCL)\n     endforeach()\n \n     set(${Tag}_SOURCES2D)\n-    foreach(Name SubView_c10 SubView_c11 SubView_c12 SubView_c13 SubView_c14 SubView_c15)\n+    foreach(\n+      Name\n+      SubView_c10\n+      SubView_c11\n+      SubView_c12\n+      SubView_c13\n+      SubView_c14\n+      SubView_c15\n+      SubView_c16\n+    )\n       set(file ${dir}/Test${Tag}_${Name}.cpp)\n       # Write to a temporary intermediate file and call configure_file to avoid\n       # updating timestamps triggering unnecessary rebuilds on subsequent cmake runs.\ndiff --git a/core/unit_test/TestSubView_c15.hpp b/core/unit_test/TestSubView_c15.hpp\nindex 6718e40ff5b..b51a4f18069 100644\n--- a/core/unit_test/TestSubView_c15.hpp\n+++ b/core/unit_test/TestSubView_c15.hpp\n@@ -27,7 +27,7 @@ TEST(TEST_CATEGORY_DEATH, view_subview_constructor_layout_compatibility) {\n     (void)Kokkos::View<int*, LS>(a1, Kokkos::ALL, 1);\n \n     // FIXME: This doesn't compile for BasicView, but should\n-    //(void)Kokkos::View<int*, LR>(a, Kokkos::ALL, 1);\n+    // (void)Kokkos::View<int*, LR>(a1, Kokkos::ALL, 1);\n   }\n   {\n     // Using subview dims (1, ALL). For a LayoutLeft,\ndiff --git a/core/unit_test/TestSubView_c16.hpp b/core/unit_test/TestSubView_c16.hpp\nnew file mode 100644\nindex 00000000000..711123cdb5f\n--- /dev/null\n+++ b/core/unit_test/TestSubView_c16.hpp\n@@ -0,0 +1,55 @@\n+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception\n+// SPDX-FileCopyrightText: Copyright Contributors to the Kokkos project\n+\n+#include <gtest/gtest.h>\n+#include <Kokkos_Macros.hpp>\n+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES\n+import kokkos.core;\n+#else\n+#include <Kokkos_Core.hpp>\n+#endif\n+\n+namespace {\n+// Test that the subview constructor works for constructing subviews from\n+// Views where one of them has the Kokkos::Unmanaged memory trait\n+TEST(TEST_CATEGORY, view_create_unmanaged_subview_from_managed) {\n+  int N    = 10;\n+  using LR = Kokkos::LayoutRight;\n+  using LL = Kokkos::LayoutLeft;\n+  using LS = Kokkos::LayoutStride;\n+\n+  Kokkos::View<int**, LL> a1(\"A1\", N, N);\n+  Kokkos::View<int**, LL, Kokkos::MemoryTraits<Kokkos::Unmanaged>> a1_unmanaged(\n+      a1.data(), N, N);\n+  {\n+    // Using subview dims (ALL, 1). For a LayoutLeft,\n+    // any subview layout should be appropriate.\n+    (void)Kokkos::View<int*, LL, Kokkos::MemoryTraits<Kokkos::Unmanaged>>(\n+        a1, Kokkos::ALL, 1);\n+    (void)Kokkos::View<int*, LS, Kokkos::MemoryTraits<Kokkos::Unmanaged>>(\n+        a1, Kokkos::ALL, 1);\n+\n+    (void)Kokkos::View<int*, LL>(a1_unmanaged, Kokkos::ALL, 1);\n+    (void)Kokkos::View<int*, LS>(a1_unmanaged, Kokkos::ALL, 1);\n+    // FIXME: This doesn't compile for BasicView, but should\n+    // (void)Kokkos::View<int*, LR>(a1_unmanaged, Kokkos::ALL, 1);\n+  }\n+\n+  Kokkos::View<int**, LL> a2(\"A2\", 1, N);\n+  Kokkos::View<int**, LL, Kokkos::MemoryTraits<Kokkos::Unmanaged>> a2_unmanaged(\n+      a2.data(), 1, N);\n+  {\n+    // Using subview dims (0, ALL). Any subview layout should be appropriate.\n+    (void)Kokkos::View<int*, LL, Kokkos::MemoryTraits<Kokkos::Unmanaged>>(\n+        a2, 0, Kokkos::ALL);\n+    (void)Kokkos::View<int*, LS, Kokkos::MemoryTraits<Kokkos::Unmanaged>>(\n+        a2, 0, Kokkos::ALL);\n+    (void)Kokkos::View<int*, LR, Kokkos::MemoryTraits<Kokkos::Unmanaged>>(\n+        a2, 0, Kokkos::ALL);\n+\n+    (void)Kokkos::View<int*, LL>(a2_unmanaged, 0, Kokkos::ALL);\n+    (void)Kokkos::View<int*, LS>(a2_unmanaged, 0, Kokkos::ALL);\n+    (void)Kokkos::View<int*, LR>(a2_unmanaged, 0, Kokkos::ALL);\n+  }\n+}\n+}  // namespace\n",
+  "pr_number": 8967,
+  "problem_statement": "Create an unmanaged subview from a view is broken (rank-1)\n\nCreating an unmanaged subview of a view as follows used to work until 8cfdfd8abe48b57cfb1b887fd8c9e3d77f990b51 from @crtrott :\n[implementation suggestion omitted]\n\nReverting 8cfdfd8abe48b57cfb1b887fd8c9e3d77f990b51 makes the above code compile just fine. The question is, since there wasn't any test that captured the regression:\n> Is it allowed to create an unmanaged view from a view as done above?\n\nIf so, this needs a fix @crtrott :wink: \n\nCompiler output:\n[implementation suggestion omitted]",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/CMakeLists.txt b/core/unit_test/CMakeLists.txt\nindex d6539dc9daa..0ec1d3cccee 100644\n--- a/core/unit_test/CMakeLists.txt\n+++ b/core/unit_test/CMakeLists.txt\n@@ -299,7 +299,16 @@ foreach(Tag Threads;Serial;OpenMP;Cuda;HPX;OpenACC;HIP;SYCL)\n     endforeach()\n \n     set(${Tag}_SOURCES2D)\n-    foreach(Name SubView_c10 SubView_c11 SubView_c12 SubView_c13 SubView_c14 SubView_c15)\n+    foreach(\n+      Name\n+      SubView_c10\n+      SubView_c11\n+      SubView_c12\n+      SubView_c13\n+      SubView_c14\n+      SubView_c15\n+      SubView_c16\n+    )\n       set(file ${dir}/Test${Tag}_${Name}.cpp)\n       # Write to a temporary intermediate file and call configure_file to avoid\n       # updating timestamps triggering unnecessary rebuilds on subsequent cmake runs.\ndiff --git a/core/unit_test/TestSubView_c15.hpp b/core/unit_test/TestSubView_c15.hpp\nindex 6718e40ff5b..b51a4f18069 100644\n--- a/core/unit_test/TestSubView_c15.hpp\n+++ b/core/unit_test/TestSubView_c15.hpp\n@@ -27,7 +27,7 @@ TEST(TEST_CATEGORY_DEATH, view_subview_constructor_layout_compatibility) {\n     (void)Kokkos::View<int*, LS>(a1, Kokkos::ALL, 1);\n \n     // FIXME: This doesn't compile for BasicView, but should\n-    //(void)Kokkos::View<int*, LR>(a, Kokkos::ALL, 1);\n+    // (void)Kokkos::View<int*, LR>(a1, Kokkos::ALL, 1);\n   }\n   {\n     // Using subview dims (1, ALL). For a LayoutLeft,\ndiff --git a/core/unit_test/TestSubView_c16.hpp b/core/unit_test/TestSubView_c16.hpp\nnew file mode 100644\nindex 00000000000..711123cdb5f\n--- /dev/null\n+++ b/core/unit_test/TestSubView_c16.hpp\n@@ -0,0 +1,55 @@\n+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception\n+// SPDX-FileCopyrightText: Copyright Contributors to the Kokkos project\n+\n+#include <gtest/gtest.h>\n+#include <Kokkos_Macros.hpp>\n+#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES\n+import kokkos.core;\n+#else\n+#include <Kokkos_Core.hpp>\n+#endif\n+\n+namespace {\n+// Test that the subview constructor works for constructing subviews from\n+// Views where one of them has the Kokkos::Unmanaged memory trait\n+TEST(TEST_CATEGORY, view_create_unmanaged_subview_from_managed) {\n+  int N    = 10;\n+  using LR = Kokkos::LayoutRight;\n+  using LL = Kokkos::LayoutLeft;\n+  using LS = Kokkos::LayoutStride;\n+\n+  Kokkos::View<int**, LL> a1(\"A1\", N, N);\n+  Kokkos::View<int**, LL, Kokkos::MemoryTraits<Kokkos::Unmanaged>> a1_unmanaged(\n+      a1.data(), N, N);\n+  {\n+    // Using subview dims (ALL, 1). For a LayoutLeft,\n+    // any subview layout should be appropriate.\n+    (void)Kokkos::View<int*, LL, Kokkos::MemoryTraits<Kokkos::Unmanaged>>(\n+        a1, Kokkos::ALL, 1);\n+    (void)Kokkos::View<int*, LS, Kokkos::MemoryTraits<Kokkos::Unmanaged>>(\n+        a1, Kokkos::ALL, 1);\n+\n+    (void)Kokkos::View<int*, LL>(a1_unmanaged, Kokkos::ALL, 1);\n+    (void)Kokkos::View<int*, LS>(a1_unmanaged, Kokkos::ALL, 1);\n+    // FIXME: This doesn't compile for BasicView, but should\n+    // (void)Kokkos::View<int*, LR>(a1_unmanaged, Kokkos::ALL, 1);\n+  }\n+\n+  Kokkos::View<int**, LL> a2(\"A2\", 1, N);\n+  Kokkos::View<int**, LL, Kokkos::MemoryTraits<Kokkos::Unmanaged>> a2_unmanaged(\n+      a2.data(), 1, N);\n+  {\n+    // Using subview dims (0, ALL). Any subview layout should be appropriate.\n+    (void)Kokkos::View<int*, LL, Kokkos::MemoryTraits<Kokkos::Unmanaged>>(\n+        a2, 0, Kokkos::ALL);\n+    (void)Kokkos::View<int*, LS, Kokkos::MemoryTraits<Kokkos::Unmanaged>>(\n+        a2, 0, Kokkos::ALL);\n+    (void)Kokkos::View<int*, LR, Kokkos::MemoryTraits<Kokkos::Unmanaged>>(\n+        a2, 0, Kokkos::ALL);\n+\n+    (void)Kokkos::View<int*, LL>(a2_unmanaged, 0, Kokkos::ALL);\n+    (void)Kokkos::View<int*, LS>(a2_unmanaged, 0, Kokkos::ALL);\n+    (void)Kokkos::View<int*, LR>(a2_unmanaged, 0, Kokkos::ALL);\n+  }\n+}\n+}  // namespace\n",
+  "title": "Fix subview construction between managed and unmanaged Views",
+  "version": "cpp20"
+}

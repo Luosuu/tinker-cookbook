@@ -36,6 +36,7 @@ class CLIConfig:
     max_trajectory_tokens: int = 32 * 1024
     max_generation_tokens: int | None = None
     context_overflow_reward: float = -0.1
+    thinking_effort: float | None = None
 
     # Training hyperparameters
     group_size: int = 4
@@ -100,6 +101,7 @@ async def cli_main(
         max_generation_tokens=max_generation_tokens,
         context_overflow_reward=cli_config.context_overflow_reward,
         sandbox_factory=sandbox_factory,
+        thinking_effort=cli_config.thinking_effort,
     )
 
     config = Config(

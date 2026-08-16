@@ -1,0 +1,58 @@
+diff --git a/core/src/Kokkos_Array.hpp b/core/src/Kokkos_Array.hpp
+index 49f7a6922f5..1621f8b0973 100644
+--- a/core/src/Kokkos_Array.hpp
++++ b/core/src/Kokkos_Array.hpp
+@@ -118,6 +118,26 @@ struct Array {
+     return &m_internal_implementation_private_member_data[0];
+   }
+ 
++  KOKKOS_INLINE_FUNCTION constexpr pointer begin() noexcept { return data(); }
++
++  KOKKOS_INLINE_FUNCTION constexpr const_pointer begin() const noexcept {
++    return data();
++  }
++
++  KOKKOS_INLINE_FUNCTION constexpr pointer end() noexcept { return data() + N; }
++
++  KOKKOS_INLINE_FUNCTION constexpr const_pointer end() const noexcept {
++    return data() + N;
++  }
++
++  KOKKOS_INLINE_FUNCTION constexpr const_pointer cbegin() const noexcept {
++    return data();
++  }
++
++  KOKKOS_INLINE_FUNCTION constexpr const_pointer cend() const noexcept {
++    return data() + N;
++  }
++
+   friend KOKKOS_FUNCTION constexpr bool operator==(Array const& lhs,
+                                                    Array const& rhs) noexcept {
+     for (size_t i = 0; i != N; ++i)
+@@ -183,6 +203,26 @@ struct Array<T, 0> {
+     return nullptr;
+   }
+ 
++  KOKKOS_INLINE_FUNCTION constexpr pointer begin() noexcept { return data(); }
++
++  KOKKOS_INLINE_FUNCTION constexpr const_pointer begin() const noexcept {
++    return data();
++  }
++
++  KOKKOS_INLINE_FUNCTION constexpr pointer end() noexcept { return data(); }
++
++  KOKKOS_INLINE_FUNCTION constexpr const_pointer end() const noexcept {
++    return data();
++  }
++
++  KOKKOS_INLINE_FUNCTION constexpr const_pointer cbegin() const noexcept {
++    return data();
++  }
++
++  KOKKOS_INLINE_FUNCTION constexpr const_pointer cend() const noexcept {
++    return data();
++  }
++
+   friend KOKKOS_FUNCTION constexpr bool operator==(Array const&,
+                                                    Array const&) noexcept {
+     return true;

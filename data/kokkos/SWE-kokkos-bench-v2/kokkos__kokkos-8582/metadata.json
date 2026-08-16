@@ -1,0 +1,74 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreUnitTest_Serial1 compilation with static_assert noexcept in TestArrayOps.hpp"
+  ],
+  "PASS_TO_PASS": [
+    "TEST(TEST_CATEGORY, array_capacity)",
+    "TEST(TEST_CATEGORY, array_element_access)",
+    "TEST(TEST_CATEGORY, array_zero_capacity)",
+    "TEST(TEST_CATEGORY, array_zero_data_nullptr)"
+  ],
+  "base_commit": "00ef99f22659a4bbd25536a22b47e4d1c6b788c5",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreUnitTest_Serial1"
+  ],
+  "changed_files": [
+    {
+      "additions": 20,
+      "deletions": 10,
+      "filename": "core/src/Kokkos_Array.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 15,
+      "deletions": 0,
+      "filename": "core/unit_test/TestArrayOps.hpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/Kokkos_Array.hpp b/core/src/Kokkos_Array.hpp\nindex 1621f8b0973..a24a3d628aa 100644\n--- a/core/src/Kokkos_Array.hpp\n+++ b/core/src/Kokkos_Array.hpp\n@@ -90,9 +90,15 @@ struct Array {\n   using pointer         = T*;\n   using const_pointer   = std::add_const_t<T>*;\n \n-  KOKKOS_INLINE_FUNCTION static constexpr size_type size() { return N; }\n-  KOKKOS_INLINE_FUNCTION static constexpr bool empty() { return false; }\n-  KOKKOS_INLINE_FUNCTION constexpr size_type max_size() const { return N; }\n+  KOKKOS_INLINE_FUNCTION static constexpr size_type size() noexcept {\n+    return N;\n+  }\n+  KOKKOS_INLINE_FUNCTION static constexpr bool empty() noexcept {\n+    return false;\n+  }\n+  KOKKOS_INLINE_FUNCTION constexpr size_type max_size() const noexcept {\n+    return N;\n+  }\n \n   template <typename iType>\n   KOKKOS_INLINE_FUNCTION constexpr reference operator[](const iType& i) {\n@@ -111,10 +117,10 @@ struct Array {\n     return m_internal_implementation_private_member_data[i];\n   }\n \n-  KOKKOS_INLINE_FUNCTION constexpr pointer data() {\n+  KOKKOS_INLINE_FUNCTION constexpr pointer data() noexcept {\n     return &m_internal_implementation_private_member_data[0];\n   }\n-  KOKKOS_INLINE_FUNCTION constexpr const_pointer data() const {\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer data() const noexcept {\n     return &m_internal_implementation_private_member_data[0];\n   }\n \n@@ -178,9 +184,13 @@ struct Array<T, 0> {\n   using pointer         = T*;\n   using const_pointer   = std::add_const_t<T>*;\n \n-  KOKKOS_INLINE_FUNCTION static constexpr size_type size() { return 0; }\n-  KOKKOS_INLINE_FUNCTION static constexpr bool empty() { return true; }\n-  KOKKOS_INLINE_FUNCTION constexpr size_type max_size() const { return 0; }\n+  KOKKOS_INLINE_FUNCTION static constexpr size_type size() noexcept {\n+    return 0;\n+  }\n+  KOKKOS_INLINE_FUNCTION static constexpr bool empty() noexcept { return true; }\n+  KOKKOS_INLINE_FUNCTION constexpr size_type max_size() const noexcept {\n+    return 0;\n+  }\n \n   template <typename iType>\n   KOKKOS_INLINE_FUNCTION reference operator[](const iType&) {\n@@ -198,8 +208,8 @@ struct Array<T, 0> {\n     return *reinterpret_cast<const_pointer>(-1);\n   }\n \n-  KOKKOS_INLINE_FUNCTION constexpr pointer data() { return nullptr; }\n-  KOKKOS_INLINE_FUNCTION constexpr const_pointer data() const {\n+  KOKKOS_INLINE_FUNCTION constexpr pointer data() noexcept { return nullptr; }\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer data() const noexcept {\n     return nullptr;\n   }\n \n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+  "created_at": "2025-10-21T23:31:16Z",
+  "era": "cpp17",
+  "f2p_commands": [
+    "cmake --build build --target Kokkos_CoreUnitTest_Serial1"
+  ],
+  "fail_to_pass": [
+    "Kokkos_CoreUnitTest_Serial1 compilation with static_assert noexcept in TestArrayOps.hpp"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-8582",
+  "labels": [
+    "SNL-CI-APPROVAL"
+  ],
+  "linked_issues": [],
+  "merge_commit": "293a94055fa74dfc760cb3388e06368129df5c01",
+  "merged_at": "2025-10-21T23:31:16Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/8582",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "cmake --build build --target Kokkos_CoreUnitTest_Serial1",
+    "ctest --test-dir build -R Kokkos_CoreUnitTest_Serial1 --output-on-failure",
+    "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='TEST_CATEGORY.array_*'"
+  ],
+  "pass_to_pass": [
+    "TEST(TEST_CATEGORY, array_capacity)",
+    "TEST(TEST_CATEGORY, array_element_access)",
+    "TEST(TEST_CATEGORY, array_zero_capacity)",
+    "TEST(TEST_CATEGORY, array_zero_data_nullptr)"
+  ],
+  "patch": "diff --git a/core/src/Kokkos_Array.hpp b/core/src/Kokkos_Array.hpp\nindex 1621f8b0973..a24a3d628aa 100644\n--- a/core/src/Kokkos_Array.hpp\n+++ b/core/src/Kokkos_Array.hpp\n@@ -90,9 +90,15 @@ struct Array {\n   using pointer         = T*;\n   using const_pointer   = std::add_const_t<T>*;\n \n-  KOKKOS_INLINE_FUNCTION static constexpr size_type size() { return N; }\n-  KOKKOS_INLINE_FUNCTION static constexpr bool empty() { return false; }\n-  KOKKOS_INLINE_FUNCTION constexpr size_type max_size() const { return N; }\n+  KOKKOS_INLINE_FUNCTION static constexpr size_type size() noexcept {\n+    return N;\n+  }\n+  KOKKOS_INLINE_FUNCTION static constexpr bool empty() noexcept {\n+    return false;\n+  }\n+  KOKKOS_INLINE_FUNCTION constexpr size_type max_size() const noexcept {\n+    return N;\n+  }\n \n   template <typename iType>\n   KOKKOS_INLINE_FUNCTION constexpr reference operator[](const iType& i) {\n@@ -111,10 +117,10 @@ struct Array {\n     return m_internal_implementation_private_member_data[i];\n   }\n \n-  KOKKOS_INLINE_FUNCTION constexpr pointer data() {\n+  KOKKOS_INLINE_FUNCTION constexpr pointer data() noexcept {\n     return &m_internal_implementation_private_member_data[0];\n   }\n-  KOKKOS_INLINE_FUNCTION constexpr const_pointer data() const {\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer data() const noexcept {\n     return &m_internal_implementation_private_member_data[0];\n   }\n \n@@ -178,9 +184,13 @@ struct Array<T, 0> {\n   using pointer         = T*;\n   using const_pointer   = std::add_const_t<T>*;\n \n-  KOKKOS_INLINE_FUNCTION static constexpr size_type size() { return 0; }\n-  KOKKOS_INLINE_FUNCTION static constexpr bool empty() { return true; }\n-  KOKKOS_INLINE_FUNCTION constexpr size_type max_size() const { return 0; }\n+  KOKKOS_INLINE_FUNCTION static constexpr size_type size() noexcept {\n+    return 0;\n+  }\n+  KOKKOS_INLINE_FUNCTION static constexpr bool empty() noexcept { return true; }\n+  KOKKOS_INLINE_FUNCTION constexpr size_type max_size() const noexcept {\n+    return 0;\n+  }\n \n   template <typename iType>\n   KOKKOS_INLINE_FUNCTION reference operator[](const iType&) {\n@@ -198,8 +208,8 @@ struct Array<T, 0> {\n     return *reinterpret_cast<const_pointer>(-1);\n   }\n \n-  KOKKOS_INLINE_FUNCTION constexpr pointer data() { return nullptr; }\n-  KOKKOS_INLINE_FUNCTION constexpr const_pointer data() const {\n+  KOKKOS_INLINE_FUNCTION constexpr pointer data() noexcept { return nullptr; }\n+  KOKKOS_INLINE_FUNCTION constexpr const_pointer data() const noexcept {\n     return nullptr;\n   }\n \ndiff --git a/core/unit_test/TestArrayOps.hpp b/core/unit_test/TestArrayOps.hpp\nindex 5f0c01ddbdc..c1a1543cfbe 100644\n--- a/core/unit_test/TestArrayOps.hpp\n+++ b/core/unit_test/TestArrayOps.hpp\n@@ -16,8 +16,13 @@ TEST(TEST_CATEGORY, array_capacity) {\n   using A = Kokkos::Array<int, 2>;\n   A a{{3, 5}};\n \n+  static_assert(noexcept(a.empty()));\n   ASSERT_FALSE(a.empty());\n+\n+  static_assert(noexcept(a.size()));\n   ASSERT_EQ(a.size(), 2u);\n+\n+  static_assert(noexcept(a.max_size()));\n   ASSERT_EQ(a.max_size(), 2u);\n }\n \n@@ -80,7 +85,10 @@ TEST(TEST_CATEGORY, array_element_access) {\n   ASSERT_EQ(a[es], a[index]);\n   ASSERT_EQ(ca[es], a[index]);\n \n+  static_assert(noexcept(a.data()));\n   ASSERT_EQ(a.data()[index], a[index]);\n+\n+  static_assert(noexcept(ca.data()));\n   ASSERT_EQ(ca.data()[index], a[index]);\n }\n \n@@ -113,8 +121,13 @@ TEST(TEST_CATEGORY, array_zero_capacity) {\n   using A = Kokkos::Array<int, 0>;\n   A e;\n \n+  static_assert(noexcept(e.empty()));\n   ASSERT_TRUE(e.empty());\n+\n+  static_assert(noexcept(e.size()));\n   ASSERT_EQ(e.size(), 0u);\n+\n+  static_assert(noexcept(e.max_size()));\n   ASSERT_EQ(e.max_size(), 0u);\n }\n \n@@ -122,9 +135,11 @@ TEST(TEST_CATEGORY, array_zero_data_nullptr) {\n   using A = Kokkos::Array<int, 0>;\n \n   A e;\n+  static_assert(noexcept(e.data()));\n   ASSERT_EQ(e.data(), nullptr);\n \n   const A& ce = e;\n+  static_assert(noexcept(ce.data()));\n   ASSERT_EQ(ce.data(), nullptr);\n }\n \n",
+  "pr_number": 8582,
+  "problem_statement": "In `Kokkos::Array`, added `noexcept` to `data()`, `empty()`, `size()`, `max_size()` to make it consistent with `std::array`.",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/TestArrayOps.hpp b/core/unit_test/TestArrayOps.hpp\nindex 5f0c01ddbdc..c1a1543cfbe 100644\n--- a/core/unit_test/TestArrayOps.hpp\n+++ b/core/unit_test/TestArrayOps.hpp\n@@ -16,8 +16,13 @@ TEST(TEST_CATEGORY, array_capacity) {\n   using A = Kokkos::Array<int, 2>;\n   A a{{3, 5}};\n \n+  static_assert(noexcept(a.empty()));\n   ASSERT_FALSE(a.empty());\n+\n+  static_assert(noexcept(a.size()));\n   ASSERT_EQ(a.size(), 2u);\n+\n+  static_assert(noexcept(a.max_size()));\n   ASSERT_EQ(a.max_size(), 2u);\n }\n \n@@ -80,7 +85,10 @@ TEST(TEST_CATEGORY, array_element_access) {\n   ASSERT_EQ(a[es], a[index]);\n   ASSERT_EQ(ca[es], a[index]);\n \n+  static_assert(noexcept(a.data()));\n   ASSERT_EQ(a.data()[index], a[index]);\n+\n+  static_assert(noexcept(ca.data()));\n   ASSERT_EQ(ca.data()[index], a[index]);\n }\n \n@@ -113,8 +121,13 @@ TEST(TEST_CATEGORY, array_zero_capacity) {\n   using A = Kokkos::Array<int, 0>;\n   A e;\n \n+  static_assert(noexcept(e.empty()));\n   ASSERT_TRUE(e.empty());\n+\n+  static_assert(noexcept(e.size()));\n   ASSERT_EQ(e.size(), 0u);\n+\n+  static_assert(noexcept(e.max_size()));\n   ASSERT_EQ(e.max_size(), 0u);\n }\n \n@@ -122,9 +135,11 @@ TEST(TEST_CATEGORY, array_zero_data_nullptr) {\n   using A = Kokkos::Array<int, 0>;\n \n   A e;\n+  static_assert(noexcept(e.data()));\n   ASSERT_EQ(e.data(), nullptr);\n \n   const A& ce = e;\n+  static_assert(noexcept(ce.data()));\n   ASSERT_EQ(ce.data(), nullptr);\n }\n \n",
+  "title": "Kokkos::Array: added noexcept to data(), empty(), size(), max_size()",
+  "version": "cpp17"
+}

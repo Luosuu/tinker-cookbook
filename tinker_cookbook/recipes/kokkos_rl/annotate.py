@@ -18,12 +18,21 @@ TUPLE_FIELDS = {
     "p2p_commands",
 }
 
+ANNOTATION_FIELDS = TUPLE_FIELDS | {"build_command", "configure_command", "metadata"}
+
 
 def apply_annotations(instance: KokkosInstance, annotations: dict[str, Any]) -> KokkosInstance:
+    unknown = set(annotations) - ANNOTATION_FIELDS
+    if unknown:
+        raise ValueError(f"unsupported annotation fields: {sorted(unknown)}")
     updates = dict(annotations)
     for field in TUPLE_FIELDS.intersection(updates):
+        if not isinstance(updates[field], list):
+            raise ValueError(f"annotation field {field!r} must be a JSON array")
         updates[field] = tuple(str(item) for item in updates[field])
     if "metadata" in updates:
+        if not isinstance(updates["metadata"], dict):
+            raise ValueError("annotation field 'metadata' must be a JSON object")
         updates["metadata"] = {**instance.metadata, **dict(updates["metadata"])}
     return replace(instance, **updates)
 

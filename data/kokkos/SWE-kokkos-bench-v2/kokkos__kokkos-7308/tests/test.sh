@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+repo=/workspace/repo
+reward=/logs/verifier/reward.txt
+mkdir -p /logs/verifier
+echo 0 > "$reward"
+cd "$repo"
+
+illegal=$(
+  git diff --name-only ee53b3f73c7e81b0414cfa7e44d70a361987a727 --
+  git ls-files --others --exclude-standard | sed '\#^build/#d'
+)
+if printf '%s
+' "$illegal" | grep -E '(^|/)(tests?|unit_tests?)(/|$)|(^|/)(test_.*|.*_test\.py)$|(^|/)CMakeLists\.txt$|^\.github/|^cmake/'; then
+  echo "candidate patch changes protected test/build/CI files" >&2
+  exit 0
+fi
+
+protected_paths=(core/unit_test/TestMDSpanConversion.hpp core/unit_test/TestViewAPI_b.hpp)
+for path in "${protected_paths[@]}"; do
+  if git cat-file -e ee53b3f73c7e81b0414cfa7e44d70a361987a727:"$path" 2>/dev/null; then
+    git checkout ee53b3f73c7e81b0414cfa7e44d70a361987a727 -- "$path"
+  else
+    rm -f -- "$path"
+  fi
+done
+
+if ! git apply --whitespace=nowarn /tests/test.patch; then
+  echo "failed to inject hidden tests" >&2
+  exit 0
+fi
+if ! cmake --build build --target Kokkos_CoreUnitTest_Serial1 --parallel; then
+  exit 0
+fi
+
+f2p_commands=('"$(find build -type f -name Kokkos_CoreUnitTest_Serial1 -perm -111 -print -quit)" --gtest_filter='"'"'*view_mdspan_conversion_with_stride*'"'"'')
+p2p_commands=('"$(find build -type f -name Kokkos_CoreUnitTest_Serial1 -perm -111 -print -quit)" --gtest_filter='"'"'*view_mdspan_conversion*'"'"'' '"$(find build -type f -name Kokkos_CoreUnitTest_Serial1 -perm -111 -print -quit)" --gtest_filter='"'"'*view_api_b*'"'"'')
+for command in "${f2p_commands[@]}" "${p2p_commands[@]}"; do
+  if [[ -n "$command" ]] && ! bash -lc "$command"; then
+    exit 0
+  fi
+done
+
+echo 1 > "$reward"

@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+repo=/workspace/repo
+reward=/logs/verifier/reward.txt
+mkdir -p /logs/verifier
+echo 0 > "$reward"
+cd "$repo"
+
+illegal=$(
+  git diff --name-only 6b8d3777dd0cf2d590b8e5151b1af82c37855b8d --
+  git ls-files --others --exclude-standard | sed '\#^build/#d'
+)
+if printf '%s
+' "$illegal" | grep -E '(^|/)(tests?|unit_tests?)(/|$)|(^|/)(test_.*|.*_test\.py)$|(^|/)CMakeLists\.txt$|^\.github/|^cmake/'; then
+  echo "candidate patch changes protected test/build/CI files" >&2
+  exit 0
+fi
+
+protected_paths=(core/unit_test/TestAtomicOperations.hpp core/unit_test/TestSharedAlloc.hpp core/unit_test/TestTaskScheduler.hpp)
+for path in "${protected_paths[@]}"; do
+  if git cat-file -e 6b8d3777dd0cf2d590b8e5151b1af82c37855b8d:"$path" 2>/dev/null; then
+    git checkout 6b8d3777dd0cf2d590b8e5151b1af82c37855b8d -- "$path"
+  else
+    rm -f -- "$path"
+  fi
+done
+
+if ! git apply --whitespace=nowarn /tests/test.patch; then
+  echo "failed to inject hidden tests" >&2
+  exit 0
+fi
+if ! cmake --build build --target Kokkos_CoreUnitTest_Serial1 --parallel; then
+  exit 0
+fi
+
+f2p_commands=('cmake --build build --target Kokkos_CoreUnitTest_Serial1')
+p2p_commands=('cmake --build build --target Kokkos_CoreUnitTest_Serial1' 'ctest --test-dir build -R KokkosCore_UnitTest_Serial1 --output-on-failure')
+for command in "${f2p_commands[@]}" "${p2p_commands[@]}"; do
+  if [[ -n "$command" ]] && ! bash -lc "$command"; then
+    exit 0
+  fi
+done
+
+echo 1 > "$reward"

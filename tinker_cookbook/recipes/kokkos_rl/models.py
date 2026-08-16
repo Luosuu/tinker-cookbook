@@ -53,6 +53,7 @@ class KokkosInstance:
         "-DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache"
     )
     build_targets: tuple[str, ...] = ()
+    build_command: str = ""
     fail_to_pass: tuple[str, ...] = ()
     pass_to_pass: tuple[str, ...] = ()
     f2p_commands: tuple[str, ...] = ()
@@ -62,13 +63,17 @@ class KokkosInstance:
     @property
     def is_validation_ready(self) -> bool:
         has_f2p = bool(self.f2p_commands) or self.metadata.get("f2p_stage") == "build"
-        return bool(self.build_targets and has_f2p and self.test_patch and self.code_patch)
+        has_build = bool(self.build_targets or self.build_command)
+        return bool(has_build and has_f2p and self.test_patch and self.code_patch)
 
     def to_dict(self) -> dict[str, Any]:
         value = asdict(self)
         # Preserve standard SWE-bench names for downstream compatibility.
         value["FAIL_TO_PASS"] = list(self.fail_to_pass)
         value["PASS_TO_PASS"] = list(self.pass_to_pass)
+        value["hints_text"] = ""
+        value["created_at"] = self.merged_at
+        value["version"] = self.era
         return value
 
     @classmethod
@@ -95,6 +100,7 @@ class KokkosInstance:
             linked_issues=tuple(int(item) for item in value.get("linked_issues", [])),
             configure_command=str(value.get("configure_command", cls.configure_command)),
             build_targets=tuple_of_strings("build_targets"),
+            build_command=str(value.get("build_command", "")),
             fail_to_pass=tuple_of_strings("fail_to_pass", "FAIL_TO_PASS"),
             pass_to_pass=tuple_of_strings("pass_to_pass", "PASS_TO_PASS"),
             f2p_commands=tuple_of_strings("f2p_commands"),

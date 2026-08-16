@@ -1,0 +1,70 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreUnitTest_Default (compiles kokkosresize.view_ctor_prop)"
+  ],
+  "PASS_TO_PASS": [
+    "kokkosresize.host_space_access"
+  ],
+  "base_commit": "4c3a26023d2a57cdf390c2bb033bdeb13f167934",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreUnitTest_Default"
+  ],
+  "changed_files": [
+    {
+      "additions": 0,
+      "deletions": 6,
+      "filename": "core/src/Kokkos_CopyViews.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 66,
+      "deletions": 0,
+      "filename": "core/unit_test/TestResize.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 6,
+      "deletions": 1,
+      "filename": "core/unit_test/default/TestDefaultDeviceTypeResize.cpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/Kokkos_CopyViews.hpp b/core/src/Kokkos_CopyViews.hpp\nindex f29bb6fdeb1..8fb71acc9ae 100644\n--- a/core/src/Kokkos_CopyViews.hpp\n+++ b/core/src/Kokkos_CopyViews.hpp\n@@ -2851,12 +2851,6 @@ inline std::enable_if_t<Impl::is_view_ctor_property<I>::value> resize(\n   impl_resize(Kokkos::view_alloc(arg_prop), v, layout);\n }\n \n-template <class ExecutionSpace, class T, class... P>\n-inline void resize(const ExecutionSpace& exec_space, Kokkos::View<T, P...>& v,\n-                   const typename Kokkos::View<T, P...>::array_layout& layout) {\n-  impl_resize(Impl::ViewCtorProp<>(), exec_space, v, layout);\n-}\n-\n template <class T, class... P>\n inline void resize(Kokkos::View<T, P...>& v,\n                    const typename Kokkos::View<T, P...>::array_layout& layout) {\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo",
+  "created_at": "2026-05-07T13:25:58Z",
+  "era": "cpp20",
+  "f2p_commands": [],
+  "fail_to_pass": [
+    "Kokkos_CoreUnitTest_Default (compiles kokkosresize.view_ctor_prop)"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-9128",
+  "labels": [
+    "SNL-CI-APPROVAL"
+  ],
+  "linked_issues": [],
+  "merge_commit": "d4a0c15b09aa68111f648bc8b1348413a4d08365",
+  "merged_at": "2026-05-07T13:25:58Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/9128",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "build/core/unit_test/Kokkos_CoreUnitTest_Default --gtest_filter=kokkosresize.host_space_access"
+  ],
+  "pass_to_pass": [
+    "kokkosresize.host_space_access"
+  ],
+  "patch": "diff --git a/core/src/Kokkos_CopyViews.hpp b/core/src/Kokkos_CopyViews.hpp\nindex f29bb6fdeb1..8fb71acc9ae 100644\n--- a/core/src/Kokkos_CopyViews.hpp\n+++ b/core/src/Kokkos_CopyViews.hpp\n@@ -2851,12 +2851,6 @@ inline std::enable_if_t<Impl::is_view_ctor_property<I>::value> resize(\n   impl_resize(Kokkos::view_alloc(arg_prop), v, layout);\n }\n \n-template <class ExecutionSpace, class T, class... P>\n-inline void resize(const ExecutionSpace& exec_space, Kokkos::View<T, P...>& v,\n-                   const typename Kokkos::View<T, P...>::array_layout& layout) {\n-  impl_resize(Impl::ViewCtorProp<>(), exec_space, v, layout);\n-}\n-\n template <class T, class... P>\n inline void resize(Kokkos::View<T, P...>& v,\n                    const typename Kokkos::View<T, P...>::array_layout& layout) {\ndiff --git a/core/unit_test/TestResize.hpp b/core/unit_test/TestResize.hpp\nindex 31eb6dda842..54d4a51146a 100644\n--- a/core/unit_test/TestResize.hpp\n+++ b/core/unit_test/TestResize.hpp\n@@ -373,6 +373,72 @@ void testResize() {\n     resize_dispatch(WithoutInitializing{}, view_1d_no_default, 3);\n   }\n }\n+template <class DeviceType>\n+void test_resize_exec_space_with_layout() {\n+  using exec_space = typename DeviceType::execution_space;\n+  using view_type  = Kokkos::View<int**, Kokkos::LayoutLeft, DeviceType>;\n+  view_type v(\"test_view\", 4, 5);\n+  Kokkos::deep_copy(v, 99);\n+  typename view_type::array_layout new_layout(6, 7);\n+\n+  Kokkos::resize(exec_space{}, v, new_layout);\n+\n+  EXPECT_EQ(v.extent(0), 6u);\n+  EXPECT_EQ(v.extent(1), 7u);\n+\n+  // Verify old data preserved in overlapping region\n+  auto h_v = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, v);\n+\n+  bool data_preserved = true;\n+\n+  for (int i0 = 0; i0 < 4; ++i0) {\n+    for (int i1 = 0; i1 < 5; ++i1) {\n+      if (h_v(i0, i1) != 99) {\n+        data_preserved = false;\n+\n+        break;\n+      }\n+    }\n+  }\n+\n+  EXPECT_TRUE(data_preserved);\n+}\n+template <class DeviceType>\n+void test_resize_with_view_alloc_and_layout() {\n+  using exec_space = typename DeviceType::execution_space;\n+  using view_type  = Kokkos::View<int**, Kokkos::LayoutLeft, DeviceType>;\n+  view_type v(\"test_view\", 4, 5);\n+\n+  Kokkos::deep_copy(v, 99);\n+  typename view_type::array_layout new_layout(6, 7);\n+\n+  // This calls ok.\n+  Kokkos::resize(Kokkos::view_alloc(exec_space{}), v, new_layout);\n+\n+  EXPECT_EQ(v.extent(0), 6u);\n+  EXPECT_EQ(v.extent(1), 7u);\n+\n+  auto h_v = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, v);\n+  bool data_preserved = true;\n+\n+  for (int i0 = 0; i0 < 4; ++i0) {\n+    for (int i1 = 0; i1 < 5; ++i1) {\n+      if (h_v(i0, i1) != 99) {\n+        data_preserved = false;\n+\n+        break;\n+      }\n+    }\n+  }\n+\n+  EXPECT_TRUE(data_preserved);\n+}\n+\n+template <class DeviceType>\n+void testCopyViewsOverloads() {\n+  test_resize_exec_space_with_layout<DeviceType>();\n+  test_resize_with_view_alloc_and_layout<DeviceType>();\n+}\n \n }  // namespace TestViewResize\n #endif  // TESTRESIZE_HPP_\ndiff --git a/core/unit_test/default/TestDefaultDeviceTypeResize.cpp b/core/unit_test/default/TestDefaultDeviceTypeResize.cpp\nindex e4e03a78fed..c8624a4885e 100644\n--- a/core/unit_test/default/TestDefaultDeviceTypeResize.cpp\n+++ b/core/unit_test/default/TestDefaultDeviceTypeResize.cpp\n@@ -9,8 +9,13 @@ namespace Test {\n TEST(kokkosresize, host_space_access) {\n   // Test with the default device type.\n   using TestViewResize::testResize;\n-  using device_type = Kokkos::View<int *>::device_type;\n+  using device_type = Kokkos::View<int*>::device_type;\n   testResize<device_type>();\n }\n \n+TEST(kokkosresize, view_ctor_prop) {\n+  using device_type = Kokkos::View<int*>::device_type;\n+  TestViewResize::testCopyViewsOverloads<device_type>();\n+}\n+\n }  // namespace Test\n",
+  "pr_number": 9128,
+  "problem_statement": "<!-- Provide a short summary of the changes in this pull request. -->\r\nCalling `Kokkos::resize(exec_space{}, v, new_layout)` with an explicit `ExecutionSpace` arg causes a compile error due to ambiguous overload. Two overload :\r\n1. The generic \r\n\t[implementation suggestion omitted]\r\n 3. The explicit \r\n \t[implementation suggestion omitted]\r\n\r\nSince `ExecutionSpace` can explicitly wrapped in a `ViewCtorProp`, both overload are viable candidate.\r\nFix: Remove redundant resize(const ExecutionSpace& , ...) overload. The generic overload already handles the case correctly by wrapping via Kokkos::view_alloc().\r\nTesting: Added TestCopyViewsBugs.hpp with tests that verify Kokkos::resize(exec_space{}, v, new_layout) compiles and preserves data in the overlapping region after resize.\r\n \r\n### Related issues / PRs\r\n\r\n\r\n<!-- Link any related issues or PRs. -->\r\n\r\n### Changelog Entry\r\n<!--\r\nIf this PR would require a changelog entry, add one here, or choose one of the following to add:\r\n  - Not required\r\n  - Unsure\r\n-->",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/TestResize.hpp b/core/unit_test/TestResize.hpp\nindex 31eb6dda842..54d4a51146a 100644\n--- a/core/unit_test/TestResize.hpp\n+++ b/core/unit_test/TestResize.hpp\n@@ -373,6 +373,72 @@ void testResize() {\n     resize_dispatch(WithoutInitializing{}, view_1d_no_default, 3);\n   }\n }\n+template <class DeviceType>\n+void test_resize_exec_space_with_layout() {\n+  using exec_space = typename DeviceType::execution_space;\n+  using view_type  = Kokkos::View<int**, Kokkos::LayoutLeft, DeviceType>;\n+  view_type v(\"test_view\", 4, 5);\n+  Kokkos::deep_copy(v, 99);\n+  typename view_type::array_layout new_layout(6, 7);\n+\n+  Kokkos::resize(exec_space{}, v, new_layout);\n+\n+  EXPECT_EQ(v.extent(0), 6u);\n+  EXPECT_EQ(v.extent(1), 7u);\n+\n+  // Verify old data preserved in overlapping region\n+  auto h_v = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, v);\n+\n+  bool data_preserved = true;\n+\n+  for (int i0 = 0; i0 < 4; ++i0) {\n+    for (int i1 = 0; i1 < 5; ++i1) {\n+      if (h_v(i0, i1) != 99) {\n+        data_preserved = false;\n+\n+        break;\n+      }\n+    }\n+  }\n+\n+  EXPECT_TRUE(data_preserved);\n+}\n+template <class DeviceType>\n+void test_resize_with_view_alloc_and_layout() {\n+  using exec_space = typename DeviceType::execution_space;\n+  using view_type  = Kokkos::View<int**, Kokkos::LayoutLeft, DeviceType>;\n+  view_type v(\"test_view\", 4, 5);\n+\n+  Kokkos::deep_copy(v, 99);\n+  typename view_type::array_layout new_layout(6, 7);\n+\n+  // This calls ok.\n+  Kokkos::resize(Kokkos::view_alloc(exec_space{}), v, new_layout);\n+\n+  EXPECT_EQ(v.extent(0), 6u);\n+  EXPECT_EQ(v.extent(1), 7u);\n+\n+  auto h_v = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, v);\n+  bool data_preserved = true;\n+\n+  for (int i0 = 0; i0 < 4; ++i0) {\n+    for (int i1 = 0; i1 < 5; ++i1) {\n+      if (h_v(i0, i1) != 99) {\n+        data_preserved = false;\n+\n+        break;\n+      }\n+    }\n+  }\n+\n+  EXPECT_TRUE(data_preserved);\n+}\n+\n+template <class DeviceType>\n+void testCopyViewsOverloads() {\n+  test_resize_exec_space_with_layout<DeviceType>();\n+  test_resize_with_view_alloc_and_layout<DeviceType>();\n+}\n \n }  // namespace TestViewResize\n #endif  // TESTRESIZE_HPP_\ndiff --git a/core/unit_test/default/TestDefaultDeviceTypeResize.cpp b/core/unit_test/default/TestDefaultDeviceTypeResize.cpp\nindex e4e03a78fed..c8624a4885e 100644\n--- a/core/unit_test/default/TestDefaultDeviceTypeResize.cpp\n+++ b/core/unit_test/default/TestDefaultDeviceTypeResize.cpp\n@@ -9,8 +9,13 @@ namespace Test {\n TEST(kokkosresize, host_space_access) {\n   // Test with the default device type.\n   using TestViewResize::testResize;\n-  using device_type = Kokkos::View<int *>::device_type;\n+  using device_type = Kokkos::View<int*>::device_type;\n   testResize<device_type>();\n }\n \n+TEST(kokkosresize, view_ctor_prop) {\n+  using device_type = Kokkos::View<int*>::device_type;\n+  TestViewResize::testCopyViewsOverloads<device_type>();\n+}\n+\n }  // namespace Test\n",
+  "title": "Fix ambiguous overload in Kokkos::resize with ExecutionSpace",
+  "version": "cpp20"
+}

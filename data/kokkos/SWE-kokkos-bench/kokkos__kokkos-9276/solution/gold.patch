@@ -1,0 +1,232 @@
+diff --git a/core/src/Kokkos_CopyViews.hpp b/core/src/Kokkos_CopyViews.hpp
+index 12854981560..e7ea76c629d 100644
+--- a/core/src/Kokkos_CopyViews.hpp
++++ b/core/src/Kokkos_CopyViews.hpp
+@@ -3057,6 +3057,7 @@ namespace Kokkos {
+ namespace Impl {
+ 
+ // Deduce Mirror Types
++// Variant for classic View template argument style
+ template <class Space, class T, class... P>
+ struct MirrorViewType {
+   // The incoming view_type
+@@ -3068,7 +3069,7 @@ struct MirrorViewType {
+       std::is_same_v<memory_space, typename src_view_type::memory_space>;
+   // The array_layout
+   using array_layout = typename src_view_type::array_layout;
+-  // The data type (we probably want it non-const since otherwise we can't even
++  // The data type (we want it non-const since otherwise we can't even
+   // deep_copy to it.
+   using data_type = typename src_view_type::non_const_data_type;
+   // The destination view type if it is not the same memory space
+@@ -3079,6 +3080,34 @@ struct MirrorViewType {
+       std::conditional_t<is_same_memspace, src_view_type, dest_view_type>;
+ };
+ 
++// Specialization for Views with mdspan style template arguments
++template <class Space, class T, class IndexType, size_t... Extents, class... P>
++struct MirrorViewType<Space, T, Kokkos::extents<IndexType, Extents...>, P...> {
++  using extents_type = Kokkos::extents<IndexType, Extents...>;
++  // The incoming view_type
++  using src_view_type = typename Kokkos::View<T, extents_type, P...>;
++  // The memory space for the mirror view
++  using memory_space = typename Space::memory_space;
++  // Check whether it is the same memory space
++  static constexpr bool is_same_memspace =
++      std::is_same_v<memory_space, typename src_view_type::memory_space>;
++  // The array_layout
++  using layout_type = typename src_view_type::layout_type;
++  // The element type (we want it non-const since otherwise we can't even
++  // deep_copy to it.
++  using element_type =
++      std::remove_const_t<typename src_view_type::element_type>;
++  // The destination view type if it is not the same memory space
++  using dest_view_type =
++      Kokkos::View<element_type, extents_type, layout_type,
++                   Kokkos::Experimental::Accessor<element_type, memory_space,
++                                                  Kokkos::MemoryTraits<>>>;
++  // If it is the same memory_space return the existsing view_type
++  // This will also keep the unmanaged trait if necessary
++  using view_type =
++      std::conditional_t<is_same_memspace, src_view_type, dest_view_type>;
++};
++
+ // collection of static asserts for create_mirror and create_mirror_view
+ template <class... ViewCtorArgs>
+ void check_view_ctor_args_create_mirror() {
+diff --git a/core/src/Kokkos_View.hpp b/core/src/Kokkos_View.hpp
+index 222788b1675..b3a07befeee 100644
+--- a/core/src/Kokkos_View.hpp
++++ b/core/src/Kokkos_View.hpp
+@@ -215,6 +215,109 @@ KOKKOS_INLINE_FUNCTION constexpr bool view_equal_extents_impl(
+     const LView& lhs, const RView& rhs, std::index_sequence<I...>) {
+   return ((lhs.extent(I) == rhs.extent(I)) && ...);
+ }
++
++// Helper to define the nested View types inside the View class
++// These differ based on whether a hooks policy is used, and whether
++// legacy style template arguments or mdspan-style template arguments
++// are used.
++template <class ViewType, bool HasHooksPolicy, bool MDSpanStyleArgs>
++struct ViewTypeDefs;
++
++// Hooks Policy + Legacy Style Arguments
++template <class ViewType>
++struct ViewTypeDefs<ViewType, true, false> {
++  using traits        = typename ViewType::traits;
++  using array_layout  = typename traits::array_layout;
++  using device_type   = typename traits::device_type;
++  using hooks_policy  = typename traits::hooks_policy;
++  using memory_traits = typename traits::memory_traits;
++
++  //----------------------------------------
++  // Compatible view of a data type
++  using type = View<typename traits::data_type, array_layout, device_type,
++                    hooks_policy, memory_traits>;
++
++  // Compatible view of const data type
++  using const_type = View<typename traits::const_data_type, array_layout,
++                          device_type, hooks_policy, memory_traits>;
++
++  // Compatible view of non-const data type
++  using non_const_type =
++      View<typename traits::non_const_data_type, array_layout, device_type,
++           hooks_policy, memory_traits>;
++
++  // Compatible host mirror view
++  using host_mirror_type =
++      View<typename traits::non_const_data_type, array_layout,
++           Device<DefaultHostExecutionSpace,
++                  typename traits::host_mirror_space::memory_space>,
++           hooks_policy>;
++};
++
++// No Hooks Policy + Legacy Style Arguments
++template <class ViewType>
++struct ViewTypeDefs<ViewType, false, false> {
++  using traits        = typename ViewType::traits;
++  using array_layout  = typename traits::array_layout;
++  using device_type   = typename traits::device_type;
++  using memory_traits = typename traits::memory_traits;
++
++  //----------------------------------------
++  // Compatible view of a data type
++  using type = View<typename traits::data_type, array_layout, device_type,
++                    memory_traits>;
++
++  // Compatible view of const data type
++  using const_type = View<typename traits::const_data_type, array_layout,
++                          device_type, memory_traits>;
++
++  // Compatible view of non-const data type
++  using non_const_type = View<typename traits::non_const_data_type,
++                              array_layout, device_type, memory_traits>;
++
++  // Compatible host mirror view
++  using host_mirror_type =
++      View<typename traits::non_const_data_type, array_layout,
++           Device<DefaultHostExecutionSpace,
++                  typename traits::host_mirror_space::memory_space> >;
++};
++
++// MDspan Style Arguments - hooks policy would be encoded in accessor
++// so this is independent of that parameter value
++template <class ViewType, bool HasHooksPolicy>
++struct ViewTypeDefs<ViewType, HasHooksPolicy, true> {
++  using element_type           = typename ViewType::element_type;
++  using non_const_element_type = std::remove_const_t<element_type>;
++  using extents_type           = typename ViewType::extents_type;
++  using layout_type            = typename ViewType::layout_type;
++
++  //----------------------------------------
++  // Compatible view of a data type
++  using type = View<element_type, extents_type, layout_type,
++                    typename ViewType::accessor_type>;
++
++  // Compatible view of const data type
++  using const_type =
++      View<const element_type, extents_type, layout_type,
++           Kokkos::Experimental::Accessor<const element_type,
++                                          typename ViewType::memory_space,
++                                          typename ViewType::memory_traits> >;
++
++  // Compatible view of non-const data type
++  using non_const_type =
++      View<non_const_element_type, extents_type, layout_type,
++           Kokkos::Experimental::Accessor<non_const_element_type,
++                                          typename ViewType::memory_space,
++                                          typename ViewType::memory_traits> >;
++
++  // Compatible host mirror view
++  using host_mirror_type =
++      View<non_const_element_type, extents_type, layout_type,
++           Kokkos::Experimental::Accessor<
++               non_const_element_type,
++               typename ViewType::host_mirror_space::memory_space> >;
++};
++
+ }  // namespace Impl
+ 
+ // FIXME spurious warnings like
+@@ -299,15 +402,16 @@ class View
+   using reference_type = typename base_t::reference;
+   using typename base_t::data_handle_type;
+ 
+-  //----------------------------------------
+-  // Compatible view of a data type
+-  using type = std::conditional_t<
+-      has_hooks_policy,
+-      View<typename traits::data_type, typename traits::array_layout,
+-           typename traits::device_type, typename traits::hooks_policy,
+-           typename traits::memory_traits>,
+-      View<typename traits::data_type, typename traits::array_layout,
+-           typename traits::device_type, typename traits::memory_traits> >;
++ private:
++  using view_types =
++      Impl::ViewTypeDefs<View, has_hooks_policy,
++                         basic_view_from_traits::mdspan_style_args>;
++
++ public:
++  using type             = typename view_types::type;
++  using const_type       = typename view_types::const_type;
++  using non_const_type   = typename view_types::non_const_type;
++  using host_mirror_type = typename view_types::host_mirror_type;
+ 
+ #ifdef KOKKOS_ENABLE_DEPRECATED_CODE_5
+   //----------------------------------------
+@@ -315,35 +419,6 @@ class View
+   using array_type KOKKOS_DEPRECATED_WITH_COMMENT("Use type instead.") = type;
+ #endif
+ 
+-  // Compatible view of const data type
+-  using const_type = std::conditional_t<
+-      has_hooks_policy,
+-      View<typename traits::const_data_type, typename traits::array_layout,
+-           typename traits::device_type, typename traits::hooks_policy,
+-           typename traits::memory_traits>,
+-      View<typename traits::const_data_type, typename traits::array_layout,
+-           typename traits::device_type, typename traits::memory_traits> >;
+-
+-  // Compatible view of non-const data type
+-  using non_const_type = std::conditional_t<
+-      has_hooks_policy,
+-      View<typename traits::non_const_data_type, typename traits::array_layout,
+-           typename traits::device_type, typename traits::hooks_policy,
+-           typename traits::memory_traits>,
+-      View<typename traits::non_const_data_type, typename traits::array_layout,
+-           typename traits::device_type, typename traits::memory_traits> >;
+-
+-  // Compatible host mirror view
+-  using host_mirror_type = std::conditional_t<
+-      has_hooks_policy,
+-      View<typename traits::non_const_data_type, typename traits::array_layout,
+-           Device<DefaultHostExecutionSpace,
+-                  typename traits::host_mirror_space::memory_space>,
+-           typename traits::hooks_policy>,
+-      View<typename traits::non_const_data_type, typename traits::array_layout,
+-           Device<DefaultHostExecutionSpace,
+-                  typename traits::host_mirror_space::memory_space> > >;
+-
+ #ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4
+   /** \brief  Compatible HostMirror view */
+   using HostMirror KOKKOS_DEPRECATED_WITH_COMMENT(

@@ -1,0 +1,133 @@
+# Dataset manifest for luosuu/SWE-kokkos-bench
+# Add tasks using: harbor add <org>/<name>
+# Publish using: harbor publish
+
+[dataset]
+name = "luosuu/SWE-kokkos-bench"
+version = "1.0.0"
+description = "Verified SWE-bench-style coding tasks from the Kokkos ecosystem"
+keywords = []
+[[dataset.authors]]
+name = "SWE-kokkos-bench contributors"
+
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9303"
+digest = "sha256:7fc6f0971043be6d6b8b841738941355b8d3c725f2e7799ee6e3709ed05636fa"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9309"
+digest = "sha256:49db7725e28944f2f52cfc958619d83428229cc5c33c0a19b177696096a898db"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9344"
+digest = "sha256:46267cd96537f66a25cdf3779a11d1d24bf4e6c725e0d843f6434abfeb0f3a24"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9408"
+digest = "sha256:1a33654327730bd0fe7ad443c2455f6c384ea224c0e4b78e25c94e013a2d0ecd"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9414"
+digest = "sha256:e6d8d521f3e48927aebf57f62f8228e53be6d9c255e3343aa3f87a1cd6296746"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9239"
+digest = "sha256:8f12c9034a6031e3d9504ce767b3a8f9d3c326aff458e3d13744032786034a92"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9328"
+digest = "sha256:da54df5ad6cc25580b8a7381f8b34284ae4142bcc64964cb13c3f7078a00b6e2"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-kernels-3130"
+digest = "sha256:b69ec7d9644780e12352f3b6816dbb4c6e04b14f30afff6e1a7f54d4e0f30503"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-kernels-3138"
+digest = "sha256:2e0c2a64ab417672bd95d917cf0924252025a2db7d7af0819d7399d8cc4db8d2"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-kernels-3217"
+digest = "sha256:8ef0150468d691af554086e5f66ccf6cf59e393e57f4c24a7a07c844fc2de71c"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7441"
+digest = "sha256:b331c1533855275c0f69ba50a7b72af26ccc02b0655d35b3958dcab8ea1ba5f3"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9147"
+digest = "sha256:c8d4b89cf2f60dc4876962023ad7c18ea4284827c64525e1ed8ebc0b8408b772"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9185"
+digest = "sha256:5a9b3d830d2781fe0ded8e01c523e80b5a58415ab61f207987a8cf45e8ec7ecb"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9260"
+digest = "sha256:780d26691fab45cb4b21f65774e50fd1140f51747b9640e9b2e775c7014f2dd3"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9276"
+digest = "sha256:d88ad2e3b694233f0e8fb10efa7f1f0d8000eea29d20fbf33921eb4e503e5511"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9027"
+digest = "sha256:071d1574146466319f85a29fa0ec5c3f985a654a263a1e6548ce68b4749ebf35"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9050"
+digest = "sha256:340a88dc7ae79f78025f4f7b06c3dad1bb80b8854b4f338feb4d7b073c26c81d"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9055"
+digest = "sha256:a861682d8c487242a0bc3f9a19e6874602120c0493aca1baee9dc58d18e21a24"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9128"
+digest = "sha256:84d7384c52c8502be04df480fae65fc2b4743ac5f4d46a0f0509ecb6e526706a"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9159"
+digest = "sha256:b23284f2c7899dc65d51240f5c070afc7d52f08a29965e80e89294631bb57508"
+
+[[tasks]]
+name = "luosuu/kokkos__pykokkos-422"
+digest = "sha256:d5b3d16a8fe80388556b88551f4a5833303de49717e1ac8410e5b28cd69a38dd"
+
+[[tasks]]
+name = "luosuu/kokkos__pykokkos-424"
+digest = "sha256:b83bd9b67a38480efb5978ec3427161b405601d7b5d237b89a893eb1f2e3a222"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8164"
+digest = "sha256:9fb5f7d10eb2d01d96749c899be3c21052b436d44a25eda7cd1b9a83b753cfde"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8967"
+digest = "sha256:1b6aed878805794a745df9278d3d2cdfb1a4beee26293e00f356870ada367f79"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8989"
+digest = "sha256:ea4a79df8d52fb214b75d0187ccadbbf546114f4a5463ee4726b767b2f4850e6"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-kernels-2864"
+digest = "sha256:346deadcc86d4125ca0214d5c0fd8809307aedbe533ec22526ba65edfa5f34ed"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-kernels-2935"
+digest = "sha256:356f56b474fb10971860d25c9e301e97a8e7f64b1ecc4e7940519f16df7fc1b8"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-kernels-3049"
+digest = "sha256:b0e6acde339bed19914c19303a1d7c7a920dbae0b9d43b04326cc1cf19362a4c"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-kernels-3088"
+digest = "sha256:bc829ef687824d445a9ef85051882cd2cdecbbbaa90fb5454dd5050094ce649c"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-kernels-3089"
+digest = "sha256:abc7864c2b74db035197c8d2574f9bbd9180b8be03e4c190a86ace9ce416edfd"
+

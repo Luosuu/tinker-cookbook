@@ -1,0 +1,195 @@
+diff --git a/core/unit_test/CMakeLists.txt b/core/unit_test/CMakeLists.txt
+index 05a7e7ef93a..0e87c397309 100644
+--- a/core/unit_test/CMakeLists.txt
++++ b/core/unit_test/CMakeLists.txt
+@@ -127,6 +127,7 @@ foreach(Tag Threads;Serial;OpenMP;Cuda;HPX;OpenACC;HIP;SYCL)
+       Crs
+       DeepCopy_Assignment
+       DeepCopy_Narrowing
++      DeepCopy_SameArgument
+       DeepCopyAlignment
+       ExecSpacePartitioning
+       ExecSpaceThreadSafety
+diff --git a/core/unit_test/TestDeepCopy_SameArgument.hpp b/core/unit_test/TestDeepCopy_SameArgument.hpp
+new file mode 100644
+index 00000000000..83c38f26ccf
+--- /dev/null
++++ b/core/unit_test/TestDeepCopy_SameArgument.hpp
+@@ -0,0 +1,55 @@
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++// SPDX-FileCopyrightText: Copyright Contributors to the Kokkos project
++
++#include <gtest/gtest.h>
++
++#include <Kokkos_Macros.hpp>
++#ifdef KOKKOS_ENABLE_EXPERIMENTAL_CXX20_MODULES
++import kokkos.core;
++#else
++#include <Kokkos_Core.hpp>
++#endif
++
++namespace {
++
++template <class View>
++void test_deep_copy_same_argument(View v) {
++  auto v_h = Kokkos::create_mirror_view(v);
++  EXPECT_NO_THROW(Kokkos::deep_copy(v, v_h));
++  EXPECT_NO_THROW(Kokkos::deep_copy(v_h, v));
++#ifdef KOKKOS_ENABLE_DEPRECATED_CODE_5
++  EXPECT_NO_THROW(Kokkos::deep_copy(v, v));
++  EXPECT_NO_THROW(Kokkos::deep_copy(v_h, v_h));
++#else
++  EXPECT_DEATH(Kokkos::deep_copy(v, v),
++               "Kokkos ERROR: deep_copy\\(\\) source and "
++               "destination View arguments are identical");
++  EXPECT_DEATH(Kokkos::deep_copy(v_h, v_h),
++               "Kokkos ERROR: deep_copy\\(\\) source and "
++               "destination View arguments are identical");
++#endif
++
++  TEST_EXECSPACE exec;
++  EXPECT_NO_THROW(Kokkos::deep_copy(exec, v, v_h));
++  EXPECT_NO_THROW(Kokkos::deep_copy(exec, v_h, v));
++#ifdef KOKKOS_ENABLE_DEPRECATED_CODE_5
++  EXPECT_NO_THROW(Kokkos::deep_copy(exec, v, v));
++  EXPECT_NO_THROW(Kokkos::deep_copy(exec, v_h, v_h));
++#else
++  EXPECT_DEATH(Kokkos::deep_copy(exec, v, v),
++               "Kokkos ERROR: deep_copy\\(\\) source and "
++               "destination View arguments are identical");
++  EXPECT_DEATH(Kokkos::deep_copy(exec, v_h, v_h),
++               "Kokkos ERROR: deep_copy\\(\\) source and "
++               "destination View arguments are identical");
++#endif
++}
++
++TEST(TEST_CATEGORY_DEATH, deep_copy_same_view) {
++  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
++
++  test_deep_copy_same_argument(Kokkos::View<double, TEST_EXECSPACE>("v0"));
++  test_deep_copy_same_argument(Kokkos::View<int*, TEST_EXECSPACE>("v1", 10));
++}
++
++}  // namespace
+diff --git a/core/unit_test/TestViewCopy_a.hpp b/core/unit_test/TestViewCopy_a.hpp
+index 4411e305759..eda26b632a2 100644
+--- a/core/unit_test/TestViewCopy_a.hpp
++++ b/core/unit_test/TestViewCopy_a.hpp
+@@ -68,7 +68,6 @@ TEST(TEST_CATEGORY, view_copy_tests) {
+       typename TEST_EXECSPACE::memory_space>::accessible;
+ 
+   // Contiguous copies
+-  { Kokkos::deep_copy(defaulted, defaulted); }
+   {
+     Kokkos::deep_copy(a, 0);
+     ASSERT_TRUE(run_check(a, 0));
+@@ -77,10 +76,6 @@ TEST(TEST_CATEGORY, view_copy_tests) {
+     Kokkos::deep_copy(a, 1);
+     ASSERT_TRUE(run_check(a, 1));
+   }
+-  {
+-    Kokkos::deep_copy(a, a);
+-    ASSERT_TRUE(run_check(a, 1));
+-  }
+   {
+     Kokkos::deep_copy(m_a, a);
+     ASSERT_TRUE(run_check(m_a, 1));
+@@ -180,7 +175,6 @@ TEST(TEST_CATEGORY, view_copy_tests) {
+   }
+ 
+   // Contiguous copies
+-  { Kokkos::deep_copy(dev, defaulted, defaulted); }
+   {
+     Kokkos::deep_copy(dev, a, 0);
+     ASSERT_TRUE(run_check(a, 0));
+@@ -189,10 +183,6 @@ TEST(TEST_CATEGORY, view_copy_tests) {
+     Kokkos::deep_copy(dev, a, 1);
+     ASSERT_TRUE(run_check(a, 1));
+   }
+-  {
+-    Kokkos::deep_copy(dev, a, a);
+-    ASSERT_TRUE(run_check(a, 1));
+-  }
+   {
+     Kokkos::deep_copy(dev, m_a, a);
+     ASSERT_TRUE(run_check(m_a, 1));
+@@ -259,7 +249,6 @@ TEST(TEST_CATEGORY, view_copy_tests) {
+   }
+ 
+   // Contiguous copies
+-  { Kokkos::deep_copy(host, defaulted, defaulted); }
+   {
+     Kokkos::deep_copy(host, a, 0);
+     ASSERT_TRUE(run_check(a, 0));
+@@ -268,10 +257,6 @@ TEST(TEST_CATEGORY, view_copy_tests) {
+     Kokkos::deep_copy(host, a, 1);
+     ASSERT_TRUE(run_check(a, 1));
+   }
+-  {
+-    Kokkos::deep_copy(host, a, a);
+-    ASSERT_TRUE(run_check(a, 1));
+-  }
+   {
+     Kokkos::deep_copy(host, m_a, a);
+     ASSERT_TRUE(run_check(m_a, 1));
+diff --git a/core/unit_test/TestViewCopy_b.hpp b/core/unit_test/TestViewCopy_b.hpp
+index e8f0c41fdf9..7d3889003fb 100644
+--- a/core/unit_test/TestViewCopy_b.hpp
++++ b/core/unit_test/TestViewCopy_b.hpp
+@@ -53,7 +53,6 @@ TEST(TEST_CATEGORY, view_copy_tests_rank_0) {
+   auto host = Kokkos::DefaultHostExecutionSpace();
+ 
+   // No execution space
+-  { Kokkos::deep_copy(defaulted, defaulted); }
+   {
+     Kokkos::deep_copy(a, 0);
+     ASSERT_TRUE(run_check(a, 0));
+@@ -62,10 +61,6 @@ TEST(TEST_CATEGORY, view_copy_tests_rank_0) {
+     Kokkos::deep_copy(a, 1);
+     ASSERT_TRUE(run_check(a, 1));
+   }
+-  {
+-    Kokkos::deep_copy(a, a);
+-    ASSERT_TRUE(run_check(a, 1));
+-  }
+   {
+     Kokkos::deep_copy(m_a, a);
+     ASSERT_TRUE(run_check(m_a, 1));
+@@ -104,7 +99,6 @@ TEST(TEST_CATEGORY, view_copy_tests_rank_0) {
+   }
+ 
+   // Device
+-  { Kokkos::deep_copy(dev, defaulted, defaulted); }
+   {
+     Kokkos::deep_copy(dev, a, 0);
+     ASSERT_TRUE(run_check(a, 0));
+@@ -113,10 +107,6 @@ TEST(TEST_CATEGORY, view_copy_tests_rank_0) {
+     Kokkos::deep_copy(dev, a, 1);
+     ASSERT_TRUE(run_check(a, 1));
+   }
+-  {
+-    Kokkos::deep_copy(dev, a, a);
+-    ASSERT_TRUE(run_check(a, 1));
+-  }
+   {
+     Kokkos::deep_copy(dev, m_a, a);
+     ASSERT_TRUE(run_check(m_a, 1));
+@@ -155,7 +145,6 @@ TEST(TEST_CATEGORY, view_copy_tests_rank_0) {
+   }
+ 
+   // Host
+-  { Kokkos::deep_copy(host, defaulted, defaulted); }
+   {
+     Kokkos::deep_copy(host, a, 0);
+     ASSERT_TRUE(run_check(a, 0));
+@@ -164,10 +153,6 @@ TEST(TEST_CATEGORY, view_copy_tests_rank_0) {
+     Kokkos::deep_copy(host, a, 1);
+     ASSERT_TRUE(run_check(a, 1));
+   }
+-  {
+-    Kokkos::deep_copy(host, a, a);
+-    ASSERT_TRUE(run_check(a, 1));
+-  }
+   {
+     Kokkos::deep_copy(host, m_a, a);
+     ASSERT_TRUE(run_check(m_a, 1));

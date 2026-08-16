@@ -1,0 +1,167 @@
+diff --git a/core/src/Kokkos_Parallel.hpp b/core/src/Kokkos_Parallel.hpp
+index 484f6c0d5f4..122239df790 100644
+--- a/core/src/Kokkos_Parallel.hpp
++++ b/core/src/Kokkos_Parallel.hpp
+@@ -137,9 +137,9 @@ inline void parallel_for(const std::string& str, const ExecPolicy& policy,
+   ExecPolicy inner_policy = policy;
+   Kokkos::Tools::Impl::begin_parallel_for(inner_policy, functor, str, kpID);
+ 
+-  Kokkos::Impl::shared_allocation_tracking_disable();
+-  Impl::ParallelFor<FunctorType, ExecPolicy> closure(functor, inner_policy);
+-  Kokkos::Impl::shared_allocation_tracking_enable();
++  auto closure =
++      Kokkos::Impl::construct_with_shared_allocation_tracking_disabled<
++          Impl::ParallelFor<FunctorType, ExecPolicy>>(functor, inner_policy);
+ 
+   closure.execute();
+ 
+@@ -352,10 +352,10 @@ inline void parallel_scan(const std::string& str, const ExecutionPolicy& policy,
+   ExecutionPolicy inner_policy = policy;
+   Kokkos::Tools::Impl::begin_parallel_scan(inner_policy, functor, str, kpID);
+ 
+-  Kokkos::Impl::shared_allocation_tracking_disable();
+-  Impl::ParallelScan<FunctorType, ExecutionPolicy> closure(functor,
+-                                                           inner_policy);
+-  Kokkos::Impl::shared_allocation_tracking_enable();
++  auto closure =
++      Kokkos::Impl::construct_with_shared_allocation_tracking_disabled<
++          Impl::ParallelScan<FunctorType, ExecutionPolicy>>(functor,
++                                                            inner_policy);
+ 
+   closure.execute();
+ 
+@@ -398,18 +398,19 @@ inline void parallel_scan(const std::string& str, const ExecutionPolicy& policy,
+   Kokkos::Tools::Impl::begin_parallel_scan(inner_policy, functor, str, kpID);
+ 
+   if constexpr (Kokkos::is_view<ReturnType>::value) {
+-    Kokkos::Impl::shared_allocation_tracking_disable();
+-    Impl::ParallelScanWithTotal<FunctorType, ExecutionPolicy,
+-                                typename ReturnType::value_type>
+-        closure(functor, inner_policy, return_value);
+-    Kokkos::Impl::shared_allocation_tracking_enable();
++    auto closure =
++        Kokkos::Impl::construct_with_shared_allocation_tracking_disabled<
++            Impl::ParallelScanWithTotal<FunctorType, ExecutionPolicy,
++                                        typename ReturnType::value_type>>(
++            functor, inner_policy, return_value);
+     closure.execute();
+   } else {
+-    Kokkos::Impl::shared_allocation_tracking_disable();
+     Kokkos::View<ReturnType, Kokkos::HostSpace> view(&return_value);
+-    Impl::ParallelScanWithTotal<FunctorType, ExecutionPolicy, ReturnType>
+-        closure(functor, inner_policy, view);
+-    Kokkos::Impl::shared_allocation_tracking_enable();
++    auto closure =
++        Kokkos::Impl::construct_with_shared_allocation_tracking_disabled<
++            Impl::ParallelScanWithTotal<FunctorType, ExecutionPolicy,
++                                        ReturnType>>(functor, inner_policy,
++                                                     view);
+     closure.execute();
+   }
+ 
+diff --git a/core/src/Kokkos_Parallel_Reduce.hpp b/core/src/Kokkos_Parallel_Reduce.hpp
+index 380f54b8750..53913266f13 100644
+--- a/core/src/Kokkos_Parallel_Reduce.hpp
++++ b/core/src/Kokkos_Parallel_Reduce.hpp
+@@ -1511,18 +1511,18 @@ struct ParallelReduceAdaptor {
+     using Analysis = FunctorAnalysis<FunctorPatternInterface::REDUCE,
+                                      PolicyType, typename ReducerSelector::type,
+                                      typename return_value_adapter::value_type>;
+-    Kokkos::Impl::shared_allocation_tracking_disable();
+-    CombinedFunctorReducer functor_reducer(
+-        functor, typename Analysis::Reducer(
+-                     ReducerSelector::select(functor, return_value)));
+-
+-    // FIXME Remove "Wrapper" once all backends implement the new interface
+-    Impl::ParallelReduce<decltype(functor_reducer), PolicyType,
+-                         typename Impl::FunctorPolicyExecutionSpace<
+-                             FunctorType, PolicyType>::execution_space>
+-        closure(functor_reducer, inner_policy,
+-                return_value_adapter::return_value(return_value, functor));
+-    Kokkos::Impl::shared_allocation_tracking_enable();
++
++    using CombinedFunctorReducerType =
++        CombinedFunctorReducer<FunctorType, typename Analysis::Reducer>;
++    auto closure = construct_with_shared_allocation_tracking_disabled<
++        Impl::ParallelReduce<CombinedFunctorReducerType, PolicyType,
++                             typename Impl::FunctorPolicyExecutionSpace<
++                                 FunctorType, PolicyType>::execution_space>>(
++        CombinedFunctorReducerType(
++            functor, typename Analysis::Reducer(
++                         ReducerSelector::select(functor, return_value))),
++        inner_policy,
++        return_value_adapter::return_value(return_value, functor));
+     closure.execute();
+ 
+     Kokkos::Tools::Impl::end_parallel_reduce<PassedReducerType>(
+diff --git a/core/src/Kokkos_View.hpp b/core/src/Kokkos_View.hpp
+index f4e96ab2ed2..c3d8113929c 100644
+--- a/core/src/Kokkos_View.hpp
++++ b/core/src/Kokkos_View.hpp
+@@ -1918,23 +1918,6 @@ KOKKOS_INLINE_FUNCTION bool operator!=(const View<LT, LP...>& lhs,
+ namespace Kokkos {
+ namespace Impl {
+ 
+-inline void shared_allocation_tracking_disable() {
+-  Kokkos::Impl::SharedAllocationRecord<void, void>::tracking_disable();
+-}
+-
+-inline void shared_allocation_tracking_enable() {
+-  Kokkos::Impl::SharedAllocationRecord<void, void>::tracking_enable();
+-}
+-
+-} /* namespace Impl */
+-} /* namespace Kokkos */
+-
+-//----------------------------------------------------------------------------
+-//----------------------------------------------------------------------------
+-
+-namespace Kokkos {
+-namespace Impl {
+-
+ template <class Specialize, typename A, typename B>
+ struct CommonViewValueType;
+ 
+diff --git a/core/src/impl/Kokkos_SharedAlloc.hpp b/core/src/impl/Kokkos_SharedAlloc.hpp
+index 99ab660213f..8b52b4ec2b7 100644
+--- a/core/src/impl/Kokkos_SharedAlloc.hpp
++++ b/core/src/impl/Kokkos_SharedAlloc.hpp
+@@ -644,6 +644,38 @@ union SharedAllocationTracker {
+ #undef KOKKOS_IMPL_SHARED_ALLOCATION_TRACKER_DECREMENT
+ };
+ 
++struct SharedAllocationDisableTrackingGuard {
++  SharedAllocationDisableTrackingGuard() {
++    KOKKOS_ASSERT(
++        (Kokkos::Impl::SharedAllocationRecord<void, void>::tracking_enabled()));
++    Kokkos::Impl::SharedAllocationRecord<void, void>::tracking_disable();
++  }
++
++  SharedAllocationDisableTrackingGuard(
++      const SharedAllocationDisableTrackingGuard&) = delete;
++  SharedAllocationDisableTrackingGuard(SharedAllocationDisableTrackingGuard&&) =
++      delete;
++
++  ~SharedAllocationDisableTrackingGuard() {
++    KOKKOS_ASSERT((
++        !Kokkos::Impl::SharedAllocationRecord<void, void>::tracking_enabled()));
++    Kokkos::Impl::SharedAllocationRecord<void, void>::tracking_enable();
++  }
++  // clang-format off
++  // The old version of clang format we use is particularly egregious here
++  SharedAllocationDisableTrackingGuard& operator=(
++      const SharedAllocationDisableTrackingGuard&) = delete;
++  SharedAllocationDisableTrackingGuard& operator=(
++      SharedAllocationDisableTrackingGuard&&) = delete;
++  // clang-format on
++};
++
++template <class FunctorType, class... Args>
++inline FunctorType construct_with_shared_allocation_tracking_disabled(
++    Args&&... args) {
++  [[maybe_unused]] auto guard = SharedAllocationDisableTrackingGuard{};
++  return {std::forward<Args>(args)...};
++}
+ } /* namespace Impl */
+ } /* namespace Kokkos */
+ #endif

@@ -1,0 +1,87 @@
+diff --git a/core/src/Kokkos_Core.cppm b/core/src/Kokkos_Core.cppm
+index 7ce344be12a..b75142a15a4 100644
+--- a/core/src/Kokkos_Core.cppm
++++ b/core/src/Kokkos_Core.cppm
+@@ -494,6 +494,7 @@ export {
+   using ::Kokkos::isfinite;
+   using ::Kokkos::isinf;
+   using ::Kokkos::isnan;
++  using ::Kokkos::isnormal;
+   using ::Kokkos::lgamma;
+   using ::Kokkos::lgammaf;
+   using ::Kokkos::lgammal;
+diff --git a/core/src/Kokkos_MathematicalFunctions.hpp b/core/src/Kokkos_MathematicalFunctions.hpp
+index 3dd6c7b8bce..b851a40bc20 100644
+--- a/core/src/Kokkos_MathematicalFunctions.hpp
++++ b/core/src/Kokkos_MathematicalFunctions.hpp
+@@ -8,6 +8,7 @@
+ #define KOKKOS_IMPL_PUBLIC_INCLUDE_NOTDEFINED_MATHFUNCTIONS
+ #endif
+ 
++#include <Kokkos_NumericTraits.hpp>
+ #include <Kokkos_Macros.hpp>
+ #include <cmath>
+ #include <cstdlib>
+@@ -525,7 +526,23 @@ KOKKOS_IMPL_MATH_BINARY_FUNCTION(copysign)
+ KOKKOS_IMPL_MATH_UNARY_PREDICATE(isfinite)
+ KOKKOS_IMPL_MATH_UNARY_PREDICATE(isinf)
+ KOKKOS_IMPL_MATH_UNARY_PREDICATE(isnan)
+-// isnormal
++#if defined(KOKKOS_ENABLE_CUDA)
++template <class T>
++KOKKOS_INLINE_FUNCTION std::enable_if_t<std::is_floating_point_v<T>, bool>
++isnormal(T x) {
++  const T abs = Kokkos::abs(x);
++  return (abs >= Kokkos::Experimental::norm_min_v<T>)&&(
++      abs <= Kokkos::Experimental::finite_max_v<T>);
++}
++
++template <class T>
++KOKKOS_INLINE_FUNCTION std::enable_if_t<std::is_integral_v<T>, bool> isnormal(
++    T x) {
++  return x != T(0);
++}
++#else
++KOKKOS_IMPL_MATH_UNARY_PREDICATE(isnormal)
++#endif
+ KOKKOS_IMPL_MATH_UNARY_PREDICATE(signbit)
+ // isgreater
+ // isgreaterequal
+diff --git a/core/src/impl/Kokkos_Half_MathematicalFunctions.hpp b/core/src/impl/Kokkos_Half_MathematicalFunctions.hpp
+index bf3876c4bfd..4c75694a91e 100644
+--- a/core/src/impl/Kokkos_Half_MathematicalFunctions.hpp
++++ b/core/src/impl/Kokkos_Half_MathematicalFunctions.hpp
+@@ -429,7 +429,32 @@ KOKKOS_INLINE_FUNCTION Kokkos::Experimental::bhalf_t nextafter(Kokkos::Experimen
+ #endif
+ #endif  // !(defined(KOKKOS_ENABLE_CUDA) && defined(KOKKOS_COMPILER_MSVC))
+ 
+-// isnormal
++#if defined(KOKKOS_HALF_T_IS_FLOAT) && !KOKKOS_HALF_T_IS_FLOAT
++KOKKOS_INLINE_FUNCTION bool isnormal(Kokkos::Experimental::half_t x) {
++#if defined(KOKKOS_ENABLE_HIP)
++    // FIXME_HIP
++    // Workaround for NaN with HIP
++    if (x != x) { return false; }
++#endif
++    auto abs = Kokkos::abs(x);
++    return (abs >= Kokkos::Experimental::norm_min_v<Kokkos::Experimental::half_t>)&&(
++      abs <= Kokkos::Experimental::finite_max_v<Kokkos::Experimental::half_t>);
++}
++#endif
++
++#if defined(KOKKOS_BHALF_T_IS_FLOAT) && !KOKKOS_BHALF_T_IS_FLOAT
++KOKKOS_INLINE_FUNCTION bool isnormal(Kokkos::Experimental::bhalf_t x) {
++#if defined(KOKKOS_ENABLE_HIP)
++    // FIXME_HIP
++    // Workaround for NaN with HIP
++    if (x != x) { return false; }
++#endif
++    auto abs = Kokkos::abs(x);
++    return (abs >= Kokkos::Experimental::norm_min_v<Kokkos::Experimental::bhalf_t>)&&(
++      abs <= Kokkos::Experimental::finite_max_v<Kokkos::Experimental::bhalf_t>);
++}
++#endif
++
+ KOKKOS_IMPL_MATH_HALF_FUNC_WRAPPER(KOKKOS_IMPL_MATH_UNARY_PREDICATE_HALF, signbit)
+ // isgreater
+ // isgreaterequal

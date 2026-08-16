@@ -1,0 +1,66 @@
+{
+  "FAIL_TO_PASS": [
+    "TEST_CATEGORY.view_customization_extra_int_arg (rank-7 assertions)"
+  ],
+  "PASS_TO_PASS": [
+    "TEST_CATEGORY.view_customization_extra_int_arg"
+  ],
+  "base_commit": "0a4828c1236c1476a5a73cde34bb5df3e808daa3",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_ContainersUnitTest_Serial"
+  ],
+  "changed_files": [
+    {
+      "additions": 6,
+      "deletions": 27,
+      "filename": "containers/src/Kokkos_DynRankView.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 30,
+      "deletions": 0,
+      "filename": "containers/unit_tests/TestDynRankView_ViewCustomization.hpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/containers/src/Kokkos_DynRankView.hpp b/containers/src/Kokkos_DynRankView.hpp\nindex 53d0b1c0c8d..71a8ec13094 100644\n--- a/containers/src/Kokkos_DynRankView.hpp\n+++ b/containers/src/Kokkos_DynRankView.hpp\n@@ -65,31 +65,10 @@ struct DynRankDimTraits {\n   KOKKOS_INLINE_FUNCTION\n   static size_t computeRank(const size_t N0, const size_t N1, const size_t N2,\n                             const size_t N3, const size_t N4, const size_t N5,\n-                            const size_t N6, const size_t /* N7 */) {\n-    return (\n-        (N6 == unspecified && N5 == unspecified && N4 == unspecified &&\n-         N3 == unspecified && N2 == unspecified && N1 == unspecified &&\n-         N0 == unspecified)\n-            ? 0\n-            : ((N6 == unspecified && N5 == unspecified && N4 == unspecified &&\n-                N3 == unspecified && N2 == unspecified && N1 == unspecified)\n-                   ? 1\n-                   : ((N6 == unspecified && N5 == unspecified &&\n-                       N4 == unspecified && N3 == unspecified &&\n-                       N2 == unspecified)\n-                          ? 2\n-                          : ((N6 == unspecified && N5 == unspecified &&\n-                              N4 == unspecified && N3 == unspecified)\n-                                 ? 3\n-                                 : ((N6 == unspecified && N5 == unspecified &&\n-                                     N4 == unspecified)\n-                                        ? 4\n-                                        : ((N6 == unspecified &&\n-                                            N5 == unspecified)\n-                                               ? 5\n-                                               : ((N6 == unspecified)\n-                                                      ? 6\n-                                                      : 7)))))));\n+                            const size_t N6, const size_t N7) {\n+    return (N0 != unspecified) + (N1 != unspecified) + (N2 != unspecified) +\n+           (N3 != unspecified) + (N4 != unspecified) + (N5 != unspecified) +\n+           (N6 != unspecified) + (N7 != unspecified);\n   }\n \n   // Compute the rank of the view from the nonzero layout arguments.\n@@ -937,7 +916,7 @@ class DynRankView : private View<DataType*******, Properties...> {\n     if constexpr (traits::impl_is_customized &&\n                   !Impl::ViewCtorProp<P...>::has_accessor_arg) {\n       int r = 0;\n-      while (r < 7 && layout.dimension[r] != KOKKOS_INVALID_INDEX) r++;\n+      while (r < 8 && layout.dimension[r] != KOKKOS_INVALID_INDEX) r++;\n \n       // Can't use with_properties_if_unset since its a host only function!\n       return view_wrap(\n@@ -956,7 +935,7 @@ class DynRankView : private View<DataType*******, Properties...> {\n     if constexpr (traits::impl_is_customized &&\n                   !Impl::ViewCtorProp<P...>::has_accessor_arg) {\n       int r = 0;\n-      while (r < 7 && layout.dimension[r] != KOKKOS_INVALID_INDEX) r++;\n+      while (r < 8 && layout.dimension[r] != KOKKOS_INVALID_INDEX) r++;\n       // Could use with_properties_if_unset, but rather keep same as above.\n       return view_alloc(\n           static_cast<const Impl::ViewCtorProp<void, P>&>(arg_prop).value...,\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+  "created_at": "2025-08-27T18:08:25Z",
+  "era": "cpp17",
+  "f2p_commands": [
+    "\"$(find build -type f -name Kokkos_ContainersUnitTest_Serial -perm -111 -print -quit)\" --gtest_filter='*view_customization_extra_int_arg*'"
+  ],
+  "fail_to_pass": [
+    "TEST_CATEGORY.view_customization_extra_int_arg (rank-7 assertions)"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-8358",
+  "labels": [
+    "Patch Release"
+  ],
+  "linked_issues": [],
+  "merge_commit": "9f545ee15c04789d0d1407c3aa83409af24cfead",
+  "merged_at": "2025-08-27T18:08:25Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "test",
+    "html_url": "https://github.com/kokkos/kokkos/pull/8358",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "\"$(find build -type f -name Kokkos_ContainersUnitTest_Serial -perm -111 -print -quit)\" --gtest_filter='*view_customization_extra_int_arg*'"
+  ],
+  "pass_to_pass": [
+    "TEST_CATEGORY.view_customization_extra_int_arg"
+  ],
+  "patch": "diff --git a/containers/src/Kokkos_DynRankView.hpp b/containers/src/Kokkos_DynRankView.hpp\nindex 53d0b1c0c8d..71a8ec13094 100644\n--- a/containers/src/Kokkos_DynRankView.hpp\n+++ b/containers/src/Kokkos_DynRankView.hpp\n@@ -65,31 +65,10 @@ struct DynRankDimTraits {\n   KOKKOS_INLINE_FUNCTION\n   static size_t computeRank(const size_t N0, const size_t N1, const size_t N2,\n                             const size_t N3, const size_t N4, const size_t N5,\n-                            const size_t N6, const size_t /* N7 */) {\n-    return (\n-        (N6 == unspecified && N5 == unspecified && N4 == unspecified &&\n-         N3 == unspecified && N2 == unspecified && N1 == unspecified &&\n-         N0 == unspecified)\n-            ? 0\n-            : ((N6 == unspecified && N5 == unspecified && N4 == unspecified &&\n-                N3 == unspecified && N2 == unspecified && N1 == unspecified)\n-                   ? 1\n-                   : ((N6 == unspecified && N5 == unspecified &&\n-                       N4 == unspecified && N3 == unspecified &&\n-                       N2 == unspecified)\n-                          ? 2\n-                          : ((N6 == unspecified && N5 == unspecified &&\n-                              N4 == unspecified && N3 == unspecified)\n-                                 ? 3\n-                                 : ((N6 == unspecified && N5 == unspecified &&\n-                                     N4 == unspecified)\n-                                        ? 4\n-                                        : ((N6 == unspecified &&\n-                                            N5 == unspecified)\n-                                               ? 5\n-                                               : ((N6 == unspecified)\n-                                                      ? 6\n-                                                      : 7)))))));\n+                            const size_t N6, const size_t N7) {\n+    return (N0 != unspecified) + (N1 != unspecified) + (N2 != unspecified) +\n+           (N3 != unspecified) + (N4 != unspecified) + (N5 != unspecified) +\n+           (N6 != unspecified) + (N7 != unspecified);\n   }\n \n   // Compute the rank of the view from the nonzero layout arguments.\n@@ -937,7 +916,7 @@ class DynRankView : private View<DataType*******, Properties...> {\n     if constexpr (traits::impl_is_customized &&\n                   !Impl::ViewCtorProp<P...>::has_accessor_arg) {\n       int r = 0;\n-      while (r < 7 && layout.dimension[r] != KOKKOS_INVALID_INDEX) r++;\n+      while (r < 8 && layout.dimension[r] != KOKKOS_INVALID_INDEX) r++;\n \n       // Can't use with_properties_if_unset since its a host only function!\n       return view_wrap(\n@@ -956,7 +935,7 @@ class DynRankView : private View<DataType*******, Properties...> {\n     if constexpr (traits::impl_is_customized &&\n                   !Impl::ViewCtorProp<P...>::has_accessor_arg) {\n       int r = 0;\n-      while (r < 7 && layout.dimension[r] != KOKKOS_INVALID_INDEX) r++;\n+      while (r < 8 && layout.dimension[r] != KOKKOS_INVALID_INDEX) r++;\n       // Could use with_properties_if_unset, but rather keep same as above.\n       return view_alloc(\n           static_cast<const Impl::ViewCtorProp<void, P>&>(arg_prop).value...,\ndiff --git a/containers/unit_tests/TestDynRankView_ViewCustomization.hpp b/containers/unit_tests/TestDynRankView_ViewCustomization.hpp\nindex 2b08f7df062..b72d4f0af61 100644\n--- a/containers/unit_tests/TestDynRankView_ViewCustomization.hpp\n+++ b/containers/unit_tests/TestDynRankView_ViewCustomization.hpp\n@@ -204,6 +204,36 @@ TEST(TEST_CATEGORY, view_customization_extra_int_arg) {\n         sizeof(double);\n     ASSERT_EQ(shmem, expected_shmem_size);\n   }\n+  // Rank 7\n+  {\n+    view_t a(\"A\", 2, 3, 2, 7, 2, 11, 2, 5);\n+    ASSERT_EQ(a.rank(), 7lu);\n+    ASSERT_EQ(a.extent(0), 2lu);\n+    ASSERT_EQ(a.extent(1), 3lu);\n+    ASSERT_EQ(a.extent(2), 2lu);\n+    ASSERT_EQ(a.extent(3), 7lu);\n+    ASSERT_EQ(a.extent(4), 2lu);\n+    ASSERT_EQ(a.extent(5), 11lu);\n+    ASSERT_EQ(a.extent(2), 2lu);\n+    ASSERT_EQ(a.accessor().size, 5lu);\n+    ASSERT_EQ(a.accessor().stride, size_t(16 * 3 * 7 * 11));\n+    view_t b(a.data(), 2, 3, 2, 7, 2, 11, 2, 5);\n+    ASSERT_EQ(b.rank(), 7lu);\n+    ASSERT_EQ(b.extent(0), 2lu);\n+    ASSERT_EQ(b.extent(1), 3lu);\n+    ASSERT_EQ(b.extent(2), 2lu);\n+    ASSERT_EQ(b.extent(3), 7lu);\n+    ASSERT_EQ(b.extent(4), 2lu);\n+    ASSERT_EQ(b.extent(5), 11lu);\n+    ASSERT_EQ(b.extent(6), 2lu);\n+    ASSERT_EQ(b.accessor().size, 5lu);\n+    ASSERT_EQ(b.accessor().stride, size_t(16 * 3 * 7 * 11));\n+    size_t shmem = view_t::shmem_size(2, 3, 2, 7, 2, 11, 2, 5);\n+    size_t expected_shmem_size =\n+        2lu * 3lu * 2lu * 7lu * 2lu * 11lu * 2lu * 5lu * sizeof(double) +\n+        sizeof(double);\n+    ASSERT_EQ(shmem, expected_shmem_size);\n+  }\n   // With accessor arg and no label\n   {\n     // This should not interpret the last argument (11) as an accessor arg since\n",
+  "pr_number": 8358,
+  "problem_statement": "This wasn't behaving correctly for Rank-7 DynRankView of Fad. Exposed in Intrepid2 testing.",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/containers/unit_tests/TestDynRankView_ViewCustomization.hpp b/containers/unit_tests/TestDynRankView_ViewCustomization.hpp\nindex 2b08f7df062..b72d4f0af61 100644\n--- a/containers/unit_tests/TestDynRankView_ViewCustomization.hpp\n+++ b/containers/unit_tests/TestDynRankView_ViewCustomization.hpp\n@@ -204,6 +204,36 @@ TEST(TEST_CATEGORY, view_customization_extra_int_arg) {\n         sizeof(double);\n     ASSERT_EQ(shmem, expected_shmem_size);\n   }\n+  // Rank 7\n+  {\n+    view_t a(\"A\", 2, 3, 2, 7, 2, 11, 2, 5);\n+    ASSERT_EQ(a.rank(), 7lu);\n+    ASSERT_EQ(a.extent(0), 2lu);\n+    ASSERT_EQ(a.extent(1), 3lu);\n+    ASSERT_EQ(a.extent(2), 2lu);\n+    ASSERT_EQ(a.extent(3), 7lu);\n+    ASSERT_EQ(a.extent(4), 2lu);\n+    ASSERT_EQ(a.extent(5), 11lu);\n+    ASSERT_EQ(a.extent(2), 2lu);\n+    ASSERT_EQ(a.accessor().size, 5lu);\n+    ASSERT_EQ(a.accessor().stride, size_t(16 * 3 * 7 * 11));\n+    view_t b(a.data(), 2, 3, 2, 7, 2, 11, 2, 5);\n+    ASSERT_EQ(b.rank(), 7lu);\n+    ASSERT_EQ(b.extent(0), 2lu);\n+    ASSERT_EQ(b.extent(1), 3lu);\n+    ASSERT_EQ(b.extent(2), 2lu);\n+    ASSERT_EQ(b.extent(3), 7lu);\n+    ASSERT_EQ(b.extent(4), 2lu);\n+    ASSERT_EQ(b.extent(5), 11lu);\n+    ASSERT_EQ(b.extent(6), 2lu);\n+    ASSERT_EQ(b.accessor().size, 5lu);\n+    ASSERT_EQ(b.accessor().stride, size_t(16 * 3 * 7 * 11));\n+    size_t shmem = view_t::shmem_size(2, 3, 2, 7, 2, 11, 2, 5);\n+    size_t expected_shmem_size =\n+        2lu * 3lu * 2lu * 7lu * 2lu * 11lu * 2lu * 5lu * sizeof(double) +\n+        sizeof(double);\n+    ASSERT_EQ(shmem, expected_shmem_size);\n+  }\n   // With accessor arg and no label\n   {\n     // This should not interpret the last argument (11) as an accessor arg since\n",
+  "title": "Fixup for DynRankView of FAD type of rank-7",
+  "version": "cpp17"
+}

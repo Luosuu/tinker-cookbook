@@ -1,0 +1,35 @@
+diff --git a/core/src/Kokkos_Complex.hpp b/core/src/Kokkos_Complex.hpp
+index dd095aeb7ed..9370dfd3535 100644
+--- a/core/src/Kokkos_Complex.hpp
++++ b/core/src/Kokkos_Complex.hpp
+@@ -801,6 +801,18 @@ KOKKOS_INLINE_FUNCTION constexpr complex<Impl::promote_t<ArithmeticType>> conj(
+   return complex<type>(x, -type());
+ }
+ 
++//! Norm of a complex number.
++template <class RealType>
++KOKKOS_INLINE_FUNCTION constexpr RealType norm(const complex<RealType>& x) {
++  return x.real() * x.real() + x.imag() * x.imag();
++}
++
++template <class ArithmeticType>
++KOKKOS_INLINE_FUNCTION constexpr Impl::promote_t<ArithmeticType> norm(
++    ArithmeticType x) {
++  return static_cast<Impl::promote_t<ArithmeticType>>(x) * x;
++}
++
+ //! Exponential of a complex number.
+ template <class RealType>
+ KOKKOS_INLINE_FUNCTION complex<RealType> exp(const complex<RealType>& x) {
+diff --git a/core/src/Kokkos_Core.cppm b/core/src/Kokkos_Core.cppm
+index bc7255b633a..794c39a8be0 100644
+--- a/core/src/Kokkos_Core.cppm
++++ b/core/src/Kokkos_Core.cppm
+@@ -552,6 +552,7 @@ export {
+   using ::Kokkos::nexttoward;
+   using ::Kokkos::nexttowardf;
+   using ::Kokkos::nexttowardl;
++  using ::Kokkos::norm;
+   using ::Kokkos::pow;
+   using ::Kokkos::powf;
+   using ::Kokkos::powl;

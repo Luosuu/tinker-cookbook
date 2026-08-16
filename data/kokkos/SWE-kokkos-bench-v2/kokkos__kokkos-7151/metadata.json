@@ -1,0 +1,64 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreUnitTest_Serial1"
+  ],
+  "PASS_TO_PASS": [
+    "Kokkos_CoreUnitTest_Serial1"
+  ],
+  "base_commit": "277c616e3309dbd5637e0a2282fe41b6f6eb4445",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreUnitTest_Serial1"
+  ],
+  "changed_files": [
+    {
+      "additions": 5,
+      "deletions": 0,
+      "filename": "core/src/Kokkos_ExecPolicy.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 43,
+      "deletions": 0,
+      "filename": "core/unit_test/TestRangePolicyConstructors.hpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/Kokkos_ExecPolicy.hpp b/core/src/Kokkos_ExecPolicy.hpp\nindex f65f780d419..b8d7f77deb3 100644\n--- a/core/src/Kokkos_ExecPolicy.hpp\n+++ b/core/src/Kokkos_ExecPolicy.hpp\n@@ -40,7 +40,12 @@ struct ParallelReduceTag {};\n \n struct ChunkSize {\n   int value;\n+  explicit ChunkSize(int value_) : value(value_) {}\n+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4\n+  template <typename T = void>\n+  KOKKOS_DEPRECATED_WITH_COMMENT(\"ChunkSize should be constructed explicitly.\")\n   ChunkSize(int value_) : value(value_) {}\n+#endif\n };\n \n /** \\brief  Execution policy for work over a range of an integral type.\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+  "created_at": "2024-07-24T15:56:14Z",
+  "era": "cpp17",
+  "f2p_commands": [
+    "cmake --build build --target Kokkos_CoreUnitTest_Serial1"
+  ],
+  "fail_to_pass": [
+    "Kokkos_CoreUnitTest_Serial1"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-7151",
+  "labels": [],
+  "linked_issues": [],
+  "merge_commit": "5e2f147cdeccf47180199a6eddb89878000e05cf",
+  "merged_at": "2024-07-24T15:56:14Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/7151",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "cmake --build build --target Kokkos_CoreUnitTest_Serial1"
+  ],
+  "pass_to_pass": [
+    "Kokkos_CoreUnitTest_Serial1"
+  ],
+  "patch": "diff --git a/core/src/Kokkos_ExecPolicy.hpp b/core/src/Kokkos_ExecPolicy.hpp\nindex f65f780d419..b8d7f77deb3 100644\n--- a/core/src/Kokkos_ExecPolicy.hpp\n+++ b/core/src/Kokkos_ExecPolicy.hpp\n@@ -40,7 +40,12 @@ struct ParallelReduceTag {};\n \n struct ChunkSize {\n   int value;\n+  explicit ChunkSize(int value_) : value(value_) {}\n+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4\n+  template <typename T = void>\n+  KOKKOS_DEPRECATED_WITH_COMMENT(\"ChunkSize should be constructed explicitly.\")\n   ChunkSize(int value_) : value(value_) {}\n+#endif\n };\n \n /** \\brief  Execution policy for work over a range of an integral type.\ndiff --git a/core/unit_test/TestRangePolicyConstructors.hpp b/core/unit_test/TestRangePolicyConstructors.hpp\nindex c8c1542af13..dd137e691ec 100644\n--- a/core/unit_test/TestRangePolicyConstructors.hpp\n+++ b/core/unit_test/TestRangePolicyConstructors.hpp\n@@ -20,6 +20,7 @@\n \n #include <regex>\n #include <limits>\n+#include <type_traits>\n \n namespace {\n \n@@ -196,4 +197,46 @@ TEST(TEST_CATEGORY_DEATH, range_policy_implicitly_converted_bounds) {\n #endif\n }\n \n+constexpr bool test_chunk_size_explicit() {\n+  using ExecutionSpace = TEST_EXECSPACE;\n+  using Kokkos::ChunkSize;\n+\n+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4\n+  static_assert(std::is_convertible_v<int, ChunkSize>);\n+  static_assert(std::is_constructible_v<ChunkSize, int>);\n+  // FIXME some execution spaces are implicitly constructible from int\n+  // which makes the constructor call ambiguous.\n+  static_assert(\n+      std::is_constructible_v<Kokkos::DefaultExecutionSpace, int> ||\n+      std::is_constructible_v<\n+          Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>, int, int, int>);\n+  static_assert(std::is_constructible_v<\n+                Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>, int, int,\n+                ChunkSize>);\n+  static_assert(std::is_constructible_v<Kokkos::RangePolicy<ExecutionSpace>,\n+                                        ExecutionSpace, int, int, int>);\n+  static_assert(std::is_constructible_v<Kokkos::RangePolicy<ExecutionSpace>,\n+                                        ExecutionSpace, int, int, ChunkSize>);\n+#else\n+  static_assert(!std::is_convertible_v<int, ChunkSize>);\n+  static_assert(std::is_constructible_v<ChunkSize, int>);\n+  // FIXME some execution spaces are implicitly constructible from int\n+  // which makes the constructor call work.\n+  static_assert(\n+      std::is_constructible_v<Kokkos::DefaultExecutionSpace, int> ||\n+      !std::is_constructible_v<\n+          Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>, int, int, int>);\n+  static_assert(std::is_constructible_v<\n+                Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>, int, int,\n+                ChunkSize>);\n+  static_assert(!std::is_constructible_v<Kokkos::RangePolicy<ExecutionSpace>,\n+                                         ExecutionSpace, int, int, int>);\n+  static_assert(std::is_constructible_v<Kokkos::RangePolicy<ExecutionSpace>,\n+                                        ExecutionSpace, int, int, ChunkSize>);\n+#endif\n+  return true;\n+}\n+\n+static_assert(test_chunk_size_explicit());\n+\n }  // namespace\n",
+  "pr_number": 7151,
+  "problem_statement": "Release 4.3 unintentionally introduced the ability for `RangePolicy` constructor to take as it's final argument any type convertible to `ChunkSize` and implicitly construct a `ChunkSize` object for the input. Remove that by making the `ChunkSize(int)` constructor explicit.",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/TestRangePolicyConstructors.hpp b/core/unit_test/TestRangePolicyConstructors.hpp\nindex c8c1542af13..dd137e691ec 100644\n--- a/core/unit_test/TestRangePolicyConstructors.hpp\n+++ b/core/unit_test/TestRangePolicyConstructors.hpp\n@@ -20,6 +20,7 @@\n \n #include <regex>\n #include <limits>\n+#include <type_traits>\n \n namespace {\n \n@@ -196,4 +197,46 @@ TEST(TEST_CATEGORY_DEATH, range_policy_implicitly_converted_bounds) {\n #endif\n }\n \n+constexpr bool test_chunk_size_explicit() {\n+  using ExecutionSpace = TEST_EXECSPACE;\n+  using Kokkos::ChunkSize;\n+\n+#ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4\n+  static_assert(std::is_convertible_v<int, ChunkSize>);\n+  static_assert(std::is_constructible_v<ChunkSize, int>);\n+  // FIXME some execution spaces are implicitly constructible from int\n+  // which makes the constructor call ambiguous.\n+  static_assert(\n+      std::is_constructible_v<Kokkos::DefaultExecutionSpace, int> ||\n+      std::is_constructible_v<\n+          Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>, int, int, int>);\n+  static_assert(std::is_constructible_v<\n+                Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>, int, int,\n+                ChunkSize>);\n+  static_assert(std::is_constructible_v<Kokkos::RangePolicy<ExecutionSpace>,\n+                                        ExecutionSpace, int, int, int>);\n+  static_assert(std::is_constructible_v<Kokkos::RangePolicy<ExecutionSpace>,\n+                                        ExecutionSpace, int, int, ChunkSize>);\n+#else\n+  static_assert(!std::is_convertible_v<int, ChunkSize>);\n+  static_assert(std::is_constructible_v<ChunkSize, int>);\n+  // FIXME some execution spaces are implicitly constructible from int\n+  // which makes the constructor call work.\n+  static_assert(\n+      std::is_constructible_v<Kokkos::DefaultExecutionSpace, int> ||\n+      !std::is_constructible_v<\n+          Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>, int, int, int>);\n+  static_assert(std::is_constructible_v<\n+                Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>, int, int,\n+                ChunkSize>);\n+  static_assert(!std::is_constructible_v<Kokkos::RangePolicy<ExecutionSpace>,\n+                                         ExecutionSpace, int, int, int>);\n+  static_assert(std::is_constructible_v<Kokkos::RangePolicy<ExecutionSpace>,\n+                                        ExecutionSpace, int, int, ChunkSize>);\n+#endif\n+  return true;\n+}\n+\n+static_assert(test_chunk_size_explicit());\n+\n }  // namespace\n",
+  "title": "Make struct \"ChunkSize\" constructor explicit to avoid implicit construction in RangePolicy",
+  "version": "cpp17"
+}

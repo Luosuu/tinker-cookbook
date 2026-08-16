@@ -1,0 +1,77 @@
+{
+  "FAIL_TO_PASS": [
+    "int16_combined_reduce",
+    "many_int8_combined_reduce",
+    "many_int16_combined_reduce"
+  ],
+  "PASS_TO_PASS": [
+    "int_combined_reduce"
+  ],
+  "base_commit": "e684884c7b399dd856cd3d60328930fc629bad93",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreUnitTest_Cuda1"
+  ],
+  "changed_files": [
+    {
+      "additions": 11,
+      "deletions": 2,
+      "filename": "core/src/impl/Kokkos_Combined_Reducer.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 114,
+      "deletions": 0,
+      "filename": "core/unit_test/TestReduce.hpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/impl/Kokkos_Combined_Reducer.hpp b/core/src/impl/Kokkos_Combined_Reducer.hpp\nindex e9381d219b8..b2894ac445e 100644\n--- a/core/src/impl/Kokkos_Combined_Reducer.hpp\n+++ b/core/src/impl/Kokkos_Combined_Reducer.hpp\n@@ -41,13 +41,22 @@ struct CombinedReducerValueItemImpl {\n \n //==============================================================================\n \n+// Dummy struct used to align CombinedReducerValueImpl to at least alignof(int).\n+// CombinedReducerValueImpl has to be aligned to at least alignof(int) and its\n+// sizeof must be a multiple of sizeof(int), as we might access it through an\n+// int* in the CUDA and HIP reduction kernels.\n+struct alignas(int) AlignmentHelper {};\n+\n template <class IdxSeq, class... ValueTypes>\n struct CombinedReducerValueImpl;\n \n template <size_t... Idxs, class... ValueTypes>\n struct CombinedReducerValueImpl<std::integer_sequence<size_t, Idxs...>,\n-                                ValueTypes...>\n-    : CombinedReducerValueItemImpl<Idxs, ValueTypes>... {\n+                                ValueTypes...> :\n+#if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP)\n+    AlignmentHelper,\n+#endif\n+    CombinedReducerValueItemImpl<Idxs, ValueTypes>... {\n  public:\n   KOKKOS_DEFAULTED_FUNCTION\n   constexpr CombinedReducerValueImpl() = default;\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_CUDA=ON -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DKokkos_ARCH_ADA89=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER=/workspace/repo/bin/nvcc_wrapper",
+  "created_at": "2026-03-27T14:29:39Z",
+  "era": "cpp20",
+  "f2p_commands": [
+    "ctest --test-dir build --output-on-failure -R '^Kokkos_CoreUnitTest_Cuda1$'"
+  ],
+  "fail_to_pass": [
+    "int16_combined_reduce",
+    "many_int8_combined_reduce",
+    "many_int16_combined_reduce"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-8989",
+  "labels": [
+    "Bug",
+    "Patch Release",
+    "Backend - CUDA",
+    "Backend - HIP",
+    "SNL-CI-APPROVAL"
+  ],
+  "linked_issues": [
+    8426
+  ],
+  "merge_commit": "aeb3cf8cacaa96342e157362865b693dec7c21d6",
+  "merged_at": "2026-03-27T14:29:39Z",
+  "metadata": {
+    "accelerator": "cuda",
+    "build_system": "cmake",
+    "f2p_stage": "test",
+    "html_url": "https://github.com/kokkos/kokkos/pull/8989",
+    "modal_gpu": "L4",
+    "requires_gpu": true,
+    "toolchain": "cuda"
+  },
+  "p2p_commands": [
+    "ctest --test-dir build --output-on-failure -R '^Kokkos_CoreUnitTest_Cuda1$'"
+  ],
+  "pass_to_pass": [
+    "int_combined_reduce"
+  ],
+  "patch": "diff --git a/core/src/impl/Kokkos_Combined_Reducer.hpp b/core/src/impl/Kokkos_Combined_Reducer.hpp\nindex e9381d219b8..b2894ac445e 100644\n--- a/core/src/impl/Kokkos_Combined_Reducer.hpp\n+++ b/core/src/impl/Kokkos_Combined_Reducer.hpp\n@@ -41,13 +41,22 @@ struct CombinedReducerValueItemImpl {\n \n //==============================================================================\n \n+// Dummy struct used to align CombinedReducerValueImpl to at least alignof(int).\n+// CombinedReducerValueImpl has to be aligned to at least alignof(int) and its\n+// sizeof must be a multiple of sizeof(int), as we might access it through an\n+// int* in the CUDA and HIP reduction kernels.\n+struct alignas(int) AlignmentHelper {};\n+\n template <class IdxSeq, class... ValueTypes>\n struct CombinedReducerValueImpl;\n \n template <size_t... Idxs, class... ValueTypes>\n struct CombinedReducerValueImpl<std::integer_sequence<size_t, Idxs...>,\n-                                ValueTypes...>\n-    : CombinedReducerValueItemImpl<Idxs, ValueTypes>... {\n+                                ValueTypes...> :\n+#if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_HIP)\n+    AlignmentHelper,\n+#endif\n+    CombinedReducerValueItemImpl<Idxs, ValueTypes>... {\n  public:\n   KOKKOS_DEFAULTED_FUNCTION\n   constexpr CombinedReducerValueImpl() = default;\ndiff --git a/core/unit_test/TestReduce.hpp b/core/unit_test/TestReduce.hpp\nindex 95cd91fd9b3..e0fa6d78128 100644\n--- a/core/unit_test/TestReduce.hpp\n+++ b/core/unit_test/TestReduce.hpp\n@@ -249,6 +249,35 @@ class CombinedReduceFunctorSameType {\n   }\n };\n \n+template <class ValueType, class DeviceType>\n+class CombinedReduceFunctorManySameType {\n+ public:\n+  using size_type = int64_t;\n+\n+  const size_type nwork;\n+\n+  KOKKOS_INLINE_FUNCTION\n+  constexpr explicit CombinedReduceFunctorManySameType(\n+      const size_type& arg_nwork)\n+      : nwork(arg_nwork) {}\n+\n+  KOKKOS_INLINE_FUNCTION\n+  void operator()(size_type iwork, ValueType& dst1, ValueType& dst2,\n+                  ValueType& dst3, ValueType& dst4, ValueType& dst5,\n+                  ValueType& dst6, ValueType& dst7, ValueType& dst8,\n+                  ValueType& dst9) const {\n+    dst1 += 1;\n+    dst2 += 2;\n+    dst3 += 3;\n+    dst4 += -1;\n+    dst5 += -2;\n+    dst6 += -3;\n+    dst7 += iwork + 1;\n+    dst8 += nwork - iwork;\n+    dst9 += 0;\n+  }\n+};\n+\n namespace {\n \n template <typename ScalarType, class DeviceType>\n@@ -536,6 +565,25 @@ TEST(TEST_CATEGORY, int64_t_reduce_dynamic_view) {\n \n // FIXME_OPENACC: Not yet implemented.\n #ifndef KOKKOS_ENABLE_OPENACC\n+TEST(TEST_CATEGORY, int16_combined_reduce) {\n+  using functor_type = CombinedReduceFunctorSameType<int16_t, TEST_EXECSPACE>;\n+  constexpr uint64_t nw = 10;\n+\n+  uint64_t nsum = (nw / 2) * (nw + 1);\n+\n+  int16_t result1 = 0;\n+  int16_t result2 = 0;\n+  int16_t result3 = 0;\n+\n+  Kokkos::parallel_reduce(\"int16_combined_reduce\",\n+                          Kokkos::RangePolicy<TEST_EXECSPACE>(0, nw),\n+                          functor_type(nw), result1, result2, result3);\n+\n+  ASSERT_EQ(nw, uint64_t(result1));\n+  ASSERT_EQ(nsum, uint64_t(result2));\n+  ASSERT_EQ(nsum, uint64_t(result3));\n+}\n+\n TEST(TEST_CATEGORY, int_combined_reduce) {\n   using functor_type = CombinedReduceFunctorSameType<int64_t, TEST_EXECSPACE>;\n   constexpr uint64_t nw = 1000;\n@@ -555,6 +603,72 @@ TEST(TEST_CATEGORY, int_combined_reduce) {\n   ASSERT_EQ(nsum, uint64_t(result3));\n }\n \n+TEST(TEST_CATEGORY, many_int8_combined_reduce) {\n+  using functor_type =\n+      CombinedReduceFunctorManySameType<int8_t, TEST_EXECSPACE>;\n+  constexpr int64_t nw = 10;\n+\n+  int64_t nsum = (nw / 2) * (nw + 1);\n+\n+  int8_t result1 = 0;\n+  int8_t result2 = 0;\n+  int8_t result3 = 0;\n+  int8_t result4 = 0;\n+  int8_t result5 = 0;\n+  int8_t result6 = 0;\n+  int8_t result7 = 0;\n+  int8_t result8 = 0;\n+  int8_t result9 = 0;\n+\n+  Kokkos::parallel_reduce(\"many_int8_combined_reduce\",\n+                          Kokkos::RangePolicy<TEST_EXECSPACE>(0, nw),\n+                          functor_type(nw), result1, result2, result3, result4,\n+                          result5, result6, result7, result8, result9);\n+\n+  ASSERT_EQ(nw, int64_t(result1));\n+  ASSERT_EQ(2 * nw, int64_t(result2));\n+  ASSERT_EQ(3 * nw, int64_t(result3));\n+  ASSERT_EQ(-nw, int64_t(result4));\n+  ASSERT_EQ(-2 * nw, int64_t(result5));\n+  ASSERT_EQ(-3 * nw, int64_t(result6));\n+  ASSERT_EQ(nsum, int64_t(result7));\n+  ASSERT_EQ(nsum, int64_t(result8));\n+  ASSERT_EQ(0, int64_t(result9));\n+}\n+\n+TEST(TEST_CATEGORY, many_int16_combined_reduce) {\n+  using functor_type =\n+      CombinedReduceFunctorManySameType<int16_t, TEST_EXECSPACE>;\n+  constexpr int64_t nw = 10;\n+\n+  int64_t nsum = (nw / 2) * (nw + 1);\n+\n+  int16_t result1 = 0;\n+  int16_t result2 = 0;\n+  int16_t result3 = 0;\n+  int16_t result4 = 0;\n+  int16_t result5 = 0;\n+  int16_t result6 = 0;\n+  int16_t result7 = 0;\n+  int16_t result8 = 0;\n+  int16_t result9 = 0;\n+\n+  Kokkos::parallel_reduce(\"many_int16_combined_reduce\",\n+                          Kokkos::RangePolicy<TEST_EXECSPACE>(0, nw),\n+                          functor_type(nw), result1, result2, result3, result4,\n+                          result5, result6, result7, result8, result9);\n+\n+  ASSERT_EQ(nw, int64_t(result1));\n+  ASSERT_EQ(2 * nw, int64_t(result2));\n+  ASSERT_EQ(3 * nw, int64_t(result3));\n+  ASSERT_EQ(-nw, int64_t(result4));\n+  ASSERT_EQ(-2 * nw, int64_t(result5));\n+  ASSERT_EQ(-3 * nw, int64_t(result6));\n+  ASSERT_EQ(nsum, int64_t(result7));\n+  ASSERT_EQ(nsum, int64_t(result8));\n+  ASSERT_EQ(0, int64_t(result9));\n+}\n+\n TEST(TEST_CATEGORY, mdrange_combined_reduce) {\n   using functor_type = CombinedReduceFunctorSameType<int64_t, TEST_EXECSPACE>;\n   constexpr uint64_t nw = 1000;\n",
+  "pr_number": 8989,
+  "problem_statement": "Combined reducer fail on Cuda backends with `int16_t` and `int8_t`\n\nWhen calling a combined reducer with `int16_t` or `int8_t` values for the reducer, the CUDA backend always returns 0 for certain amounts of arguments.\n\nFor instance, the following code:\n[implementation suggestion omitted]\n\nProduces:\n[implementation suggestion omitted]\n\nIt looks like the combined reducer can't return a value when the size of the combined type is more than 32 bits but not a multiple of 32.",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/TestReduce.hpp b/core/unit_test/TestReduce.hpp\nindex 95cd91fd9b3..e0fa6d78128 100644\n--- a/core/unit_test/TestReduce.hpp\n+++ b/core/unit_test/TestReduce.hpp\n@@ -249,6 +249,35 @@ class CombinedReduceFunctorSameType {\n   }\n };\n \n+template <class ValueType, class DeviceType>\n+class CombinedReduceFunctorManySameType {\n+ public:\n+  using size_type = int64_t;\n+\n+  const size_type nwork;\n+\n+  KOKKOS_INLINE_FUNCTION\n+  constexpr explicit CombinedReduceFunctorManySameType(\n+      const size_type& arg_nwork)\n+      : nwork(arg_nwork) {}\n+\n+  KOKKOS_INLINE_FUNCTION\n+  void operator()(size_type iwork, ValueType& dst1, ValueType& dst2,\n+                  ValueType& dst3, ValueType& dst4, ValueType& dst5,\n+                  ValueType& dst6, ValueType& dst7, ValueType& dst8,\n+                  ValueType& dst9) const {\n+    dst1 += 1;\n+    dst2 += 2;\n+    dst3 += 3;\n+    dst4 += -1;\n+    dst5 += -2;\n+    dst6 += -3;\n+    dst7 += iwork + 1;\n+    dst8 += nwork - iwork;\n+    dst9 += 0;\n+  }\n+};\n+\n namespace {\n \n template <typename ScalarType, class DeviceType>\n@@ -536,6 +565,25 @@ TEST(TEST_CATEGORY, int64_t_reduce_dynamic_view) {\n \n // FIXME_OPENACC: Not yet implemented.\n #ifndef KOKKOS_ENABLE_OPENACC\n+TEST(TEST_CATEGORY, int16_combined_reduce) {\n+  using functor_type = CombinedReduceFunctorSameType<int16_t, TEST_EXECSPACE>;\n+  constexpr uint64_t nw = 10;\n+\n+  uint64_t nsum = (nw / 2) * (nw + 1);\n+\n+  int16_t result1 = 0;\n+  int16_t result2 = 0;\n+  int16_t result3 = 0;\n+\n+  Kokkos::parallel_reduce(\"int16_combined_reduce\",\n+                          Kokkos::RangePolicy<TEST_EXECSPACE>(0, nw),\n+                          functor_type(nw), result1, result2, result3);\n+\n+  ASSERT_EQ(nw, uint64_t(result1));\n+  ASSERT_EQ(nsum, uint64_t(result2));\n+  ASSERT_EQ(nsum, uint64_t(result3));\n+}\n+\n TEST(TEST_CATEGORY, int_combined_reduce) {\n   using functor_type = CombinedReduceFunctorSameType<int64_t, TEST_EXECSPACE>;\n   constexpr uint64_t nw = 1000;\n@@ -555,6 +603,72 @@ TEST(TEST_CATEGORY, int_combined_reduce) {\n   ASSERT_EQ(nsum, uint64_t(result3));\n }\n \n+TEST(TEST_CATEGORY, many_int8_combined_reduce) {\n+  using functor_type =\n+      CombinedReduceFunctorManySameType<int8_t, TEST_EXECSPACE>;\n+  constexpr int64_t nw = 10;\n+\n+  int64_t nsum = (nw / 2) * (nw + 1);\n+\n+  int8_t result1 = 0;\n+  int8_t result2 = 0;\n+  int8_t result3 = 0;\n+  int8_t result4 = 0;\n+  int8_t result5 = 0;\n+  int8_t result6 = 0;\n+  int8_t result7 = 0;\n+  int8_t result8 = 0;\n+  int8_t result9 = 0;\n+\n+  Kokkos::parallel_reduce(\"many_int8_combined_reduce\",\n+                          Kokkos::RangePolicy<TEST_EXECSPACE>(0, nw),\n+                          functor_type(nw), result1, result2, result3, result4,\n+                          result5, result6, result7, result8, result9);\n+\n+  ASSERT_EQ(nw, int64_t(result1));\n+  ASSERT_EQ(2 * nw, int64_t(result2));\n+  ASSERT_EQ(3 * nw, int64_t(result3));\n+  ASSERT_EQ(-nw, int64_t(result4));\n+  ASSERT_EQ(-2 * nw, int64_t(result5));\n+  ASSERT_EQ(-3 * nw, int64_t(result6));\n+  ASSERT_EQ(nsum, int64_t(result7));\n+  ASSERT_EQ(nsum, int64_t(result8));\n+  ASSERT_EQ(0, int64_t(result9));\n+}\n+\n+TEST(TEST_CATEGORY, many_int16_combined_reduce) {\n+  using functor_type =\n+      CombinedReduceFunctorManySameType<int16_t, TEST_EXECSPACE>;\n+  constexpr int64_t nw = 10;\n+\n+  int64_t nsum = (nw / 2) * (nw + 1);\n+\n+  int16_t result1 = 0;\n+  int16_t result2 = 0;\n+  int16_t result3 = 0;\n+  int16_t result4 = 0;\n+  int16_t result5 = 0;\n+  int16_t result6 = 0;\n+  int16_t result7 = 0;\n+  int16_t result8 = 0;\n+  int16_t result9 = 0;\n+\n+  Kokkos::parallel_reduce(\"many_int16_combined_reduce\",\n+                          Kokkos::RangePolicy<TEST_EXECSPACE>(0, nw),\n+                          functor_type(nw), result1, result2, result3, result4,\n+                          result5, result6, result7, result8, result9);\n+\n+  ASSERT_EQ(nw, int64_t(result1));\n+  ASSERT_EQ(2 * nw, int64_t(result2));\n+  ASSERT_EQ(3 * nw, int64_t(result3));\n+  ASSERT_EQ(-nw, int64_t(result4));\n+  ASSERT_EQ(-2 * nw, int64_t(result5));\n+  ASSERT_EQ(-3 * nw, int64_t(result6));\n+  ASSERT_EQ(nsum, int64_t(result7));\n+  ASSERT_EQ(nsum, int64_t(result8));\n+  ASSERT_EQ(0, int64_t(result9));\n+}\n+\n TEST(TEST_CATEGORY, mdrange_combined_reduce) {\n   using functor_type = CombinedReduceFunctorSameType<int64_t, TEST_EXECSPACE>;\n   constexpr uint64_t nw = 1000;\n",
+  "title": "Fix misalignment issues for CUDA and HIP combined reducers",
+  "version": "cpp20"
+}

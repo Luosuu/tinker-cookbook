@@ -105,11 +105,21 @@ class ModalSandbox:
         timeout: int = 600,
         image: modal.Image | None = None,
         max_stream_output_bytes: int = 128 * 1024,
+        gpu: str | None = None,
+        cpu: float | tuple[float, float] | None = None,
+        memory: int | tuple[int, int] | None = None,
     ) -> ModalSandbox:
         """Create a new Modal sandbox."""
         image = image or modal.Image.debian_slim()
         app = await modal.App.lookup.aio(app_name, create_if_missing=True)
-        sandbox = await modal.Sandbox.create.aio(app=app, image=image, timeout=timeout)
+        sandbox = await modal.Sandbox.create.aio(
+            app=app,
+            image=image,
+            timeout=timeout,
+            gpu=gpu,
+            cpu=cpu,
+            memory=memory,
+        )
         return cls(
             timeout=timeout,
             image=image,

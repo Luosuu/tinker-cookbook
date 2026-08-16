@@ -1,0 +1,65 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreUnitTest_Serial2 compilation with TestViewAPI.hpp static_assert"
+  ],
+  "PASS_TO_PASS": [
+    "TestSerial_ViewAPI_*"
+  ],
+  "base_commit": "cfb50ca044174e7e883bf688e4c66a786618b393",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreUnitTest_Serial2"
+  ],
+  "changed_files": [
+    {
+      "additions": 4,
+      "deletions": 6,
+      "filename": "core/src/Kokkos_View.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 3,
+      "deletions": 0,
+      "filename": "core/unit_test/TestViewAPI.hpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/Kokkos_View.hpp b/core/src/Kokkos_View.hpp\nindex 04d1fcf1518..d34d9750e38 100644\n--- a/core/src/Kokkos_View.hpp\n+++ b/core/src/Kokkos_View.hpp\n@@ -679,17 +679,15 @@ class View : public ViewTraits<DataType, Properties...> {\n            typename traits::device_type, typename traits::hooks_policy,\n            typename traits::memory_traits>;\n \n-  /** \\brief  Compatible HostMirror view */\n-  using HostMirror =\n+  /** \\brief  Compatible host mirror view */\n+  using host_mirror_type =\n       View<typename traits::non_const_data_type, typename traits::array_layout,\n            Device<DefaultHostExecutionSpace,\n                   typename traits::host_mirror_space::memory_space>,\n            typename traits::hooks_policy>;\n \n-  /** \\brief  Compatible HostMirror view */\n-  using host_mirror_type =\n-      View<typename traits::non_const_data_type, typename traits::array_layout,\n-           typename traits::host_mirror_space, typename traits::hooks_policy>;\n+  /** \\brief  Compatible host mirror view */\n+  using HostMirror = host_mirror_type;\n \n   /** \\brief Unified types */\n   using uniform_type = typename Impl::ViewUniformType<View, 0>::type;\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+  "created_at": "2024-08-22T18:51:38Z",
+  "era": "cpp17",
+  "f2p_commands": [
+    "cmake --build build --target Kokkos_CoreUnitTest_Serial2"
+  ],
+  "fail_to_pass": [
+    "Kokkos_CoreUnitTest_Serial2 compilation with TestViewAPI.hpp static_assert"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-7244",
+  "labels": [],
+  "linked_issues": [],
+  "merge_commit": "747a2586de1d7d3a3559c92ebffef76a7a428a2f",
+  "merged_at": "2024-08-22T18:51:38Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/7244",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "cmake --build build --target Kokkos_CoreUnitTest_Serial2",
+    "ctest --test-dir build -R 'CoreUnitTest_Serial2' --output-on-failure"
+  ],
+  "pass_to_pass": [
+    "TestSerial_ViewAPI_*"
+  ],
+  "patch": "diff --git a/core/src/Kokkos_View.hpp b/core/src/Kokkos_View.hpp\nindex 04d1fcf1518..d34d9750e38 100644\n--- a/core/src/Kokkos_View.hpp\n+++ b/core/src/Kokkos_View.hpp\n@@ -679,17 +679,15 @@ class View : public ViewTraits<DataType, Properties...> {\n            typename traits::device_type, typename traits::hooks_policy,\n            typename traits::memory_traits>;\n \n-  /** \\brief  Compatible HostMirror view */\n-  using HostMirror =\n+  /** \\brief  Compatible host mirror view */\n+  using host_mirror_type =\n       View<typename traits::non_const_data_type, typename traits::array_layout,\n            Device<DefaultHostExecutionSpace,\n                   typename traits::host_mirror_space::memory_space>,\n            typename traits::hooks_policy>;\n \n-  /** \\brief  Compatible HostMirror view */\n-  using host_mirror_type =\n-      View<typename traits::non_const_data_type, typename traits::array_layout,\n-           typename traits::host_mirror_space, typename traits::hooks_policy>;\n+  /** \\brief  Compatible host mirror view */\n+  using HostMirror = host_mirror_type;\n \n   /** \\brief Unified types */\n   using uniform_type = typename Impl::ViewUniformType<View, 0>::type;\ndiff --git a/core/unit_test/TestViewAPI.hpp b/core/unit_test/TestViewAPI.hpp\nindex 1ee68965149..6a40d95777e 100644\n--- a/core/unit_test/TestViewAPI.hpp\n+++ b/core/unit_test/TestViewAPI.hpp\n@@ -955,6 +955,9 @@ class TestViewAPI {\n     using view_type   = Kokkos::View<int, host>;\n     using mirror_type = typename view_type::HostMirror;\n \n+    static_assert(std::is_same_v<typename view_type::HostMirror,\n+                                 typename view_type::host_mirror_type>);\n+\n     static_assert(std::is_same<typename view_type::memory_space,\n                                typename mirror_type::memory_space>::value);\n \n",
+  "pr_number": 7244,
+  "problem_statement": "There are 2 host mirror view types defined in `Kokkos::View`:\r\n- `HostMirror` (`PascalCase`)\r\n- `host_mirror_type` (`snake_case`)\r\n\r\nThis PR aligns both types so they are strictly equivalent (tested),\r\n\r\nNote that the type defined by `HostMirror` is kept, the one defined previously by `host_mirror_type` disappears. This is because `HostMirror` is used all over the place in `Kokkos`, `host_mirror_type` was not.\r\n\r\nThis PR addresses #6996.",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/TestViewAPI.hpp b/core/unit_test/TestViewAPI.hpp\nindex 1ee68965149..6a40d95777e 100644\n--- a/core/unit_test/TestViewAPI.hpp\n+++ b/core/unit_test/TestViewAPI.hpp\n@@ -955,6 +955,9 @@ class TestViewAPI {\n     using view_type   = Kokkos::View<int, host>;\n     using mirror_type = typename view_type::HostMirror;\n \n+    static_assert(std::is_same_v<typename view_type::HostMirror,\n+                                 typename view_type::host_mirror_type>);\n+\n     static_assert(std::is_same<typename view_type::memory_space,\n                                typename mirror_type::memory_space>::value);\n \n",
+  "title": "core(view): aligning `HostMirror` and `host_mirror_type`",
+  "version": "cpp17"
+}

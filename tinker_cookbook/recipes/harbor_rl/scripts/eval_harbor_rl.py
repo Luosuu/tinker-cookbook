@@ -29,6 +29,7 @@ class CLIConfig:
     command_timeout: int = 120
     grader_timeout: int = 60
     max_tasks: int | None = None
+    max_concurrency: int = 6
 
     base_url: str | None = None
     renderer_name: str | None = None
@@ -68,6 +69,7 @@ async def run_benchmark(cli_config: CLIConfig, benchmark: str) -> list[TaskResul
         command_timeout=cli_config.command_timeout,
         grader_timeout=cli_config.grader_timeout,
         max_tasks=cli_config.max_tasks,
+        max_concurrency=cli_config.max_concurrency,
         checkpoint_url=cli_config.checkpoint_url,
         base_url=cli_config.base_url,
         renderer_name=cli_config.renderer_name,

@@ -1,0 +1,70 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreUnitTest_Serial1",
+    "Kokkos_CoreUnitTest_Serial2"
+  ],
+  "PASS_TO_PASS": [
+    "Kokkos_CoreUnitTest_Serial1"
+  ],
+  "base_commit": "41faf5f3918f2f4dfc73b70866db2122d77a17f5",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreUnitTest_Serial1",
+    "Kokkos_CoreUnitTest_Serial2"
+  ],
+  "changed_files": [
+    {
+      "additions": 6,
+      "deletions": 4,
+      "filename": "core/src/Kokkos_Complex.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 17,
+      "deletions": 5,
+      "filename": "core/unit_test/TestComplex.hpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/Kokkos_Complex.hpp b/core/src/Kokkos_Complex.hpp\nindex 9370dfd3535..9f45bd3ef35 100644\n--- a/core/src/Kokkos_Complex.hpp\n+++ b/core/src/Kokkos_Complex.hpp\n@@ -692,7 +692,8 @@ operator*(const complex<RealType1>& y, const RealType2& x) noexcept {\n \n //! Imaginary part of a complex number.\n template <class RealType>\n-KOKKOS_INLINE_FUNCTION RealType imag(const complex<RealType>& x) noexcept {\n+KOKKOS_INLINE_FUNCTION constexpr RealType imag(\n+    const complex<RealType>& x) noexcept {\n   return x.imag();\n }\n \n@@ -704,7 +705,8 @@ KOKKOS_INLINE_FUNCTION constexpr Impl::promote_t<ArithmeticType> imag(\n \n //! Real part of a complex number.\n template <class RealType>\n-KOKKOS_INLINE_FUNCTION RealType real(const complex<RealType>& x) noexcept {\n+KOKKOS_INLINE_FUNCTION constexpr RealType real(\n+    const complex<RealType>& x) noexcept {\n   return x.real();\n }\n \n@@ -789,9 +791,9 @@ KOKKOS_INLINE_FUNCTION Kokkos::complex<RealType> sqrt(\n \n //! Conjugate of a complex number.\n template <class RealType>\n-KOKKOS_INLINE_FUNCTION complex<RealType> conj(\n+KOKKOS_INLINE_FUNCTION constexpr complex<RealType> conj(\n     const complex<RealType>& x) noexcept {\n-  return complex<RealType>(real(x), -imag(x));\n+  return {real(x), -imag(x)};\n }\n \n template <class ArithmeticType>\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+  "created_at": "2026-03-02T22:18:26Z",
+  "era": "cpp20",
+  "f2p_commands": [
+    "cmake --build build --target Kokkos_CoreUnitTest_Serial1",
+    "cmake --build build --target Kokkos_CoreUnitTest_Serial2"
+  ],
+  "fail_to_pass": [
+    "Kokkos_CoreUnitTest_Serial1",
+    "Kokkos_CoreUnitTest_Serial2"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-8928",
+  "labels": [
+    "SNL-CI-APPROVAL"
+  ],
+  "linked_issues": [],
+  "merge_commit": "8e6ae881e6c5200d81db37a4f766fee70e76a479",
+  "merged_at": "2026-03-02T22:18:26Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/8928",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "cmake --build build --target Kokkos_CoreUnitTest_Serial1"
+  ],
+  "pass_to_pass": [
+    "Kokkos_CoreUnitTest_Serial1"
+  ],
+  "patch": "diff --git a/core/src/Kokkos_Complex.hpp b/core/src/Kokkos_Complex.hpp\nindex 9370dfd3535..9f45bd3ef35 100644\n--- a/core/src/Kokkos_Complex.hpp\n+++ b/core/src/Kokkos_Complex.hpp\n@@ -692,7 +692,8 @@ operator*(const complex<RealType1>& y, const RealType2& x) noexcept {\n \n //! Imaginary part of a complex number.\n template <class RealType>\n-KOKKOS_INLINE_FUNCTION RealType imag(const complex<RealType>& x) noexcept {\n+KOKKOS_INLINE_FUNCTION constexpr RealType imag(\n+    const complex<RealType>& x) noexcept {\n   return x.imag();\n }\n \n@@ -704,7 +705,8 @@ KOKKOS_INLINE_FUNCTION constexpr Impl::promote_t<ArithmeticType> imag(\n \n //! Real part of a complex number.\n template <class RealType>\n-KOKKOS_INLINE_FUNCTION RealType real(const complex<RealType>& x) noexcept {\n+KOKKOS_INLINE_FUNCTION constexpr RealType real(\n+    const complex<RealType>& x) noexcept {\n   return x.real();\n }\n \n@@ -789,9 +791,9 @@ KOKKOS_INLINE_FUNCTION Kokkos::complex<RealType> sqrt(\n \n //! Conjugate of a complex number.\n template <class RealType>\n-KOKKOS_INLINE_FUNCTION complex<RealType> conj(\n+KOKKOS_INLINE_FUNCTION constexpr complex<RealType> conj(\n     const complex<RealType>& x) noexcept {\n-  return complex<RealType>(real(x), -imag(x));\n+  return {real(x), -imag(x)};\n }\n \n template <class ArithmeticType>\ndiff --git a/core/unit_test/TestComplex.hpp b/core/unit_test/TestComplex.hpp\nindex 8facd400cc7..ad1b983dc79 100644\n--- a/core/unit_test/TestComplex.hpp\n+++ b/core/unit_test/TestComplex.hpp\n@@ -461,14 +461,13 @@ TEST(TEST_CATEGORY, complex_operations_arithmetic_types_overloads) {\n   static_assert((std::is_same_v<decltype(Kokkos::imag(3.)), double>));\n   static_assert((std::is_same_v<decltype(Kokkos::real(4.l)), long double>));\n \n-  // FIXME in principle could be checked at compile time too\n-  ASSERT_EQ(Kokkos::conj(1), Kokkos::complex<double>(1));\n-  ASSERT_EQ(Kokkos::conj(2.f), Kokkos::complex<float>(2.f));\n-  ASSERT_EQ(Kokkos::conj(3.), Kokkos::complex<double>(3.));\n+  static_assert(Kokkos::conj(1) == Kokkos::complex<double>(1));\n+  static_assert(Kokkos::conj(2.f) == Kokkos::complex<float>(2.f));\n+  static_assert(Kokkos::conj(3.) == Kokkos::complex<double>(3.));\n // long double has size 12 but Kokkos::complex requires 2*sizeof(T) to be a\n // power of two.\n #ifndef KOKKOS_IMPL_32BIT\n-  ASSERT_EQ(Kokkos::conj(4.l), Kokkos::complex<long double>(4.l));\n+  static_assert(Kokkos::conj(4.l) == Kokkos::complex<long double>(4.l));\n   static_assert(\n       (std::is_same_v<decltype(Kokkos::conj(1)), Kokkos::complex<double>>));\n #endif\n@@ -692,6 +691,19 @@ constexpr bool test_overload_norm() {\n }\n static_assert(test_overload_norm());\n \n+constexpr bool test_complex_conj() {\n+  static_assert(Kokkos::conj(Kokkos::complex<double>{1., 1.}) ==\n+                Kokkos::complex<double>{1., -1.});\n+  static_assert(Kokkos::conj(Kokkos::complex<double>{1., -1.}) ==\n+                Kokkos::complex<double>{1., 1.});\n+  static_assert(Kokkos::conj(Kokkos::complex<double>{-1., 1.}) ==\n+                Kokkos::complex<double>{-1., -1.});\n+  static_assert(Kokkos::conj(Kokkos::complex<double>{-1., -1.}) ==\n+                Kokkos::complex<double>{-1., 1.});\n+  return true;\n+}\n+static_assert(test_complex_conj());\n+\n }  // namespace Test\n \n #ifdef KOKKOS_COMPILER_NVCC\n",
+  "pr_number": 8928,
+  "problem_statement": "This PR adds a missing `constexpr` for `Kokkos::conj`, and for the `real` and `imag` free functions.\r\n\r\nQuick reference:\r\n* https://en.cppreference.com/w/cpp/numeric/complex/conj",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/TestComplex.hpp b/core/unit_test/TestComplex.hpp\nindex 8facd400cc7..ad1b983dc79 100644\n--- a/core/unit_test/TestComplex.hpp\n+++ b/core/unit_test/TestComplex.hpp\n@@ -461,14 +461,13 @@ TEST(TEST_CATEGORY, complex_operations_arithmetic_types_overloads) {\n   static_assert((std::is_same_v<decltype(Kokkos::imag(3.)), double>));\n   static_assert((std::is_same_v<decltype(Kokkos::real(4.l)), long double>));\n \n-  // FIXME in principle could be checked at compile time too\n-  ASSERT_EQ(Kokkos::conj(1), Kokkos::complex<double>(1));\n-  ASSERT_EQ(Kokkos::conj(2.f), Kokkos::complex<float>(2.f));\n-  ASSERT_EQ(Kokkos::conj(3.), Kokkos::complex<double>(3.));\n+  static_assert(Kokkos::conj(1) == Kokkos::complex<double>(1));\n+  static_assert(Kokkos::conj(2.f) == Kokkos::complex<float>(2.f));\n+  static_assert(Kokkos::conj(3.) == Kokkos::complex<double>(3.));\n // long double has size 12 but Kokkos::complex requires 2*sizeof(T) to be a\n // power of two.\n #ifndef KOKKOS_IMPL_32BIT\n-  ASSERT_EQ(Kokkos::conj(4.l), Kokkos::complex<long double>(4.l));\n+  static_assert(Kokkos::conj(4.l) == Kokkos::complex<long double>(4.l));\n   static_assert(\n       (std::is_same_v<decltype(Kokkos::conj(1)), Kokkos::complex<double>>));\n #endif\n@@ -692,6 +691,19 @@ constexpr bool test_overload_norm() {\n }\n static_assert(test_overload_norm());\n \n+constexpr bool test_complex_conj() {\n+  static_assert(Kokkos::conj(Kokkos::complex<double>{1., 1.}) ==\n+                Kokkos::complex<double>{1., -1.});\n+  static_assert(Kokkos::conj(Kokkos::complex<double>{1., -1.}) ==\n+                Kokkos::complex<double>{1., 1.});\n+  static_assert(Kokkos::conj(Kokkos::complex<double>{-1., 1.}) ==\n+                Kokkos::complex<double>{-1., -1.});\n+  static_assert(Kokkos::conj(Kokkos::complex<double>{-1., -1.}) ==\n+                Kokkos::complex<double>{-1., 1.});\n+  return true;\n+}\n+static_assert(test_complex_conj());\n+\n }  // namespace Test\n \n #ifdef KOKKOS_COMPILER_NVCC\n",
+  "title": "core(complex) make `conj` `constexpr`",
+  "version": "cpp20"
+}

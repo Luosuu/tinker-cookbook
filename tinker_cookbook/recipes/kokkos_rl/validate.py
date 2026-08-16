@@ -81,6 +81,8 @@ def _record(report: ValidationReport, result: CommandResult) -> None:
 
 
 def _build_command(instance: KokkosInstance) -> str:
+    if instance.build_command:
+        return instance.build_command
     targets = " ".join(instance.build_targets)
     return f"cmake --build build --target {targets} --parallel"
 
