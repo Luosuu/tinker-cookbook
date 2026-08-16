@@ -20,14 +20,14 @@ import aiohttp
 import tinker
 
 from tinker_cookbook import model_info, tokenizer_utils
-from tinker_cookbook.recipes.kokkos_rl.annotate import apply_annotations
-from tinker_cookbook.recipes.kokkos_rl.ecosystem import get_repository_profile
-from tinker_cookbook.recipes.kokkos_rl.modal_validate import (
+from tinker_cookbook.recipes.kokkos_rl.dataset.annotate import apply_annotations
+from tinker_cookbook.recipes.kokkos_rl.dataset.ecosystem import get_repository_profile
+from tinker_cookbook.recipes.kokkos_rl.dataset.modal_validate import (
     ModalValidationSandboxFactory,
     default_validation_sandbox_factory,
     validate_instance_in_modal,
 )
-from tinker_cookbook.recipes.kokkos_rl.models import KokkosInstance
+from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
 from tinker_cookbook.renderers import Message, Renderer, get_renderer, get_text_content
 from tinker_cookbook.renderers.tml_v0 import TmlV0Renderer
 from tinker_cookbook.utils.git_rev import recipe_user_metadata

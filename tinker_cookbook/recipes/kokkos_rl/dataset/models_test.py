@@ -1,4 +1,4 @@
-from tinker_cookbook.recipes.kokkos_rl.models import ChangedFile, KokkosInstance
+from tinker_cookbook.recipes.kokkos_rl.dataset.models import ChangedFile, KokkosInstance
 
 
 def _instance() -> KokkosInstance:

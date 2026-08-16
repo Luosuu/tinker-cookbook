@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from tinker_cookbook.recipes.kokkos_rl.eval_kokkos import load_env_file, select_tasks
+from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos import load_env_file, select_tasks
 
 
 def test_load_env_file_preserves_existing_values(tmp_path, monkeypatch) -> None:

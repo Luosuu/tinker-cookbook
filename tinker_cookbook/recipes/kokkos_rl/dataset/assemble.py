@@ -6,7 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
-from tinker_cookbook.recipes.kokkos_rl.models import KokkosInstance
+from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
 
 
 def assemble_instances(paths: list[Path]) -> tuple[list[KokkosInstance], dict[str, str]]:

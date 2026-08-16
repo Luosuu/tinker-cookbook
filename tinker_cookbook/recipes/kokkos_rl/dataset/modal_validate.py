@@ -9,9 +9,9 @@ import time
 from collections.abc import Awaitable, Callable
 from contextlib import nullcontext
 
-from tinker_cookbook.recipes.kokkos_rl.ecosystem import get_repository_profile
-from tinker_cookbook.recipes.kokkos_rl.models import KokkosInstance
-from tinker_cookbook.recipes.kokkos_rl.validate import CommandResult, ValidationReport
+from tinker_cookbook.recipes.kokkos_rl.dataset.ecosystem import get_repository_profile
+from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
+from tinker_cookbook.recipes.kokkos_rl.dataset.validate import CommandResult, ValidationReport
 from tinker_cookbook.sandbox import SandboxInterface
 
 ERA_IMAGES = {

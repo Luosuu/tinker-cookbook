@@ -1,7 +1,7 @@
 import json
 
-from tinker_cookbook.recipes.kokkos_rl.assemble import assemble_instances, write_dataset
-from tinker_cookbook.recipes.kokkos_rl.models_test import _instance
+from tinker_cookbook.recipes.kokkos_rl.dataset.assemble import assemble_instances, write_dataset
+from tinker_cookbook.recipes.kokkos_rl.dataset.models_test import _instance
 
 
 def test_assemble_deduplicates_in_source_priority_order(tmp_path) -> None:

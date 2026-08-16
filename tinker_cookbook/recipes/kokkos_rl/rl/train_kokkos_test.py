@@ -1,4 +1,4 @@
-from tinker_cookbook.recipes.kokkos_rl.train_kokkos import CLIConfig, _to_harbor_config
+from tinker_cookbook.recipes.kokkos_rl.rl.train_kokkos import CLIConfig, _to_harbor_config
 
 
 def test_config_translation_preserves_training_fields() -> None:

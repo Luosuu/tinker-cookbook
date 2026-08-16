@@ -1,6 +1,6 @@
 import json
 
-from tinker_cookbook.recipes.kokkos_rl.release_manifest import build_manifest
+from tinker_cookbook.recipes.kokkos_rl.dataset.release_manifest import build_manifest
 
 
 def _write_trial(root, instance_id: str, agent: str, digest: str, reward: float) -> None:

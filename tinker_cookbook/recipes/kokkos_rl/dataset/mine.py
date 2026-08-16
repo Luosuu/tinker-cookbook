@@ -13,12 +13,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from tinker_cookbook.recipes.kokkos_rl.ecosystem import (
+from tinker_cookbook.recipes.kokkos_rl.dataset.ecosystem import (
     get_repository_profile,
     instance_id_for,
 )
-from tinker_cookbook.recipes.kokkos_rl.models import ChangedFile, KokkosInstance
-from tinker_cookbook.recipes.kokkos_rl.patching import (
+from tinker_cookbook.recipes.kokkos_rl.dataset.models import ChangedFile, KokkosInstance
+from tinker_cookbook.recipes.kokkos_rl.dataset.patching import (
     candidate_rejection_reasons,
     infer_accelerator,
     infer_era,

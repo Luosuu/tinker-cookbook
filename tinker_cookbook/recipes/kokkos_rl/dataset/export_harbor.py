@@ -7,9 +7,9 @@ import json
 import shlex
 from pathlib import Path
 
-from tinker_cookbook.recipes.kokkos_rl.ecosystem import get_repository_profile
-from tinker_cookbook.recipes.kokkos_rl.models import KokkosInstance
-from tinker_cookbook.recipes.kokkos_rl.patching import (
+from tinker_cookbook.recipes.kokkos_rl.dataset.ecosystem import get_repository_profile
+from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
+from tinker_cookbook.recipes.kokkos_rl.dataset.patching import (
     is_forbidden_agent_path,
     split_unified_diff,
 )

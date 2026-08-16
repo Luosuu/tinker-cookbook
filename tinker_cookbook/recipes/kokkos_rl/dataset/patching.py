@@ -6,8 +6,8 @@ import re
 from collections.abc import Iterable
 from itertools import pairwise
 
-from tinker_cookbook.recipes.kokkos_rl.ecosystem import get_repository_profile
-from tinker_cookbook.recipes.kokkos_rl.models import ChangedFile
+from tinker_cookbook.recipes.kokkos_rl.dataset.ecosystem import get_repository_profile
+from tinker_cookbook.recipes.kokkos_rl.dataset.models import ChangedFile
 
 GPU_BACKEND_SEGMENTS = frozenset({"Cuda", "CUDA", "HIP", "SYCL", "OpenMPTarget", "OpenACC"})
 UNSUPPORTED_BACKEND_SEGMENTS = GPU_BACKEND_SEGMENTS | {"HPX"}

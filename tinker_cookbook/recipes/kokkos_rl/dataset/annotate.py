@@ -8,7 +8,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from tinker_cookbook.recipes.kokkos_rl.models import KokkosInstance
+from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
 
 TUPLE_FIELDS = {
     "build_targets",

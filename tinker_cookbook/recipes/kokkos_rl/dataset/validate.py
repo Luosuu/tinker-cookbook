@@ -10,7 +10,7 @@ import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
-from tinker_cookbook.recipes.kokkos_rl.models import KokkosInstance
+from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
 
 
 @dataclass(frozen=True)

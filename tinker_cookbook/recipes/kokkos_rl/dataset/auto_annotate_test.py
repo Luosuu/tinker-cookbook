@@ -3,15 +3,15 @@ from dataclasses import replace
 
 import pytest
 
-from tinker_cookbook.recipes.kokkos_rl.annotate import apply_annotations
-from tinker_cookbook.recipes.kokkos_rl.auto_annotate import (
+from tinker_cookbook.recipes.kokkos_rl.dataset.annotate import apply_annotations
+from tinker_cookbook.recipes.kokkos_rl.dataset.auto_annotate import (
     _infer_core_target_from_context,
     _normalize_toolchain_annotation,
     annotate_and_validate_instance,
     parse_annotation,
 )
-from tinker_cookbook.recipes.kokkos_rl.models import ChangedFile
-from tinker_cookbook.recipes.kokkos_rl.models_test import _instance
+from tinker_cookbook.recipes.kokkos_rl.dataset.models import ChangedFile
+from tinker_cookbook.recipes.kokkos_rl.dataset.models_test import _instance
 from tinker_cookbook.renderers import Message
 from tinker_cookbook.sandbox import SandboxResult
 

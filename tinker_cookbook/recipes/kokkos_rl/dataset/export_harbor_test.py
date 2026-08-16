@@ -2,11 +2,11 @@ import json
 import tomllib
 from dataclasses import replace
 
-from tinker_cookbook.recipes.kokkos_rl.export_harbor import (
+from tinker_cookbook.recipes.kokkos_rl.dataset.export_harbor import (
     _agent_allowed_code_patch,
     export_instance,
 )
-from tinker_cookbook.recipes.kokkos_rl.models_test import _instance
+from tinker_cookbook.recipes.kokkos_rl.dataset.models_test import _instance
 
 
 def test_export_hides_tests_and_adds_clean_room_guard(tmp_path) -> None:

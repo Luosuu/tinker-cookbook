@@ -1,5 +1,5 @@
-from tinker_cookbook.recipes.kokkos_rl.models import ChangedFile
-from tinker_cookbook.recipes.kokkos_rl.patching import (
+from tinker_cookbook.recipes.kokkos_rl.dataset.models import ChangedFile
+from tinker_cookbook.recipes.kokkos_rl.dataset.patching import (
     candidate_rejection_reasons,
     infer_era,
     is_forbidden_agent_path,
