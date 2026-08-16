@@ -39,6 +39,14 @@ The dataset supports two complementary interfaces:
 Version 2.0 contains the unchanged 30 tasks from v1.0 plus 70 newly validated Kokkos Core
 tasks. It was constructed and evaluated independently of any model-training run.
 
+## Links
+
+- [Executable dataset on Harbor](https://hub.harborframework.com/datasets/luosuu/SWE-kokkos-bench/latest)
+- [Analysis dataset on Hugging Face](https://huggingface.co/datasets/luosuu/SWE-kokkos-bench)
+- [Public `tinker-cookbook` fork](https://github.com/Luosuu/tinker-cookbook/tree/science-rl)
+- [Dataset construction code](https://github.com/Luosuu/tinker-cookbook/tree/science-rl/tinker_cookbook/recipes/kokkos_rl/dataset)
+- [Evaluation and RL code](https://github.com/Luosuu/tinker-cookbook/tree/science-rl/tinker_cookbook/recipes/kokkos_rl/rl)
+
 ## Quick start
 
 Load the metadata with `datasets`:
@@ -106,6 +114,26 @@ The uppercase and lowercase F2P/P2P fields are intentionally both present: upper
 preserve SWE-bench compatibility, while lowercase fields retain the recipe's typed source
 representation.
 
+### Harbor task layout
+
+The Harbor release contains one directory per task:
+
+| Path | Purpose |
+| --- | --- |
+| `instruction.md` | Problem statement shown to the agent. |
+| `task.toml` | Task identity, environment, verifier, and resource configuration. |
+| `environment/Dockerfile` | Reproducible repository checkout and build environment. |
+| `tests/test.sh` | Offline grader entrypoint. |
+| `tests/test.patch` | Held-out test changes injected only during grading. |
+| `solution/gold.patch` | Oracle production patch used for release validation. |
+| `metadata.json` | SWE-compatible source row and construction metadata. |
+
+The agent receives the instruction, repository checkout, shell tool, and pre-warmed build
+tree. `tests/` and `solution/` are not copied into the agent image. Harbor submits only the
+agent's repository patch to the clean grader, which returns binary reward 1 for a fully
+passing solution and 0 otherwise. The dataset metric is mean reward across the selected
+tasks, with missing task results treated as zero.
+
 ## How tasks were constructed
 
 The construction pipeline is available in the public
@@ -151,11 +179,15 @@ test patch, and runs without network access.
 
 Pass@1 results on the 70 tasks added in v2.0:
 
-| Model | Thinking effort | Passed | Pass rate | Errors |
-| --- | ---: | ---: | ---: | ---: |
-| `thinkingmachines/Inkling:peft:262144` | 0.99 | 36/70 | 51.4% | 0 |
-| `thinkingmachines/Inkling-Small:peft:262144` | 0.9 | 42/70 | 60.0% | 0 |
-| `openai/gpt-oss-120b:peft:131072` | not applicable | 4/70 | 5.7% | 0 |
+| Model | Effort | Turns | Tool calls | Passed | Pass rate | Errors |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| `thinkingmachines/Inkling:peft:262144` | 0.99 | 40 | 60 | 36/70 | 51.4% | 0 |
+| `thinkingmachines/Inkling-Small:peft:262144` | 0.9 | 40 | 80 | 42/70 | 60.0% | 0 |
+| `openai/gpt-oss-120b:peft:131072` | not applicable | 20 | 40 | 4/70 | 5.7% | 0 |
+
+All three runs used temperature 1.0, a maximum of 16,384 tokens per model turn, a
+112K-token trajectory cap, and a 64K sampled-token cap. Tasks were evaluated once and in
+parallel using the same terminal-agent scaffold and clean Harbor grader.
 
 Full Inkling and GPT-OSS used settings directly comparable to their v1.0 evaluations. Their
 combined scores over all 100 v2.0 tasks are respectively 53/100 (53.0%) and 5/100 (5.0%).
