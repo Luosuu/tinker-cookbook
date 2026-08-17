@@ -74,12 +74,14 @@ class ContreeSandbox:
         timeout: int,
         max_stream_output_bytes: int = DEFAULT_MAX_OUTPUT_BYTES,
         default_workdir: str | None = None,
+        default_env: dict[str, str] | None = None,
     ) -> None:
         self._client = client
         self._session: ContreeSession = image.session()
         self._timeout = timeout
         self._max_stream_output_bytes = max_stream_output_bytes
         self._default_workdir = default_workdir
+        self._default_env = default_env or {}
         self._closed = False
 
     @classmethod
@@ -92,6 +94,7 @@ class ContreeSandbox:
         client: Contree | None = None,
         import_image: bool = True,
         default_workdir: str | None = None,
+        default_env: dict[str, str] | None = None,
     ) -> ContreeSandbox:
         """Create a sandbox from an OCI reference or existing ConTree UUID."""
 
@@ -122,6 +125,7 @@ class ContreeSandbox:
             timeout=timeout,
             max_stream_output_bytes=max_stream_output_bytes,
             default_workdir=default_workdir,
+            default_env=default_env,
         )
 
     def _ensure_open(self) -> None:
@@ -149,6 +153,7 @@ class ContreeSandbox:
         try:
             result = await self._session.run(
                 shell=command,
+                env=self._default_env or None,
                 cwd=workdir or self._default_workdir,
                 timeout=timedelta(seconds=min(timeout, self._timeout)),
                 disposable=False,
@@ -280,34 +285,60 @@ class ContreeDockerfileSandboxFactory:
             (value for instruction, value in reversed(instructions) if instruction == "WORKDIR"),
             None,
         )
-        if digest in self._prepared_images:
-            return self._prepared_images[digest], workdir
+        dockerfile_key = f"dockerfile:{digest}"
+        cached_image = self._prepared_images.get(dockerfile_key, self._prepared_images.get(digest))
+        if cached_image is not None:
+            return cached_image, workdir
 
         lock = self._prepare_locks.setdefault(digest, asyncio.Lock())
         async with lock:
-            if digest in self._prepared_images:
-                return self._prepared_images[digest], workdir
+            cached_image = self._prepared_images.get(
+                dockerfile_key, self._prepared_images.get(digest)
+            )
+            if cached_image is not None:
+                return cached_image, workdir
 
             base_images = [value for instruction, value in instructions if instruction == "FROM"]
             if len(base_images) != 1:
                 raise ValueError(
                     f"expected one FROM instruction in {dockerfile_path}, got {len(base_images)}"
                 )
-            environment: list[str] = []
+            environment: dict[str, str] = {"CMAKE_BUILD_PARALLEL_LEVEL": "2"}
             sandbox = await ContreeSandbox.create(
                 image=base_images[0],
                 timeout=min(timeout, self._timeout),
                 client=self._client,
+                default_env=environment,
             )
             try:
+                chain = hashlib.sha256(f"FROM {base_images[0]}".encode())
                 for instruction, value in instructions:
                     if instruction == "ENV":
-                        environment.append(value)
+                        key, separator, env_value = value.partition("=")
+                        if not separator:
+                            key, _, env_value = value.partition(" ")
+                        if not key or not env_value:
+                            raise ValueError(
+                                f"unsupported ENV instruction {value!r} in {dockerfile_path}"
+                            )
+                        environment[key] = env_value
+                        chain.update(f"\nENV {value}".encode())
                     elif instruction == "RUN":
-                        exports = " ".join(shlex.quote(item) for item in environment)
-                        prefix = f"export {exports}; " if exports else ""
+                        chain.update(f"\nRUN {value}".encode())
+                        layer_key = f"layer:{chain.hexdigest()}"
+                        layer_image = self._prepared_images.get(layer_key)
+                        if layer_image is not None:
+                            await sandbox.cleanup()
+                            sandbox = await ContreeSandbox.create(
+                                image=layer_image,
+                                timeout=min(timeout, self._timeout),
+                                client=self._client,
+                                import_image=False,
+                                default_env=environment,
+                            )
+                            continue
                         result = await sandbox.run_command(
-                            "set -eu; " + prefix + value,
+                            "set -eu; " + value,
                             timeout=min(timeout, self._timeout),
                         )
                         if result.exit_code != 0:
@@ -316,8 +347,10 @@ class ContreeDockerfileSandboxFactory:
                                 f"exit={result.exit_code}\n{result.stdout[-16000:]}\n"
                                 f"{result.stderr[-16000:]}"
                             )
+                        self._prepared_images[layer_key] = sandbox.sandbox_id
+                        await self._store_cache()
                 image_id = sandbox.sandbox_id
-                self._prepared_images[digest] = image_id
+                self._prepared_images[dockerfile_key] = image_id
                 await self._store_cache()
                 return image_id, workdir
             finally:
@@ -331,6 +364,7 @@ class ContreeDockerfileSandboxFactory:
             client=self._client,
             import_image=False,
             default_workdir=workdir,
+            default_env={"CMAKE_BUILD_PARALLEL_LEVEL": "2"},
         )
 
 
