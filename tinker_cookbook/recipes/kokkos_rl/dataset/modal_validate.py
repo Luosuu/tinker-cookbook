@@ -257,7 +257,9 @@ async def contree_validation_sandbox_factory(
 
     sandbox = await ContreeSandbox.create(image=base_image, timeout=timeout)
     setup = await sandbox.run_command(
-        "set -euo pipefail; export DEBIAN_FRONTEND=noninteractive; " + " && ".join(commands),
+        # ConTree OCI images execute ``shell=`` through /bin/sh.  Debian-based
+        # images use dash there, which supports ``-eu`` but not ``pipefail``.
+        "set -eu; export DEBIAN_FRONTEND=noninteractive; " + " && ".join(commands),
         timeout=timeout,
     )
     if setup.exit_code != 0:
