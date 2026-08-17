@@ -8,10 +8,13 @@ by :class:`SandboxInterface` without keeping a VM alive between commands.
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import os
 import shlex
 import uuid
 from datetime import timedelta
+from pathlib import Path
 
 from contree_sdk import Contree
 from contree_sdk.auth import IAMAuth, JWTAuth
@@ -70,11 +73,13 @@ class ContreeSandbox:
         image: ContreeImage,
         timeout: int,
         max_stream_output_bytes: int = DEFAULT_MAX_OUTPUT_BYTES,
+        default_workdir: str | None = None,
     ) -> None:
         self._client = client
         self._session: ContreeSession = image.session()
         self._timeout = timeout
         self._max_stream_output_bytes = max_stream_output_bytes
+        self._default_workdir = default_workdir
         self._closed = False
 
     @classmethod
@@ -86,6 +91,7 @@ class ContreeSandbox:
         max_stream_output_bytes: int = DEFAULT_MAX_OUTPUT_BYTES,
         client: Contree | None = None,
         import_image: bool = True,
+        default_workdir: str | None = None,
     ) -> ContreeSandbox:
         """Create a sandbox from an OCI reference or existing ConTree UUID."""
 
@@ -115,6 +121,7 @@ class ContreeSandbox:
             image=contree_image,
             timeout=timeout,
             max_stream_output_bytes=max_stream_output_bytes,
+            default_workdir=default_workdir,
         )
 
     def _ensure_open(self) -> None:
@@ -142,7 +149,7 @@ class ContreeSandbox:
         try:
             result = await self._session.run(
                 shell=command,
-                cwd=workdir,
+                cwd=workdir or self._default_workdir,
                 timeout=timedelta(seconds=min(timeout, self._timeout)),
                 disposable=False,
                 truncate_output_at=cap,
@@ -203,6 +210,128 @@ class ContreeSandbox:
         # Completed ConTree operations are immutable image versions; there is no
         # live resource to terminate.
         self._closed = True
+
+
+def _dockerfile_instructions(path: Path) -> list[tuple[str, str]]:
+    """Parse the small Dockerfile subset used by exported Harbor tasks."""
+
+    logical_lines: list[str] = []
+    current = ""
+    for raw_line in path.read_text().splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        current += (" " if current else "") + line.removesuffix("\\").rstrip()
+        if not line.endswith("\\"):
+            logical_lines.append(current)
+            current = ""
+    if current:
+        logical_lines.append(current)
+
+    instructions: list[tuple[str, str]] = []
+    for line in logical_lines:
+        instruction, _, value = line.partition(" ")
+        instruction = instruction.upper()
+        if instruction not in {"FROM", "ENV", "RUN", "WORKDIR"}:
+            raise ValueError(f"unsupported Dockerfile instruction {instruction!r} in {path}")
+        instructions.append((instruction, value.strip()))
+    return instructions
+
+
+class ContreeDockerfileSandboxFactory:
+    """Prepare each Harbor Dockerfile once, then branch isolated ConTree sessions.
+
+    ConTree imports OCI base images but does not build local Dockerfiles. Harbor's
+    exported task images use a deliberately small Dockerfile subset, so this
+    factory executes their RUN instructions once and persists the resulting image
+    UUIDs for resumable evaluations.
+    """
+
+    def __init__(self, cache_path: Path, timeout: int = 3600) -> None:
+        self._cache_path = cache_path
+        self._timeout = timeout
+        self._client = create_contree_client(timeout)
+        self._cache_lock = asyncio.Lock()
+        self._prepare_locks: dict[str, asyncio.Lock] = {}
+        self._prepared_images = self._load_cache()
+
+    def _load_cache(self) -> dict[str, str]:
+        if not self._cache_path.is_file():
+            return {}
+        data = json.loads(self._cache_path.read_text())
+        if not isinstance(data, dict) or not all(
+            isinstance(key, str) and isinstance(value, str) for key, value in data.items()
+        ):
+            raise ValueError(f"invalid ConTree image cache: {self._cache_path}")
+        return data
+
+    async def _store_cache(self) -> None:
+        async with self._cache_lock:
+            self._cache_path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = self._cache_path.with_suffix(self._cache_path.suffix + ".tmp")
+            temporary.write_text(json.dumps(self._prepared_images, indent=2, sort_keys=True))
+            temporary.replace(self._cache_path)
+
+    async def _prepare(self, dockerfile_path: Path, timeout: int) -> tuple[str, str | None]:
+        contents = dockerfile_path.read_bytes()
+        digest = hashlib.sha256(contents).hexdigest()
+        instructions = _dockerfile_instructions(dockerfile_path)
+        workdir = next(
+            (value for instruction, value in reversed(instructions) if instruction == "WORKDIR"),
+            None,
+        )
+        if digest in self._prepared_images:
+            return self._prepared_images[digest], workdir
+
+        lock = self._prepare_locks.setdefault(digest, asyncio.Lock())
+        async with lock:
+            if digest in self._prepared_images:
+                return self._prepared_images[digest], workdir
+
+            base_images = [value for instruction, value in instructions if instruction == "FROM"]
+            if len(base_images) != 1:
+                raise ValueError(
+                    f"expected one FROM instruction in {dockerfile_path}, got {len(base_images)}"
+                )
+            environment: list[str] = []
+            sandbox = await ContreeSandbox.create(
+                image=base_images[0],
+                timeout=min(timeout, self._timeout),
+                client=self._client,
+            )
+            try:
+                for instruction, value in instructions:
+                    if instruction == "ENV":
+                        environment.append(value)
+                    elif instruction == "RUN":
+                        exports = " ".join(shlex.quote(item) for item in environment)
+                        prefix = f"export {exports}; " if exports else ""
+                        result = await sandbox.run_command(
+                            "set -eu; " + prefix + value,
+                            timeout=min(timeout, self._timeout),
+                        )
+                        if result.exit_code != 0:
+                            raise RuntimeError(
+                                f"failed to prepare {dockerfile_path.parent.parent.name}: "
+                                f"exit={result.exit_code}\n{result.stdout[-16000:]}\n"
+                                f"{result.stderr[-16000:]}"
+                            )
+                image_id = sandbox.sandbox_id
+                self._prepared_images[digest] = image_id
+                await self._store_cache()
+                return image_id, workdir
+            finally:
+                await sandbox.cleanup()
+
+    async def __call__(self, env_dir: Path, timeout: int) -> ContreeSandbox:
+        image_id, workdir = await self._prepare(env_dir / "Dockerfile", timeout)
+        return await ContreeSandbox.create(
+            image=image_id,
+            timeout=min(timeout, self._timeout),
+            client=self._client,
+            import_image=False,
+            default_workdir=workdir,
+        )
 
 
 class ContreeSandboxPool:

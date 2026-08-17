@@ -39,6 +39,11 @@ class CLIConfig:
     base_url: str | None = None
     renderer_name: str | None = None
     thinking_effort: float | None = None
+    sandbox_backend: str = "modal"
+    contree_cache_path: str | None = None
+    num_samples: int = 1
+    pass_at_k: str = "1"
+    resume_dir: str | None = None
 
 
 def load_env_file(path: Path) -> None:
@@ -101,13 +106,30 @@ async def main(cli_config: CLIConfig) -> None:
         max_trajectory_tokens=cli_config.max_trajectory_tokens,
         max_sampled_tokens=cli_config.max_sampled_tokens,
         max_tool_calls=cli_config.max_tool_calls,
+        num_samples=cli_config.num_samples,
+        pass_at_k=cli_config.pass_at_k,
+        resume_dir=cli_config.resume_dir,
     )
     print(
         f"Running {len(tasks)} Kokkos tasks with model={eval_config.model_name}, "
         f"temperature={eval_config.temperature}, max_tokens={eval_config.max_tokens}, "
         f"thinking_effort={eval_config.thinking_effort}"
     )
-    results = await run_eval(eval_config, tasks, sandbox_factory=default_sandbox_factory)
+    if cli_config.sandbox_backend == "modal":
+        sandbox_factory = default_sandbox_factory
+    elif cli_config.sandbox_backend == "contree":
+        from tinker_cookbook.sandbox.contree_sandbox import ContreeDockerfileSandboxFactory
+
+        cache_path = Path(
+            cli_config.contree_cache_path or Path(cli_config.output_path) / "contree_images.json"
+        )
+        sandbox_factory = ContreeDockerfileSandboxFactory(
+            cache_path=cache_path,
+            timeout=cli_config.sandbox_timeout,
+        )
+    else:
+        raise ValueError(f"unknown sandbox_backend: {cli_config.sandbox_backend!r}")
+    results = await run_eval(eval_config, tasks, sandbox_factory=sandbox_factory)
     print_summary(results)
 
 

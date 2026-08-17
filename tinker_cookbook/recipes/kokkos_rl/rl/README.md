@@ -9,13 +9,22 @@ and defines convenient defaults.
 ```bash
 uv run python -m tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos \
   tasks_dir=data/kokkos/SWE-kokkos-bench-v2 \
-  model_name=openai/gpt-oss-120b:peft:131072
+  model_name=thinkingmachines/Inkling-Small:peft:262144 \
+  thinking_effort=0.9 \
+  sandbox_backend=contree \
+  num_samples=8 \
+  pass_at_k=1,4,8
 ```
 
 The evaluator runs tasks concurrently and writes machine-readable trajectory and reward
 artifacts to its configured log directory. Report pass rates together with the exact dataset
 version, model identifier, agent scaffold, turn limit, tool-call limit, token budget,
 temperature, and thinking effort.
+
+ConTree evaluations prepare each task's exported Dockerfile once and branch isolated
+sessions from that immutable image for subsequent samples. Prepared image UUIDs are cached
+in `contree_images.json`. Set `resume_dir` to an interrupted timestamped result directory to
+skip successful rollouts and retry only infrastructure errors.
 
 ## Reinforcement learning
 

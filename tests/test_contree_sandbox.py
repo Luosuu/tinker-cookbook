@@ -5,12 +5,30 @@ import os
 import pytest
 import pytest_asyncio
 
-from tinker_cookbook.sandbox.contree_sandbox import ContreeSandbox
+from tinker_cookbook.sandbox.contree_sandbox import ContreeSandbox, _dockerfile_instructions
 
 requires_contree = pytest.mark.skipif(
     not (os.environ.get("NEBIUS_SANDBOX_API_KEY") or os.environ.get("NEBIUS_API_KEY")),
     reason="Nebius ConTree is not configured",
 )
+
+
+def test_parse_harbor_dockerfile_subset(tmp_path) -> None:
+    dockerfile = tmp_path / "Dockerfile"
+    dockerfile.write_text(
+        "FROM ubuntu:24.04\n"
+        "ENV DEBIAN_FRONTEND=noninteractive\n"
+        "RUN echo first \\\n"
+        "    && echo second\n"
+        "WORKDIR /workspace/repo\n"
+    )
+
+    assert _dockerfile_instructions(dockerfile) == [
+        ("FROM", "ubuntu:24.04"),
+        ("ENV", "DEBIAN_FRONTEND=noninteractive"),
+        ("RUN", "echo first && echo second"),
+        ("WORKDIR", "/workspace/repo"),
+    ]
 
 
 @pytest_asyncio.fixture(scope="module")

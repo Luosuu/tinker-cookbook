@@ -11,9 +11,10 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import random
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 
@@ -63,11 +64,15 @@ class EvalConfig:
     max_trajectory_tokens: int = 112 * 1024
     max_sampled_tokens: int = 64 * 1024
     max_tool_calls: int = 40
+    num_samples: int = 1
+    pass_at_k: str = "1"
+    resume_dir: str | None = None
 
 
 @dataclass
 class TaskResult:
     task_name: str
+    sample_index: int
     reward: float
     reward_details: dict[str, float]
     turns_used: int
@@ -85,6 +90,7 @@ async def evaluate_task(
     results_dir: Path,
     lock: asyncio.Lock,
     tokenizer: tokenizer_utils.Tokenizer | None = None,
+    sample_index: int = 0,
 ) -> TaskResult:
     """Evaluate a single task: create sandbox, run agent loop, grade, cleanup.
 
@@ -127,9 +133,7 @@ async def evaluate_task(
             max_turns=config.max_turns,
             rollout_config=rollout_config,
             generation_prompt_kwargs=(
-                {"effort": config.thinking_effort}
-                if config.thinking_effort is not None
-                else None
+                {"effort": config.thinking_effort} if config.thinking_effort is not None else None
             ),
         )
 
@@ -147,6 +151,7 @@ async def evaluate_task(
 
         result = TaskResult(
             task_name=task.task_name,
+            sample_index=sample_index,
             reward=reward,
             reward_details=reward_details,
             turns_used=turns_used,
@@ -158,6 +163,7 @@ async def evaluate_task(
         logger.error("Task %s failed: %s", task.task_name, e)
         result = TaskResult(
             task_name=task.task_name,
+            sample_index=sample_index,
             reward=0.0,
             reward_details={},
             turns_used=0,
@@ -174,7 +180,8 @@ async def evaluate_task(
     # Write results to files immediately
     status = "ERROR" if result.error else ("PASS" if result.reward > 0 else "FAIL")
     summary_line = (
-        f"{result.task_name:<40} {result.reward:>7.1f} {result.turns_used:>6} "
+        f"{result.task_name:<40} {result.sample_index + 1:>6} {result.reward:>7.1f} "
+        f"{result.turns_used:>6} "
         f"{result.time_seconds:>8.1f} {status:>7}\n"
     )
 
@@ -190,9 +197,73 @@ async def evaluate_task(
                 f.write(f"{result.error}\n\n")
 
         if result.trajectory_str:
-            (results_dir / f"{result.task_name}.txt").write_text(result.trajectory_str)
+            (
+                results_dir / f"{result.task_name}__sample_{result.sample_index + 1:02d}.txt"
+            ).write_text(result.trajectory_str)
+
+        with open(results_dir / "results.jsonl", "a") as f:
+            f.write(json.dumps(asdict(result)) + "\n")
 
     return result
+
+
+def _pass_at_k_single(n: int, c: int, k: int) -> float:
+    if k > n:
+        raise ValueError(f"cannot compute pass@{k} from {n} samples")
+    if n - c < k:
+        return 1.0
+    return 1.0 - math.comb(n - c, k) / math.comb(n, k)
+
+
+def summarize_pass_at_k(results: list[TaskResult], k_values: list[int]) -> dict[str, object]:
+    per_task: dict[str, list[TaskResult]] = {}
+    for result in results:
+        per_task.setdefault(result.task_name, []).append(result)
+
+    scores: dict[str, float] = {}
+    for k in k_values:
+        task_scores = []
+        for task_results in per_task.values():
+            if len(task_results) < k:
+                continue
+            correct = sum(result.error is None and result.reward > 0 for result in task_results)
+            task_scores.append(_pass_at_k_single(len(task_results), correct, k))
+        if task_scores:
+            scores[str(k)] = sum(task_scores) / len(task_scores)
+
+    return {
+        "num_tasks": len(per_task),
+        "num_rollouts": len(results),
+        "num_errors": sum(result.error is not None for result in results),
+        "pass_at_k": scores,
+        "per_task": {
+            task_name: {
+                "num_samples": len(task_results),
+                "num_correct": sum(
+                    result.error is None and result.reward > 0 for result in task_results
+                ),
+                "num_errors": sum(result.error is not None for result in task_results),
+            }
+            for task_name, task_results in sorted(per_task.items())
+        },
+    }
+
+
+def _load_completed_results(results_dir: Path) -> dict[tuple[str, int], TaskResult]:
+    path = results_dir / "results.jsonl"
+    if not path.is_file():
+        return {}
+    completed: dict[tuple[str, int], TaskResult] = {}
+    for line in path.read_text().splitlines():
+        if not line.strip():
+            continue
+        result = TaskResult(**json.loads(line))
+        key = (result.task_name, result.sample_index)
+        if result.error is None:
+            completed[key] = result
+        else:
+            completed.pop(key, None)
+    return completed
 
 
 async def run_eval(
@@ -212,12 +283,24 @@ async def run_eval(
     Returns:
         List of per-task results.
     """
-    results_dir = Path(config.output_path) / datetime.now().strftime("%Y%m%d_%H%M%S")
+    if config.num_samples < 1:
+        raise ValueError("num_samples must be at least 1")
+    k_values = sorted({int(value.strip()) for value in config.pass_at_k.split(",")})
+    if not k_values or k_values[0] < 1 or k_values[-1] > config.num_samples:
+        raise ValueError("pass_at_k values must be between 1 and num_samples")
+
+    results_dir = (
+        Path(config.resume_dir)
+        if config.resume_dir
+        else Path(config.output_path) / datetime.now().strftime("%Y%m%d_%H%M%S")
+    )
     results_dir.mkdir(parents=True, exist_ok=True)
     print(f"Results dir: {results_dir}")
 
     config_dict = dump_config(config)
-    (results_dir / "config.json").write_text(json.dumps(config_dict, indent=2))
+    config_path = results_dir / "config.json"
+    if not config_path.exists():
+        config_path.write_text(json.dumps(config_dict, indent=2))
 
     lock = asyncio.Lock()
 
@@ -248,11 +331,22 @@ async def run_eval(
     if config.max_tasks is not None:
         tasks = random.sample(tasks, min(config.max_tasks, len(tasks)))
 
-    logger.info("Starting evaluation of %d tasks", len(tasks))
+    completed = _load_completed_results(results_dir)
+    work_items = [
+        (task, sample_index)
+        for task in tasks
+        for sample_index in range(config.num_samples)
+        if (task.task_name, sample_index) not in completed
+    ]
+    logger.info(
+        "Starting evaluation of %d rollouts (%d already complete)",
+        len(work_items),
+        len(completed),
+    )
 
     semaphore = asyncio.Semaphore(config.max_concurrency)
 
-    async def evaluate_with_limit(task: HarborTask) -> TaskResult:
+    async def evaluate_with_limit(task: HarborTask, sample_index: int) -> TaskResult:
         async with semaphore:
             return await evaluate_task(
                 task,
@@ -263,15 +357,25 @@ async def run_eval(
                 results_dir,
                 lock,
                 tokenizer,
+                sample_index,
             )
 
-    task_results = list(
+    new_results = list(
         await asyncio.gather(
-            *[
-                evaluate_with_limit(task)
-                for task in tasks
-            ]
+            *[evaluate_with_limit(task, sample_index) for task, sample_index in work_items]
         )
     )
-
+    task_results = list(completed.values()) + new_results
+    summary = summarize_pass_at_k(task_results, k_values)
+    (results_dir / "result.json").write_text(json.dumps(summary, indent=2))
+    pass_at_k = summary["pass_at_k"]
+    assert isinstance(pass_at_k, dict)
+    print(
+        "pass@k: "
+        + ", ".join(
+            f"pass@{key}={value:.1%}"
+            for key, value in pass_at_k.items()
+            if isinstance(value, float)
+        )
+    )
     return task_results
