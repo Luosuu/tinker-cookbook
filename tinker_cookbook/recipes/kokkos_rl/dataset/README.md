@@ -29,7 +29,7 @@ uv run python -m tinker_cookbook.recipes.kokkos_rl.dataset.auto_annotate \
 ```
 
 The annotation model proposes narrow build targets and exact fail-to-pass and pass-to-pass
-commands. Every proposal is then executed in a fresh Modal sandbox. Failed command output
+commands. Every proposal is then executed in a fresh Modal or Nebius ConTree sandbox. Failed command output
 can be fed back for up to three repair attempts. Only candidates satisfying all of these
 transitions are written to the validated JSONL:
 
@@ -39,6 +39,11 @@ transitions are written to the validated JSONL:
 
 Per-candidate reports contain the complete annotation and command evidence and make runs
 resumable. `annotate.py` is also available for importing reviewed annotations.
+
+To validate CPU and compile-only candidates with ConTree, put
+`NEBIUS_SANDBOX_API_KEY` and its authorized `NEBIUS_PROJECT_ID` in `.env`, then add
+`--sandbox-backend contree` to the command above. GPU runtime validation remains on Modal
+because ConTree SDK 0.3 does not expose GPU selection.
 
 For an optional local audit against an existing checkout:
 

@@ -136,3 +136,16 @@ infrastructure failures. A reportable result requires all 210 rollouts to reach
 the grader or to have any residual infrastructure failures explicitly separated
 from model failures. Report new-70 scores and, where settings match, combined
 100-task scores with exact model identifiers and effort values.
+# Nebius ConTree sandbox integration smoke test (2026-08-17)
+
+- Research question: can ConTree replace Modal/SandboxFusion at the sandbox boundary used by
+  Code RL and Kokkos dataset validation?
+- Hypothesis: ConTree sessions provide the required persistent filesystem semantics, while
+  branching a prepared image can support concurrent Code RL grading.
+- Experiment design: (1) adapter file/command smoke test, (2) known-answer Code RL grader
+  invocation, (3) one minimal RL optimizer step, and (4) one existing CPU Kokkos candidate's
+  baseline/test-only/gold validation transition.
+- Success criteria: all interface operations succeed, the known-answer program receives reward,
+  the RL run writes finite metrics and a rollout transcript, and the Kokkos validation report has
+  `passed=true`.
+- Control: existing Modal remains the default and its unit tests must continue to pass.

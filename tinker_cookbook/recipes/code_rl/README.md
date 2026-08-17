@@ -6,7 +6,7 @@ Competitive programming problems are a common testbed for RL with LLMs. The rece
 
 ### Sandboxing
 
-Sandboxing is essential for safely executing generated code during training and evaluation. Two sandbox backends are supported:
+Sandboxing is essential for safely executing generated code during training and evaluation. Three sandbox backends are supported:
 
 #### SandboxFusion (Default)
 
@@ -47,6 +47,21 @@ Optional environment variables for Modal:
 
 - `MODAL_POOL_SIZE`: Number of concurrent sandboxes (default: 32)
 - `MODAL_CREATION_RATE_LIMIT`: Max sandboxes created per second (default: 4)
+
+#### Nebius ConTree
+
+[ConTree](https://pypi.org/project/contree-sdk/) provides versioned cloud sandboxes. Set
+either `NEBIUS_SANDBOX_API_KEY` (used by this repository) or the SDK-standard
+`NEBIUS_API_KEY`, and set `NEBIUS_PROJECT_ID` to the project authorized for that key.
+Then select the backend:
+
+```bash
+python -m tinker_cookbook.recipes.code_rl.train \
+    sandbox_backend=contree \
+    ...
+```
+
+`CONTREE_POOL_SIZE` controls the maximum concurrent executions (default: 32).
 
 ### Example command
 

@@ -65,3 +65,20 @@ print(result.stdout)
 Environment variables:
 
 - `MODAL_POOL_SIZE`: Number of sandboxes in the pool (default: 32)
+
+### Nebius ConTree (cloud)
+
+ConTree implements persistent sandbox state as a chain of immutable image versions:
+
+```python
+from tinker_cookbook.sandbox.contree_sandbox import ContreeSandbox
+
+sandbox = await ContreeSandbox.create(image="python:3.12-slim")
+await sandbox.write_file("/workspace/code.py", "print('hello')")
+result = await sandbox.run_command("python /workspace/code.py")
+await sandbox.cleanup()
+```
+
+Authentication accepts `NEBIUS_SANDBOX_API_KEY`, `NEBIUS_API_KEY`, or the standard
+ConTree profile variables. IAM keys also require the authorized `NEBIUS_PROJECT_ID`.
+`CONTREE_POOL_SIZE` sets Code RL grading concurrency.

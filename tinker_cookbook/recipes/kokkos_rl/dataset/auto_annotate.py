@@ -24,8 +24,9 @@ from tinker_cookbook.recipes.kokkos_rl.dataset.annotate import apply_annotations
 from tinker_cookbook.recipes.kokkos_rl.dataset.ecosystem import get_repository_profile
 from tinker_cookbook.recipes.kokkos_rl.dataset.modal_validate import (
     ModalValidationSandboxFactory,
+    contree_validation_sandbox_factory,
     default_validation_sandbox_factory,
-    validate_instance_in_modal,
+    validate_instance_in_sandbox,
 )
 from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
 from tinker_cookbook.renderers import Message, Renderer, get_renderer, get_text_content
@@ -730,7 +731,7 @@ async def annotate_and_validate_instance(
             attempt.annotation = annotation
             previous_annotation = annotation
             annotated = apply_annotations(instance, annotation)
-            validation_report = await validate_instance_in_modal(
+            validation_report = await validate_instance_in_sandbox(
                 annotated,
                 sandbox_timeout=sandbox_timeout,
                 command_timeout=command_timeout,
@@ -826,6 +827,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--command-timeout", type=int, default=1200)
     parser.add_argument("--flaky-repetitions", type=int, default=3)
     parser.add_argument(
+        "--sandbox-backend",
+        choices=("modal", "contree"),
+        default="modal",
+        help="cloud sandbox used to validate generated tasks",
+    )
+    parser.add_argument(
         "--no-resume",
         action="store_true",
         help="ignore all per-candidate reports from an earlier invocation",
@@ -900,6 +907,11 @@ async def _main(args: argparse.Namespace) -> None:
                 sandbox_timeout=args.sandbox_timeout,
                 command_timeout=args.command_timeout,
                 flaky_repetitions=args.flaky_repetitions,
+                sandbox_factory=(
+                    contree_validation_sandbox_factory
+                    if args.sandbox_backend == "contree"
+                    else default_validation_sandbox_factory
+                ),
             )
             report_path.write_text(json.dumps(item.to_dict(), indent=2, sort_keys=True) + "\n")
             status = "PASS" if item.passed else "FAIL"

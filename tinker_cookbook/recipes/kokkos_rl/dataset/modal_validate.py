@@ -1,4 +1,4 @@
-"""Validate annotated Kokkos candidates in fresh Modal sandboxes."""
+"""Validate annotated Kokkos candidates in fresh cloud sandboxes."""
 
 from __future__ import annotations
 
@@ -25,6 +25,7 @@ SYCL_IMAGE = "intel/oneapi-basekit:2025.3.2-0-devel-ubuntu24.04"
 KOKKOS_DEPENDENCY_REF = "5.2.0"
 
 ModalValidationSandboxFactory = Callable[[KokkosInstance, int], Awaitable[SandboxInterface]]
+ValidationSandboxFactory = ModalValidationSandboxFactory
 
 _REPO_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 _COMMIT_RE = re.compile(r"^[0-9a-fA-F]{40}$")
@@ -175,6 +176,99 @@ async def default_validation_sandbox_factory(
         )
 
 
+async def contree_validation_sandbox_factory(
+    instance: KokkosInstance, timeout: int
+) -> SandboxInterface:
+    """Create a ConTree sandbox containing the candidate's base checkout."""
+
+    from tinker_cookbook.sandbox.contree_sandbox import ContreeSandbox
+
+    if instance.era not in ERA_IMAGES:
+        raise ValueError(f"unsupported Kokkos compiler era: {instance.era!r}")
+    if not _REPO_RE.fullmatch(instance.repo):
+        raise ValueError(f"invalid GitHub repository name: {instance.repo!r}")
+    if not _COMMIT_RE.fullmatch(instance.base_commit):
+        raise ValueError(f"invalid base commit: {instance.base_commit!r}")
+
+    profile = get_repository_profile(instance.repo)
+    accelerator = str(
+        instance.metadata.get("toolchain", instance.metadata.get("accelerator", "cpu"))
+    )
+    if bool(instance.metadata.get("requires_gpu", False)):
+        raise ValueError(
+            "ConTree SDK 0.3 does not expose GPU selection; use Modal for "
+            f"{accelerator} runtime validation"
+        )
+
+    toolchain_images = {"cuda": CUDA_IMAGE, "hip": HIP_IMAGE, "sycl": SYCL_IMAGE}
+    base_image = toolchain_images.get(accelerator, ERA_IMAGES[instance.era])
+    clone_url = f"https://github.com/{instance.repo}.git"
+    commands = [
+        "apt-get update && apt-get install -y --no-install-recommends "
+        "build-essential ca-certificates ccache cmake git libboost-all-dev "
+        "libhdf5-dev libopenmpi-dev ninja-build openmpi-bin python-is-python3 "
+        "python3-pip && rm -rf /var/lib/apt/lists/*",
+        f"git clone {shlex.quote(clone_url)} /workspace/repo",
+        "git -C /workspace/repo checkout " + shlex.quote(instance.base_commit),
+        "git -C /workspace/repo submodule update --init --recursive",
+    ]
+    if instance.repo != "kokkos/kokkos" and profile.build_system == "cmake":
+        dependency_configure = (
+            "cmake -S /workspace/kokkos -B /workspace/kokkos-build -G Ninja "
+            "-DCMAKE_INSTALL_PREFIX=/opt/kokkos -DKokkos_ENABLE_SERIAL=ON "
+            "-DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=OFF "
+            "-DCMAKE_BUILD_TYPE=Release"
+        )
+        if accelerator == "cuda":
+            dependency_configure += (
+                " -DKokkos_ENABLE_CUDA=ON -DKokkos_ARCH_ADA89=ON "
+                "-DCMAKE_CXX_COMPILER=/workspace/kokkos/bin/nvcc_wrapper"
+            )
+        elif accelerator == "hip":
+            dependency_configure += (
+                " -DKokkos_ENABLE_HIP=ON -DKokkos_ARCH_AMD_GFX90A=ON -DCMAKE_CXX_COMPILER=hipcc"
+            )
+        elif accelerator == "sycl":
+            dependency_configure += (
+                " -DKokkos_ENABLE_SYCL=ON -DKokkos_ARCH_INTEL_PVC=ON -DCMAKE_CXX_COMPILER=icpx"
+            )
+        commands.extend(
+            [
+                "git clone --branch "
+                + shlex.quote(KOKKOS_DEPENDENCY_REF)
+                + " --depth 1 https://github.com/kokkos/kokkos.git /workspace/kokkos",
+                dependency_configure,
+                "cmake --build /workspace/kokkos-build --parallel",
+                "cmake --install /workspace/kokkos-build",
+            ]
+        )
+    if profile.build_system == "python":
+        commands.extend(
+            [
+                "python -m pip install --break-system-packages "
+                "numpy patchelf pybind11 pytest setuptools wheel",
+                "cd /workspace/repo && PIP_BREAK_SYSTEM_PACKAGES=1 "
+                "python install_base.py install -- "
+                "-DENABLE_LAYOUTS=ON -DENABLE_MEMORY_TRAITS=OFF "
+                "-DENABLE_VIEW_RANKS=4 -DENABLE_CUDA=OFF "
+                "-DENABLE_THREADS=OFF -DENABLE_OPENMP=ON",
+            ]
+        )
+
+    sandbox = await ContreeSandbox.create(image=base_image, timeout=timeout)
+    setup = await sandbox.run_command(
+        "set -euo pipefail; export DEBIAN_FRONTEND=noninteractive; " + " && ".join(commands),
+        timeout=timeout,
+    )
+    if setup.exit_code != 0:
+        await sandbox.cleanup()
+        raise RuntimeError(
+            "failed to prepare Kokkos ConTree sandbox: "
+            f"exit={setup.exit_code}\n{setup.stdout[-16000:]}\n{setup.stderr[-16000:]}"
+        )
+    return sandbox
+
+
 async def _run(
     sandbox: SandboxInterface,
     command: str,
@@ -249,15 +343,15 @@ async def _write_patch(
     )
 
 
-async def validate_instance_in_modal(
+async def validate_instance_in_sandbox(
     instance: KokkosInstance,
     *,
     sandbox_timeout: int = 3600,
     command_timeout: int = 1200,
     flaky_repetitions: int = 3,
-    sandbox_factory: ModalValidationSandboxFactory = default_validation_sandbox_factory,
+    sandbox_factory: ValidationSandboxFactory = default_validation_sandbox_factory,
 ) -> ValidationReport:
-    """Run baseline, test-only failure, and gold-fix success in a Modal sandbox."""
+    """Run baseline, test-only failure, and gold-fix success in a sandbox."""
 
     if not instance.is_validation_ready:
         raise ValueError(
@@ -362,3 +456,7 @@ async def validate_instance_in_modal(
                     report.error = f"sandbox cleanup failed: {error}"
                     report.passed = False
     return report
+
+
+# Backward-compatible name for callers written before sandbox injection was generalized.
+validate_instance_in_modal = validate_instance_in_sandbox
