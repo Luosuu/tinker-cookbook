@@ -214,7 +214,7 @@ class DeepcoderEnvGroupBuilder(EnvGroupBuilder):
         return envs
 
     def logging_tags(self) -> list[str]:
-        return ["deepcoder"]
+        return [self.task.dataset_name]
 
 
 class DeepcoderDataset(RLDataset):

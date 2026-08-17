@@ -76,6 +76,53 @@ python -m tinker_cookbook.recipes.code_rl.train \
     max_tokens=24576
 ```
 
+## LiveCodeBench-CPP
+
+The same recipe can train on NVIDIA's
+[LiveCodeBench-CPP](https://huggingface.co/datasets/nvidia/LiveCodeBench-CPP). The dataset has
+454 C++17 problems in the `v6_2408_2505` split and is licensed CC BY 4.0. It is large (about
+1.9 GB) because it includes compressed private tests. The loader pins the dataset revision,
+decodes those tests only when their RL batch is requested, and makes a deterministic, disjoint
+train/evaluation split.
+
+The C++ grader supports both dataset formats:
+
+- AtCoder submissions are compiled once and run against stdin/stdout cases.
+- LeetCode submissions are combined with the dataset-provided C++ test harness, then compiled
+  and run.
+
+All generated code still runs inside the selected sandbox. SandboxFusion uses its C++ runtime;
+the Modal and ConTree adapters select images with `g++` installed.
+
+Run a held-out baseline before training:
+
+```bash
+python -m tinker_cookbook.recipes.code_rl.evaluate \
+    model_name="openai/gpt-oss-20b" \
+    sandbox_backend=contree \
+    eval_size=32 max_eval_examples=32 \
+    max_tokens=32768 \
+    output_path=/tmp/tinker-examples/livecodebench_cpp_gpt_oss_20b_baseline
+```
+
+Then train on the complementary problems while evaluating on the same held-out set at step 0
+and every `eval_every` steps:
+
+```bash
+python -m tinker_cookbook.recipes.code_rl.train \
+    dataset=livecodebench_cpp \
+    model_name="openai/gpt-oss-20b" \
+    sandbox_backend=contree \
+    eval_size=32 \
+    group_size=8 groups_per_batch=16 \
+    learning_rate=4e-5 lora_rank=32 \
+    max_tokens=32768 eval_every=10
+```
+
+Training on LiveCodeBench-CPP contaminates the trained checkpoint for reporting results on the
+public LiveCodeBench-CPP benchmark. Use the held-out subset only for iteration diagnostics, and
+use a separate, untouched benchmark for final model comparison.
+
 After 190 steps of training, you can expect the following performance on **LiveCodeBench v6 (2025.02–2025.05)**:
 
 | Model | Pass@1 | Pass@8 |

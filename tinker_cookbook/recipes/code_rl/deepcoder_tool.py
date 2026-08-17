@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from tinker_cookbook.recipes.code_rl.code_grading import (
     extract_code_from_model,
     sandbox_check_correctness,
+    sandbox_check_cpp_correctness,
 )
 from tinker_cookbook.renderers import get_text_content
 from tinker_cookbook.renderers.base import Message
@@ -22,6 +23,29 @@ class DeepcoderTask:
     problem: str
     tests: list[dict[str, Any]]
     starter_code: str | None = None
+    language: Literal["python", "cpp"] = "python"
+    dataset_name: str = "deepcoder"
+
+
+async def _check_task_correctness(
+    task: DeepcoderTask,
+    code: str,
+    timeout: int,
+    backend: SandboxBackend | None,
+) -> tuple[bool, dict[str, Any]]:
+    if task.language == "cpp":
+        return await sandbox_check_cpp_correctness(
+            task.tests,
+            code,
+            timeout=timeout,
+            backend=backend,
+        )
+    return await sandbox_check_correctness(
+        task.tests,
+        code,
+        timeout=timeout,
+        backend=backend,
+    )
 
 
 class DeepcoderTool:
@@ -43,18 +67,18 @@ class DeepcoderTool:
     @tool
     async def check_solution(
         self,
-        code: Annotated[str, "Python code implementing the solution."],
+        code: Annotated[str, "Source code implementing the solution."],
     ) -> ToolResult:
         """Execute the proposed solution against the task's test cases.
 
         Use this to test your code before providing your final answer.
         """
         try:
-            passed, details = await sandbox_check_correctness(
-                self._task.tests,
+            passed, details = await _check_task_correctness(
+                self._task,
                 code,
-                timeout=self._timeout,
-                backend=self._sandbox_backend,
+                self._timeout,
+                self._sandbox_backend,
             )
             content = json.dumps(
                 {"passed": passed, "details": details},
@@ -105,11 +129,11 @@ class DeepcoderReward:
         # Grade the code by running tests
         if code is not None:
             try:
-                passed, _details = await sandbox_check_correctness(
-                    self.task.tests,
+                passed, _details = await _check_task_correctness(
+                    self.task,
                     code,
-                    timeout=self.timeout,
-                    backend=self.sandbox_backend,
+                    self.timeout,
+                    self.sandbox_backend,
                 )
                 correct = float(passed)
             except Exception as e:

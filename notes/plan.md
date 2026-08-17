@@ -149,3 +149,28 @@ from model failures. Report new-70 scores and, where settings match, combined
   the RL run writes finite metrics and a rollout transcript, and the Kokkos validation report has
   `passed=true`.
 - Control: existing Modal remains the default and its unit tests must continue to pass.
+
+## LiveCodeBench-CPP GPT-OSS 20B RL experiment (2026-08-17)
+
+Research question: can the existing agentic Code RL loop improve GPT-OSS 20B on NVIDIA's
+LiveCodeBench-CPP problems when reward comes from isolated C++17 compilation and private tests?
+
+Hypothesis: GPT-OSS 20B has enough initial code ability to create mixed rewards within groups,
+while one tool-assisted revision gives it a useful compile/test feedback signal for GRPO.
+
+Experiment design:
+
+1. Pin the v6 dataset revision and deterministically shuffle with seed 0.
+2. Hold out 32 problems for evaluation and use only the complementary 422 for training.
+3. Run a small end-to-end grader/evaluation smoke, then evaluate all 32 held-out problems at
+   pass@1 before any optimizer step.
+4. Start LoRA RL with the recommended renderer, group size 8, 32K generation limit, and periodic
+   evaluation on the unchanged holdout.
+5. Monitor reward variance, correctness, format compliance, rollout errors, compilation errors,
+   and actual transcripts during the first steps.
+
+Controls and success criteria: train/eval question IDs must be disjoint; Python DeepCoder tests
+must remain unchanged; known-good stdin and functional C++ submissions must pass the grader;
+the baseline must finish without infrastructure errors; and training must produce finite loss,
+nonzero within-group reward variance, and at least one valid checkpoint. Results on a checkpoint
+trained with this dataset must not be reported as an uncontaminated public LiveCodeBench score.

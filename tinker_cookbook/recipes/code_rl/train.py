@@ -1,11 +1,18 @@
 import asyncio
 import logging
 from datetime import datetime
+from typing import Literal
 
 import chz
 
 from tinker_cookbook import checkpoint_utils, cli_utils
 from tinker_cookbook.recipes.code_rl.code_env import DeepcoderDatasetBuilder
+from tinker_cookbook.recipes.code_rl.code_grading import close_cpp_sandbox_pools
+from tinker_cookbook.recipes.code_rl.livecodebench_cpp import (
+    DATASET_REVISION,
+    DatasetSplit,
+    LiveCodeBenchCppDatasetBuilder,
+)
 from tinker_cookbook.rl.rollout_strategy import RetryOnFailure
 from tinker_cookbook.rl.train import AsyncConfig, Config, main
 from tinker_cookbook.sandbox import SandboxBackend
@@ -25,6 +32,13 @@ class CLIConfig:
 
     # Data / environment configuration
     seed: int = 0
+    dataset: Literal["deepcoder", "livecodebench_cpp"] = "deepcoder"
+    dataset_split: DatasetSplit = "v6_2408_2505"
+    dataset_revision: str = DATASET_REVISION
+    eval_size: int = 32
+    max_train_examples: int | None = None
+    max_eval_examples: int | None = None
+    cpp_timeout: int = 30
 
     # Training hyperparameters
     group_size: int = 4
@@ -71,7 +85,7 @@ async def cli_main(cli_config: CLIConfig) -> None:
 
     model_tag = cli_config.model_name.replace("/", "-")
     run_name = (
-        f"deepcoder-{model_tag}-{cli_config.lora_rank}rank-"
+        f"{cli_config.dataset}-{model_tag}-{cli_config.lora_rank}rank-"
         f"{cli_config.learning_rate}lr-{cli_config.group_size}group-"
         f"{cli_config.groups_per_batch}batch-seed{cli_config.seed}-"
         f"{datetime.now().strftime('%Y-%m-%d-%H-%M')}"
@@ -85,15 +99,32 @@ async def cli_main(cli_config: CLIConfig) -> None:
 
     wandb_name = cli_config.wandb_name or run_name
 
-    dataset_builder = DeepcoderDatasetBuilder(
-        batch_size=cli_config.groups_per_batch,
-        model_name_for_tokenizer=cli_config.model_name,
-        renderer_name=renderer_name,
-        group_size=cli_config.group_size,
-        seed=cli_config.seed,
-        sandbox_backend=cli_config.sandbox_backend,
-        max_generation_tokens=cli_config.max_tokens,
-    )
+    if cli_config.dataset == "livecodebench_cpp":
+        dataset_builder = LiveCodeBenchCppDatasetBuilder(
+            batch_size=cli_config.groups_per_batch,
+            model_name_for_tokenizer=cli_config.model_name,
+            renderer_name=renderer_name,
+            group_size=cli_config.group_size,
+            seed=cli_config.seed,
+            sandbox_backend=cli_config.sandbox_backend,
+            max_generation_tokens=cli_config.max_tokens,
+            dataset_split=cli_config.dataset_split,
+            dataset_revision=cli_config.dataset_revision,
+            eval_size=cli_config.eval_size,
+            max_train_examples=cli_config.max_train_examples,
+            max_eval_examples=cli_config.max_eval_examples,
+            timeout=cli_config.cpp_timeout,
+        )
+    else:
+        dataset_builder = DeepcoderDatasetBuilder(
+            batch_size=cli_config.groups_per_batch,
+            model_name_for_tokenizer=cli_config.model_name,
+            renderer_name=renderer_name,
+            group_size=cli_config.group_size,
+            seed=cli_config.seed,
+            sandbox_backend=cli_config.sandbox_backend,
+            max_generation_tokens=cli_config.max_tokens,
+        )
 
     config = Config(
         learning_rate=cli_config.learning_rate,
@@ -127,7 +158,11 @@ async def cli_main(cli_config: CLIConfig) -> None:
 
     cli_utils.check_log_dir(log_path, behavior_if_exists=cli_config.behavior_if_log_dir_exists)
 
-    await main(config)
+    try:
+        await main(config)
+    finally:
+        if cli_config.dataset == "livecodebench_cpp":
+            await close_cpp_sandbox_pools()
 
 
 if __name__ == "__main__":
