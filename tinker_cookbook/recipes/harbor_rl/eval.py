@@ -334,8 +334,8 @@ async def run_eval(
     completed = _load_completed_results(results_dir)
     work_items = [
         (task, sample_index)
-        for task in tasks
         for sample_index in range(config.num_samples)
+        for task in tasks
         if (task.task_name, sample_index) not in completed
     ]
     logger.info(
