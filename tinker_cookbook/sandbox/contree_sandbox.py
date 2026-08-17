@@ -11,6 +11,7 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 import shlex
 import uuid
 from datetime import timedelta
@@ -303,7 +304,7 @@ class ContreeDockerfileSandboxFactory:
                 raise ValueError(
                     f"expected one FROM instruction in {dockerfile_path}, got {len(base_images)}"
                 )
-            environment: dict[str, str] = {"CMAKE_BUILD_PARALLEL_LEVEL": "2"}
+            environment: dict[str, str] = {"CMAKE_BUILD_PARALLEL_LEVEL": "1"}
             sandbox = await ContreeSandbox.create(
                 image=base_images[0],
                 timeout=min(timeout, self._timeout),
@@ -324,6 +325,7 @@ class ContreeDockerfileSandboxFactory:
                         environment[key] = env_value
                         chain.update(f"\nENV {value}".encode())
                     elif instruction == "RUN":
+                        value = re.sub(r"--parallel(?!\s+\d)", "--parallel 1", value)
                         chain.update(f"\nRUN {value}".encode())
                         layer_key = f"layer:{chain.hexdigest()}"
                         layer_image = self._prepared_images.get(layer_key)
@@ -364,7 +366,7 @@ class ContreeDockerfileSandboxFactory:
             client=self._client,
             import_image=False,
             default_workdir=workdir,
-            default_env={"CMAKE_BUILD_PARALLEL_LEVEL": "2"},
+            default_env={"CMAKE_BUILD_PARALLEL_LEVEL": "1"},
         )
 
 
