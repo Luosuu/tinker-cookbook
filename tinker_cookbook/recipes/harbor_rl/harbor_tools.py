@@ -61,6 +61,7 @@ class HarborReward:
     tests_dir: Path
     sandbox: SandboxInterface
     grader_timeout: int = 60
+    raise_on_grading_error: bool = False
 
     async def __call__(self, history: list[Message]) -> tuple[float, dict[str, float]]:
         """Grade the completed episode by running test.sh in the sandbox."""
@@ -76,6 +77,11 @@ class HarborReward:
                 workdir="/root",
                 timeout=self.grader_timeout,
             )
+            if result.exit_code < 0:
+                raise RuntimeError(
+                    "verifier command failed before producing a result: "
+                    f"exit={result.exit_code}, stderr={result.stderr[-1000:]}"
+                )
             logger.info("test.sh completed with exit_code=%d", result.exit_code)
             if result.stdout:
                 logger.debug("test.sh stdout: %s", result.stdout[:500])
@@ -84,10 +90,14 @@ class HarborReward:
 
             # 3. Parse reward
             reward = await self._parse_reward()
+            if reward is None:
+                raise RuntimeError("verifier produced no reward file")
             return reward, {"reward": reward, "test_passed": float(reward > 0)}
 
         except Exception as e:
             logger.error("Harbor grading failed: %s", e)
+            if self.raise_on_grading_error:
+                raise
             return 0.0, {"reward": 0.0, "test_passed": 0.0, "grading_error": 1.0}
 
     async def _upload_tests(self) -> None:
@@ -105,7 +115,7 @@ class HarborReward:
             target = f"/tests/{file_path.relative_to(self.tests_dir)}"
             await self.sandbox.write_file(target, content, executable=(file_path.suffix == ".sh"))
 
-    async def _parse_reward(self) -> float:
+    async def _parse_reward(self) -> float | None:
         """Parse reward from /logs/verifier/reward.txt or reward.json."""
         # Try reward.txt first
         result = await self.sandbox.read_file("/logs/verifier/reward.txt")
@@ -123,4 +133,4 @@ class HarborReward:
             return reward
 
         logger.warning("No reward file found at /logs/verifier/")
-        return 0.0
+        return None

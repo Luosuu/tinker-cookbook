@@ -111,6 +111,7 @@ async def evaluate_task(
             tests_dir=task.task_dir / "tests",
             sandbox=sandbox,
             grader_timeout=config.grader_timeout,
+            raise_on_grading_error=True,
         )
 
         base_rollout_config = agentic()

@@ -5,6 +5,8 @@ import json
 import pickle
 from pathlib import Path
 
+import pytest
+
 from tinker_cookbook.recipes.harbor_rl.harbor_env import HarborEnvGroupBuilder, HarborTask
 from tinker_cookbook.recipes.harbor_rl.harbor_tools import (
     MAX_OUTPUT_CHARS,
@@ -101,7 +103,15 @@ class TestHarborReward:
 
         reward, info = asyncio.run(reward_fn([]))
         assert reward == 0.0
-        assert info == {"reward": 0.0, "test_passed": 0.0}
+        assert info == {"reward": 0.0, "test_passed": 0.0, "grading_error": 1.0}
+
+    def test_no_reward_file_raises_in_strict_mode(self, tmp_path: Path) -> None:
+        reward_fn = self._make_reward(
+            tmp_path, FakeSandbox(), raise_on_grading_error=True
+        )
+
+        with pytest.raises(RuntimeError, match="no reward file"):
+            asyncio.run(reward_fn([]))
 
     def test_zero_reward(self, tmp_path: Path) -> None:
         sandbox = FakeSandbox()
