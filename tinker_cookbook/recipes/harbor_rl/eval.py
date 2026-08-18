@@ -301,6 +301,12 @@ async def run_eval(
     config_path = results_dir / "config.json"
     if not config_path.exists():
         config_path.write_text(json.dumps(config_dict, indent=2))
+    invocation = {
+        "started_at": datetime.now().astimezone().isoformat(),
+        **config_dict,
+    }
+    with open(results_dir / "invocations.jsonl", "a") as f:
+        f.write(json.dumps(invocation) + "\n")
 
     lock = asyncio.Lock()
 
