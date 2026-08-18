@@ -5,7 +5,11 @@ import os
 import pytest
 import pytest_asyncio
 
-from tinker_cookbook.sandbox.contree_sandbox import ContreeSandbox, _dockerfile_instructions
+from tinker_cookbook.sandbox.contree_sandbox import (
+    ContreeDockerfileSandboxFactory,
+    ContreeSandbox,
+    _dockerfile_instructions,
+)
 
 requires_contree = pytest.mark.skipif(
     not (os.environ.get("NEBIUS_SANDBOX_API_KEY") or os.environ.get("NEBIUS_API_KEY")),
@@ -29,6 +33,13 @@ def test_parse_harbor_dockerfile_subset(tmp_path) -> None:
         ("RUN", "echo first && echo second"),
         ("WORKDIR", "/workspace/repo"),
     ]
+
+
+def test_runtime_build_parallelism_is_validated(tmp_path) -> None:
+    with pytest.raises(ValueError, match="at least 1"):
+        ContreeDockerfileSandboxFactory(
+            tmp_path / "cache.json", runtime_build_parallelism=0
+        )
 
 
 @pytest_asyncio.fixture(scope="module")

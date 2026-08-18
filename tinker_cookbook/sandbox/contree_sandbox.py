@@ -253,9 +253,17 @@ class ContreeDockerfileSandboxFactory:
     UUIDs for resumable evaluations.
     """
 
-    def __init__(self, cache_path: Path, timeout: int = 3600) -> None:
+    def __init__(
+        self,
+        cache_path: Path,
+        timeout: int = 3600,
+        runtime_build_parallelism: int | None = None,
+    ) -> None:
+        if runtime_build_parallelism is not None and runtime_build_parallelism < 1:
+            raise ValueError("runtime_build_parallelism must be at least 1")
         self._cache_path = cache_path
         self._timeout = timeout
+        self._runtime_build_parallelism = runtime_build_parallelism
         self._client = create_contree_client(timeout)
         self._cache_lock = asyncio.Lock()
         self._prepare_locks: dict[str, asyncio.Lock] = {}
@@ -385,13 +393,18 @@ class ContreeDockerfileSandboxFactory:
 
     async def __call__(self, env_dir: Path, timeout: int) -> ContreeSandbox:
         image_id, workdir = await self._prepare(env_dir / "Dockerfile", timeout)
+        runtime_environment = (
+            {"CMAKE_BUILD_PARALLEL_LEVEL": str(self._runtime_build_parallelism)}
+            if self._runtime_build_parallelism is not None
+            else {}
+        )
         return await ContreeSandbox.create(
             image=image_id,
             timeout=min(timeout, self._timeout),
             client=self._client,
             import_image=False,
             default_workdir=workdir,
-            default_env={"CMAKE_BUILD_PARALLEL_LEVEL": "1"},
+            default_env=runtime_environment,
         )
 
 

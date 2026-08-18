@@ -29,6 +29,7 @@ class CLIConfig:
     sandbox_timeout: int = 3600
     command_timeout: int = 180
     grader_timeout: int = 180
+    sandbox_build_parallelism: int | None = None
     max_tasks: int | None = None
     max_concurrency: int = 6
     task_names: str | None = None
@@ -98,6 +99,7 @@ async def main(cli_config: CLIConfig) -> None:
         sandbox_timeout=cli_config.sandbox_timeout,
         command_timeout=cli_config.command_timeout,
         grader_timeout=cli_config.grader_timeout,
+        sandbox_build_parallelism=cli_config.sandbox_build_parallelism,
         max_tasks=cli_config.max_tasks,
         max_concurrency=cli_config.max_concurrency,
         base_url=cli_config.base_url,
@@ -126,6 +128,7 @@ async def main(cli_config: CLIConfig) -> None:
         sandbox_factory = ContreeDockerfileSandboxFactory(
             cache_path=cache_path,
             timeout=cli_config.sandbox_timeout,
+            runtime_build_parallelism=cli_config.sandbox_build_parallelism,
         )
     else:
         raise ValueError(f"unknown sandbox_backend: {cli_config.sandbox_backend!r}")
