@@ -332,6 +332,15 @@ class ContreeDockerfileSandboxFactory:
                             # CMake's Makefiles generator avoids that backend-
                             # specific log without changing targets or flags.
                             value = value.replace("-G Ninja", "-G 'Unix Makefiles'")
+                            # Debug information for KokkosKernels' largest test
+                            # translation units exceeds a ConTree worker's memory
+                            # even at one build job. Keep RelWithDebInfo's
+                            # optimization and NDEBUG semantics, but omit symbols.
+                            value = value.replace(
+                                "-DCMAKE_BUILD_TYPE=RelWithDebInfo",
+                                "-DCMAKE_BUILD_TYPE=RelWithDebInfo "
+                                "-DCMAKE_CXX_FLAGS_RELWITHDEBINFO='-O2 -g0 -DNDEBUG'",
+                            )
                         # PyKokkos' default unity batches exceed the memory of the
                         # current ConTree worker even with one build job. Splitting
                         # them changes only compilation strategy, not features or
