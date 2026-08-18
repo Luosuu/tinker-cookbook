@@ -326,6 +326,14 @@ class ContreeDockerfileSandboxFactory:
                         chain.update(f"\nENV {value}".encode())
                     elif instruction == "RUN":
                         value = re.sub(r"--parallel(?!\s+\d)", "--parallel 1", value)
+                        # PyKokkos' default unity batches exceed the memory of the
+                        # current ConTree worker even with one build job. Splitting
+                        # them changes only compilation strategy, not features or
+                        # optimization level.
+                        value = value.replace(
+                            "-DENABLE_OPENMP=ON",
+                            "-DENABLE_OPENMP=ON -DCMAKE_UNITY_BUILD=OFF",
+                        )
                         chain.update(f"\nRUN {value}".encode())
                         layer_key = f"layer:{chain.hexdigest()}"
                         layer_image = self._prepared_images.get(layer_key)
