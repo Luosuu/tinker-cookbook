@@ -326,6 +326,12 @@ class ContreeDockerfileSandboxFactory:
                         chain.update(f"\nENV {value}".encode())
                     elif instruction == "RUN":
                         value = re.sub(r"--parallel(?!\s+\d)", "--parallel 1", value)
+                        if "kokkos-kernels" in dockerfile_path.parent.parent.name:
+                            # Long serial Ninja builds on ConTree's overlay can
+                            # fail while flushing .ninja_log after compilation.
+                            # CMake's Makefiles generator avoids that backend-
+                            # specific log without changing targets or flags.
+                            value = value.replace("-G Ninja", "-G 'Unix Makefiles'")
                         # PyKokkos' default unity batches exceed the memory of the
                         # current ConTree worker even with one build job. Splitting
                         # them changes only compilation strategy, not features or
