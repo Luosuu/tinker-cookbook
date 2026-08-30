@@ -8,16 +8,20 @@ by :class:`SandboxInterface` without keeping a VM alive between commands.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import json
 import os
 import re
 import shlex
 import uuid
+from collections.abc import Iterator
+from dataclasses import dataclass, field
 from datetime import timedelta
 from pathlib import Path
 
 from contree_sdk import Contree
+from contree_sdk._internals.models.instance import InstanceSpawnRequest
 from contree_sdk.auth import IAMAuth, JWTAuth
 from contree_sdk.config import ContreeConfig
 from contree_sdk.sdk.objects.image._async import ContreeImage
@@ -28,6 +32,71 @@ from tinker_cookbook.sandbox.sandbox_interface import SandboxResult, SandboxTerm
 
 DEFAULT_CONTREE_IMAGE = "python:3.12-slim"
 DEFAULT_MAX_OUTPUT_BYTES = 128 * 1024
+
+
+@dataclass(kw_only=True)
+class _InstanceNetworking:
+    """The ConTree API's per-instance network toggle."""
+
+    enabled: bool = True
+
+
+@dataclass(kw_only=True)
+class _SpawnRequestWithNetworking(InstanceSpawnRequest):
+    """``InstanceSpawnRequest`` plus the API's ``networking`` field.
+
+    The ConTree REST API accepts ``networking: {"enabled": bool}`` on
+    ``POST /v1/instances`` -- when false, "the VM starts without a guest network
+    interface" (`contree_client.models.InstanceNetworking`). Because the
+    interface is absent at VM-creation time, a root process inside the sandbox
+    cannot restore it, unlike an in-image measure such as null-routing hosts.
+
+    ``contree_sdk`` 0.3.6 maintains its own hand-written request dataclass that
+    omits the field, so it cannot be requested through the SDK's public API.
+    The request body is produced by ``cattrs.unstructure`` over this dataclass
+    and the spawn endpoint declares a single body parameter, so an added field
+    is serialized and sent verbatim -- verified against the live API, which
+    echoes it back in the operation metadata.
+
+    Drop this shim once the SDK exposes ``networking`` itself.
+    """
+
+    networking: _InstanceNetworking = field(default_factory=_InstanceNetworking)
+
+
+@contextlib.contextmanager
+def _spawn_without_network(client: Contree) -> Iterator[None]:
+    """Force every spawn started in this block to run with no network interface.
+
+    Two things have to be patched. The SDK constructs ``InstanceSpawnRequest``
+    deep inside ``run()`` with no hook for extra fields, so the class is swapped
+    for the duration of the call -- in both the module that defines it and the
+    module that imported the name directly. And ``_start_operation`` dispatches
+    on ``type(request)`` through an exact dict lookup, so the subclass has to be
+    registered there too or it raises ``KeyError``.
+    """
+    import contree_sdk._internals.models.instance as instance_module
+    import contree_sdk.sdk.objects.image_like._base as image_like_module
+
+    original = instance_module.InstanceSpawnRequest
+
+    def _no_network(*args, **kwargs) -> _SpawnRequestWithNetworking:
+        return _SpawnRequestWithNetworking(
+            *args, networking=_InstanceNetworking(enabled=False), **kwargs
+        )
+
+    operations = client._operations  # type: ignore[attr-defined]
+    registered = _SpawnRequestWithNetworking in operations
+    if not registered:
+        operations[_SpawnRequestWithNetworking] = operations[original]
+
+    instance_module.InstanceSpawnRequest = _no_network  # type: ignore[assignment]
+    image_like_module.InstanceSpawnRequest = _no_network  # type: ignore[assignment]
+    try:
+        yield
+    finally:
+        instance_module.InstanceSpawnRequest = original  # type: ignore[assignment]
+        image_like_module.InstanceSpawnRequest = original  # type: ignore[assignment]
 
 
 def create_contree_client(timeout: int) -> Contree:
@@ -76,6 +145,7 @@ class ContreeSandbox:
         max_stream_output_bytes: int = DEFAULT_MAX_OUTPUT_BYTES,
         default_workdir: str | None = None,
         default_env: dict[str, str] | None = None,
+        allow_network: bool = True,
     ) -> None:
         self._client = client
         self._session: ContreeSession = image.session()
@@ -83,6 +153,7 @@ class ContreeSandbox:
         self._max_stream_output_bytes = max_stream_output_bytes
         self._default_workdir = default_workdir
         self._default_env = default_env or {}
+        self._allow_network = allow_network
         self._closed = False
 
     @classmethod
@@ -94,6 +165,7 @@ class ContreeSandbox:
         max_stream_output_bytes: int = DEFAULT_MAX_OUTPUT_BYTES,
         client: Contree | None = None,
         import_image: bool = True,
+        allow_network: bool = True,
         default_workdir: str | None = None,
         default_env: dict[str, str] | None = None,
     ) -> ContreeSandbox:
@@ -127,6 +199,7 @@ class ContreeSandbox:
             max_stream_output_bytes=max_stream_output_bytes,
             default_workdir=default_workdir,
             default_env=default_env,
+            allow_network=allow_network,
         )
 
     def _ensure_open(self) -> None:
@@ -152,14 +225,15 @@ class ContreeSandbox:
         self._ensure_open()
         cap = max_output_bytes if max_output_bytes is not None else self._max_stream_output_bytes
         try:
-            result = await self._session.run(
-                shell=command,
-                env=self._default_env or None,
-                cwd=workdir or self._default_workdir,
-                timeout=timedelta(seconds=min(timeout, self._timeout)),
-                disposable=False,
-                truncate_output_at=cap,
-            )
+            with self._network_policy():
+                result = await self._session.run(
+                    shell=command,
+                    env=self._default_env or None,
+                    cwd=workdir or self._default_workdir,
+                    timeout=timedelta(seconds=min(timeout, self._timeout)),
+                    disposable=False,
+                    truncate_output_at=cap,
+                )
             return SandboxResult(
                 stdout=_as_text(result.stdout),
                 stderr=_as_text(result.stderr),
@@ -168,6 +242,12 @@ class ContreeSandbox:
             )
         except Exception as error:
             return SandboxResult(stdout="", stderr=str(error), exit_code=-1)
+
+    def _network_policy(self):
+        """Disable the guest network interface when this sandbox forbids egress."""
+        if self._allow_network:
+            return contextlib.nullcontext()
+        return _spawn_without_network(self._client)
 
     async def read_file(
         self, path: str, max_bytes: int | None = None, timeout: int = 60
@@ -258,12 +338,16 @@ class ContreeDockerfileSandboxFactory:
         cache_path: Path,
         timeout: int = 3600,
         runtime_build_parallelism: int | None = None,
+        allow_network: bool = True,
     ) -> None:
         if runtime_build_parallelism is not None and runtime_build_parallelism < 1:
             raise ValueError("runtime_build_parallelism must be at least 1")
         self._cache_path = cache_path
         self._timeout = timeout
         self._runtime_build_parallelism = runtime_build_parallelism
+        # Image preparation always runs with network (it clones and builds);
+        # this governs the rollout sandboxes branched from the prepared image.
+        self._allow_network = allow_network
         self._client = create_contree_client(timeout)
         self._cache_lock = asyncio.Lock()
         self._prepare_locks: dict[str, asyncio.Lock] = {}
@@ -405,6 +489,7 @@ class ContreeDockerfileSandboxFactory:
             import_image=False,
             default_workdir=workdir,
             default_env=runtime_environment,
+            allow_network=self._allow_network,
         )
 
 

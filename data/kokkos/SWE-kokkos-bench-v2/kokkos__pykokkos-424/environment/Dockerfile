@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN git clone https://github.com/kokkos/pykokkos.git /workspace/repo \
     && git -C /workspace/repo checkout 0e451c786c134ae4f3c5f785ffcc736b5f686a00 \
     && git -C /workspace/repo submodule update --init --recursive \
+    && cd /workspace/repo && git checkout -q --orphan __base && git -c user.email=bench@example.com -c user.name=bench commit -q -m 'base revision' && git for-each-ref --format='%(refname)' | grep -v '^refs/heads/__base$' | xargs -r -n1 git update-ref -d && git remote remove origin && git reflog expire --expire=now --all && git gc --prune=now -q \
     && python -m pip install --break-system-packages numpy patchelf pybind11 pytest setuptools wheel \
     && cd /workspace/repo && PIP_BREAK_SYSTEM_PACKAGES=1 python install_base.py install -- -DENABLE_LAYOUTS=ON -DENABLE_MEMORY_TRAITS=OFF -DENABLE_VIEW_RANKS=4 -DENABLE_CUDA=OFF -DENABLE_THREADS=OFF -DENABLE_OPENMP=ON \
     && cd /workspace/repo && python -m pip install --break-system-packages -e . --no-deps \

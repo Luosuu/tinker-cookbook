@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN git clone https://github.com/kokkos/kokkos.git /workspace/repo \
     && git -C /workspace/repo checkout 0124d61300fe46337b948aa31c95453d4b3b485c \
     && git -C /workspace/repo submodule update --init --recursive \
+    && cd /workspace/repo && git checkout -q --orphan __base && git -c user.email=bench@example.com -c user.name=bench commit -q -m 'base revision' && git for-each-ref --format='%(refname)' | grep -v '^refs/heads/__base$' | xargs -r -n1 git update-ref -d && git remote remove origin && git reflog expire --expire=now --all && git gc --prune=now -q \
     && cd /workspace/repo && cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_IMPL_MDSPAN=ON -DKokkos_ENABLE_IMPL_VIEW_LEGACY=OFF -DCMAKE_CXX_STANDARD=20 -DCMAKE_BUILD_TYPE=RelWithDebInfo \
     && cd /workspace/repo && cmake --build build --target Kokkos_CoreTestCompileOnly --parallel
 WORKDIR /workspace/repo

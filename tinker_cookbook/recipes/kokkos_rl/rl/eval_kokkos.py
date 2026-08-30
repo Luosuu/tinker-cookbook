@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import functools
 import os
 from pathlib import Path
 
@@ -42,6 +43,10 @@ class CLIConfig:
     thinking_effort: float | None = None
     sandbox_backend: str = "modal"
     contree_cache_path: str | None = None
+    # Rollout sandboxes get no network interface when False. Tasks derive from
+    # merged PRs, so an evaluation with network open measures answer-lookup as
+    # much as problem-solving; keep this matched to how the model was trained.
+    allow_network: bool = False
     num_samples: int = 1
     pass_at_k: str = "1"
     resume_dir: str | None = None
@@ -118,7 +123,10 @@ async def main(cli_config: CLIConfig) -> None:
         f"thinking_effort={eval_config.thinking_effort}"
     )
     if cli_config.sandbox_backend == "modal":
-        sandbox_factory = default_sandbox_factory
+        sandbox_factory = functools.partial(
+            default_sandbox_factory,
+            allow_network=cli_config.allow_network,
+        )
     elif cli_config.sandbox_backend == "contree":
         from tinker_cookbook.sandbox.contree_sandbox import ContreeDockerfileSandboxFactory
 
@@ -129,6 +137,7 @@ async def main(cli_config: CLIConfig) -> None:
             cache_path=cache_path,
             timeout=cli_config.sandbox_timeout,
             runtime_build_parallelism=cli_config.sandbox_build_parallelism,
+            allow_network=cli_config.allow_network,
         )
     else:
         raise ValueError(f"unknown sandbox_backend: {cli_config.sandbox_backend!r}")

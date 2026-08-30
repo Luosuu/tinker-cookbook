@@ -8,7 +8,7 @@ echo 0 > "$reward"
 cd "$repo"
 
 illegal=$(
-  git diff --name-only 93db4f783a4fd3c9d7aa3fca62de953467b8c7e5 --
+  git diff --name-only HEAD --
   git ls-files --others --exclude-standard | sed '\#^build/#d'
 )
 if printf '%s
@@ -19,8 +19,8 @@ fi
 
 protected_paths=(core/unit_test/TestSpaceAwareAccessor.hpp core/unit_test/TestSpaceAwareAccessorAccessViolation.hpp)
 for path in "${protected_paths[@]}"; do
-  if git cat-file -e 93db4f783a4fd3c9d7aa3fca62de953467b8c7e5:"$path" 2>/dev/null; then
-    git checkout 93db4f783a4fd3c9d7aa3fca62de953467b8c7e5 -- "$path"
+  if git cat-file -e HEAD:"$path" 2>/dev/null; then
+    git checkout HEAD -- "$path"
   else
     rm -f -- "$path"
   fi

@@ -108,6 +108,7 @@ class ModalSandbox:
         gpu: str | None = None,
         cpu: float | tuple[float, float] | None = None,
         memory: int | tuple[int, int] | None = None,
+        allow_network: bool = True,
     ) -> ModalSandbox:
         """Create a new Modal sandbox."""
         image = image or modal.Image.debian_slim()
@@ -119,6 +120,7 @@ class ModalSandbox:
             gpu=gpu,
             cpu=cpu,
             memory=memory,
+            block_network=not allow_network,
         )
         return cls(
             timeout=timeout,

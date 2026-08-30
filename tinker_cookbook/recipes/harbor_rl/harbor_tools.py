@@ -12,9 +12,41 @@ from tinker_cookbook.renderers.base import Message
 from tinker_cookbook.sandbox import SandboxInterface
 from tinker_cookbook.tool_use import ToolResult, simple_tool_result, tool
 
+try:
+    import weave
+
+    _WEAVE_AVAILABLE = True
+except ImportError:
+    weave = None  # type: ignore[assignment]
+    _WEAVE_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 MAX_OUTPUT_CHARS = 16384
+
+
+def _trace_harbor_grade(
+    task_name: str,
+    reward: float,
+    turns: int,
+    exit_code: int,
+) -> dict[str, object]:
+    """Weave trace point for one graded Harbor episode.
+
+    Returned verbatim so the values show up as the op's output in Weave; the
+    caller ignores the return value.
+    """
+    return {
+        "task": task_name,
+        "reward": reward,
+        "passed": reward > 0,
+        "turns": turns,
+        "verifier_exit_code": exit_code,
+    }
+
+
+if _WEAVE_AVAILABLE:
+    _trace_harbor_grade = weave.op()(_trace_harbor_grade)  # type: ignore[misc]
 
 
 class HarborBashTool:
@@ -62,6 +94,8 @@ class HarborReward:
     sandbox: SandboxInterface
     grader_timeout: int = 60
     raise_on_grading_error: bool = False
+    # Identifies the episode in Weave traces; tracing is skipped when unset.
+    task_name: str | None = None
 
     async def __call__(self, history: list[Message]) -> tuple[float, dict[str, float]]:
         """Grade the completed episode by running test.sh in the sandbox."""
@@ -92,6 +126,13 @@ class HarborReward:
             reward = await self._parse_reward()
             if reward is None:
                 raise RuntimeError("verifier produced no reward file")
+            if _WEAVE_AVAILABLE and self.task_name is not None:
+                _trace_harbor_grade(
+                    task_name=self.task_name,
+                    reward=reward,
+                    turns=sum(1 for m in history if m.get("role") == "assistant"),
+                    exit_code=result.exit_code,
+                )
             return reward, {"reward": reward, "test_passed": float(reward > 0)}
 
         except Exception as e:

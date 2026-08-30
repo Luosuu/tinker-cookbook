@@ -8,7 +8,7 @@ echo 0 > "$reward"
 cd "$repo"
 
 illegal=$(
-  git diff --name-only 9918f68e0ba8f551793b0f6b5ea694363649a530 --
+  git diff --name-only HEAD --
   git ls-files --others --exclude-standard | sed '\#^build/#d'
 )
 if printf '%s
@@ -19,8 +19,8 @@ fi
 
 protected_paths=(containers/unit_tests/TestCreateMirror.cpp core/unit_test/CMakeLists.txt core/unit_test/TestCreateMirror.cpp core/unit_test/incremental/Test10_HierarchicalBasics.hpp core/unit_test/incremental/Test11a_ParallelFor_TeamThreadRange.hpp core/unit_test/incremental/Test11b_ParallelFor_TeamVectorRange.hpp core/unit_test/incremental/Test11c_ParallelFor_ThreadVectorRange.hpp core/unit_test/incremental/Test12a_ThreadScratch.hpp core/unit_test/incremental/Test12b_TeamScratch.hpp core/unit_test/incremental/Test13a_ParallelRed_TeamThreadRange.hpp core/unit_test/incremental/Test13b_ParallelRed_TeamVectorRange.hpp core/unit_test/incremental/Test13c_ParallelRed_ThreadVectorRange.hpp core/unit_test/incremental/Test16_ParallelScan.hpp core/unit_test/view/TestCreateMirrorViewAndCopy.hpp)
 for path in "${protected_paths[@]}"; do
-  if git cat-file -e 9918f68e0ba8f551793b0f6b5ea694363649a530:"$path" 2>/dev/null; then
-    git checkout 9918f68e0ba8f551793b0f6b5ea694363649a530 -- "$path"
+  if git cat-file -e HEAD:"$path" 2>/dev/null; then
+    git checkout HEAD -- "$path"
   else
     rm -f -- "$path"
   fi

@@ -8,7 +8,7 @@ echo 0 > "$reward"
 cd "$repo"
 
 illegal=$(
-  git diff --name-only 933cbcb26b6b56bf1c027ce137afc1c54ba73dcd --
+  git diff --name-only HEAD --
   git ls-files --others --exclude-standard | sed '\#^build/#d'
 )
 if printf '%s
@@ -19,8 +19,8 @@ fi
 
 protected_paths=(tests/test_typeinference.py)
 for path in "${protected_paths[@]}"; do
-  if git cat-file -e 933cbcb26b6b56bf1c027ce137afc1c54ba73dcd:"$path" 2>/dev/null; then
-    git checkout 933cbcb26b6b56bf1c027ce137afc1c54ba73dcd -- "$path"
+  if git cat-file -e HEAD:"$path" 2>/dev/null; then
+    git checkout HEAD -- "$path"
   else
     rm -f -- "$path"
   fi

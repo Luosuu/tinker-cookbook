@@ -80,6 +80,9 @@ wandb = [
     "wandb>=0.16.0",
     "plotly>=5.0.0",
 ]
+weave = [
+    "weave>=0.51.0",
+]
 neptune-scale = [
     "neptune-scale>=0.27.0",
 ]

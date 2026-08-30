@@ -67,8 +67,13 @@ def dump_config(config: Any) -> Any:
     if hasattr(config, "to_dict"):
         return config.to_dict()
     elif chz.is_chz(config):
-        # Recursively dump values to handle nested non-serializable fields
-        return {k: dump_config(v) for k, v in chz.asdict(config).items()}
+        # Read fields directly rather than via chz.asdict: asdict converts nested
+        # chz objects to plain dicts up front, which would bypass any to_dict a
+        # nested config defines to keep its dump small.
+        return {
+            field.logical_name: dump_config(getattr(config, field.logical_name))
+            for field in chz.chz_fields(config).values()
+        }
     elif is_dataclass(config) and not isinstance(config, type):
         # Recursively dump values to handle nested non-serializable fields
         return {k: dump_config(v) for k, v in asdict(config).items()}

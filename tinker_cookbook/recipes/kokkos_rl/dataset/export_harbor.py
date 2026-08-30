@@ -38,6 +38,24 @@ def _dockerfile(instance: KokkosInstance) -> str:
         f"git clone https://github.com/{instance.repo}.git /workspace/repo",
         f"git -C /workspace/repo checkout {shlex.quote(instance.base_commit)}",
         "git -C /workspace/repo submodule update --init --recursive",
+        # Flatten history to a single root commit at base_commit. A full clone
+        # carries every branch and tag, including the merge commit that fixes
+        # this very task -- agents were observed mining it with
+        # `git log --all --grep` and applying it with `git cherry-pick`. Deleting
+        # every ref but the new orphan branch, then expiring the reflog and
+        # pruning, removes the answer from the object store while leaving
+        # `git diff` / `git status` working for legitimate use.
+        (
+            "cd /workspace/repo"
+            " && git checkout -q --orphan __base"
+            " && git -c user.email=bench@example.com -c user.name=bench"
+            " commit -q -m 'base revision'"
+            " && git for-each-ref --format='%(refname)'"
+            " | grep -v '^refs/heads/__base$' | xargs -r -n1 git update-ref -d"
+            " && git remote remove origin"
+            " && git reflog expire --expire=now --all"
+            " && git gc --prune=now -q"
+        ),
     ]
     if instance.repo != "kokkos/kokkos" and profile.build_system == "cmake":
         dependency_configure = (
@@ -125,7 +143,7 @@ mkdir -p /logs/verifier
 echo 0 > "$reward"
 cd "$repo"
 
-illegal=$(\n  git diff --name-only {shlex.quote(instance.base_commit)} --\n  git ls-files --others --exclude-standard | sed '\\#^build/#d'\n)
+illegal=$(\n  git diff --name-only HEAD --\n  git ls-files --others --exclude-standard | sed '\\#^build/#d'\n)
 if printf '%s\n' "$illegal" | grep -E '(^|/)(tests?|unit_tests?)(/|$)|(^|/)(test_.*|.*_test\\.py)$|(^|/)CMakeLists\\.txt$|^\\.github/|^cmake/'; then
   echo "candidate patch changes protected test/build/CI files" >&2
   exit 0
@@ -133,8 +151,8 @@ fi
 
 protected_paths=({protected_values})
 for path in "${{protected_paths[@]}}"; do
-  if git cat-file -e {shlex.quote(instance.base_commit)}:"$path" 2>/dev/null; then
-    git checkout {shlex.quote(instance.base_commit)} -- "$path"
+  if git cat-file -e HEAD:"$path" 2>/dev/null; then
+    git checkout HEAD -- "$path"
   else
     rm -f -- "$path"
   fi
@@ -175,9 +193,7 @@ def _agent_allowed_code_patch(instance: KokkosInstance) -> str:
     if not blocks:
         return instance.code_patch
     return "".join(
-        block
-        for path, block in blocks
-        if not is_forbidden_agent_path(path, instance.repo)
+        block for path, block in blocks if not is_forbidden_agent_path(path, instance.repo)
     )
 
 
