@@ -64,12 +64,12 @@ Run the executable benchmark through Harbor:
 
 ```bash
 uvx harbor run \
-  -d luosuu/SWE-kokkos-bench@v2.0 \
+  -d luosuu/SWE-kokkos-bench@v2.1 \
   -a <agent> \
   -m <model>
 ```
 
-Use the immutable `v2.0` tag for reported results. `latest` currently points to the same
+Use the immutable `v2.1` tag for reported results. `latest` currently points to the same
 revision but may move in the future.
 
 ## Dataset composition
@@ -239,9 +239,11 @@ corresponding upstream repository before redistribution or commercial use.
 
 - `v1.0`: 30 tasks.
 - `v2.0`: 100 tasks, consisting of the unchanged v1.0 payloads plus 70 new Kokkos Core tasks.
+- `v2.1`: the same 100 task specifications and verifiers as v2.0, with clean-room runtime
+  packaging that removes Git history and disables agent sandbox network access.
 
 When citing results, use the dataset name, immutable version, model identifier, and complete
 rollout configuration. A suggested textual citation is:
 
-> SWE-kokkos-bench v2.0, a 100-task verifier-backed benchmark mined from merged Kokkos
+> SWE-kokkos-bench v2.1, a 100-task verifier-backed benchmark mined from merged Kokkos
 > ecosystem pull requests, released through Harbor and Hugging Face in 2026.
