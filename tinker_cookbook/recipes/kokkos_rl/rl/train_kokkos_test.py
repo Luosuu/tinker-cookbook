@@ -37,9 +37,9 @@ def test_config_translation_preserves_training_fields() -> None:
     assert harbor.thinking_effort == 0.9
 
 
-def test_defaults_match_phase0_eval_budget() -> None:
+def test_defaults_use_full_clean_room_dataset_and_long_context_budget() -> None:
     cli = CLIConfig()
-    assert cli.tasks_dir == "data/kokkos/phase0/harbor"
+    assert cli.tasks_dir == "data/kokkos/SWE-kokkos-bench-v2"
     assert cli.max_trajectory_tokens == 112 * 1024
     assert cli.max_tokens == 16384
 
@@ -71,12 +71,13 @@ def test_heldout_and_gradient_hygiene_fields_are_forwarded() -> None:
     assert harbor.raise_on_grading_error is True
 
 
-def test_heldout_defaults_preserve_legacy_behavior() -> None:
+def test_heldout_defaults_use_clean_room_safe_behavior() -> None:
     harbor = _to_harbor_config(CLIConfig())
 
-    assert harbor.eval_size == 0
-    assert harbor.remove_constant_reward_groups is False
-    assert harbor.raise_on_grading_error is False
+    assert harbor.eval_size == 20
+    assert harbor.eval_group_size == 4
+    assert harbor.remove_constant_reward_groups is True
+    assert harbor.raise_on_grading_error is True
 
 
 def test_task_names_defaults_to_no_filtering() -> None:

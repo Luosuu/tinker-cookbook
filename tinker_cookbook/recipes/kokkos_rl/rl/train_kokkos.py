@@ -29,20 +29,19 @@ from tinker_cookbook.rl.rollout_strategy import RolloutStrategy
 class CLIConfig:
     """Kokkos RL training configuration.
 
-    Defaults track the Phase 0 baseline in ``eval_kokkos.py``: the long-context
-    GPT-OSS variant, a generous turn/token budget for multi-file C++ fixes, and
-    a LoRA learning rate suited to the coding-RL setup.
+    Defaults use the full clean-room benchmark with a fixed held-out split, the
+    long-context GPT-OSS variant, and a generous budget for multi-file C++ fixes.
     """
 
     model_name: str = "openai/gpt-oss-120b:peft:131072"
-    tasks_dir: str = "data/kokkos/phase0/harbor"
+    tasks_dir: str = "data/kokkos/SWE-kokkos-bench-v2"
     lora_rank: int = 32
     renderer_name: str | None = None
     load_checkpoint_path: str | None = None
     max_tokens: int = 16384
     temperature: float = 1.0
 
-    # Environment configuration (matches the Phase 0 eval budget).
+    # Environment configuration (matches the long-context eval budget).
     max_turns: int = 20
     sandbox_timeout: int = 3600
     command_timeout: int = 180
@@ -64,17 +63,17 @@ class CLIConfig:
 
     # Training hyperparameters.
     group_size: int = 4
-    groups_per_batch: int = 8
+    groups_per_batch: int = 4
     learning_rate: float = 1e-5
     kl_penalty_coef: float = 0.0
     num_substeps: int = 1
-    remove_constant_reward_groups: bool = False
-    raise_on_grading_error: bool = False
+    remove_constant_reward_groups: bool = True
+    raise_on_grading_error: bool = True
     rollout_error_tolerance: bool | RolloutStrategy | None = None
 
-    # Held-out evaluation. ``eval_size=0`` keeps the legacy in-sample eval.
-    eval_size: int = 0
-    eval_group_size: int = 1
+    # Fixed held-out evaluation defaults used by the clean-room Kokkos runs.
+    eval_size: int = 20
+    eval_group_size: int = 4
     heldout_max_concurrent_groups: int = 2
     split_seed: int = 0
 

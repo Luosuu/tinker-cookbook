@@ -14,6 +14,7 @@ import logging
 import math
 import random
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
@@ -68,6 +69,7 @@ class EvalConfig:
     num_samples: int = 1
     pass_at_k: str = "1"
     resume_dir: str | None = None
+    max_infra_retries: int = 2
 
 
 @dataclass
@@ -226,21 +228,23 @@ def summarize_pass_at_k(results: list[TaskResult], k_values: list[int]) -> dict[
     for k in k_values:
         task_scores = []
         for task_results in per_task.values():
-            if len(task_results) < k:
+            valid_results = [result for result in task_results if result.error is None]
+            if len(valid_results) < k:
                 continue
-            correct = sum(result.error is None and result.reward > 0 for result in task_results)
-            task_scores.append(_pass_at_k_single(len(task_results), correct, k))
+            correct = sum(result.reward > 0 for result in valid_results)
+            task_scores.append(_pass_at_k_single(len(valid_results), correct, k))
         if task_scores:
             scores[str(k)] = sum(task_scores) / len(task_scores)
 
     return {
         "num_tasks": len(per_task),
         "num_rollouts": len(results),
+        "num_valid_rollouts": sum(result.error is None for result in results),
         "num_errors": sum(result.error is not None for result in results),
         "pass_at_k": scores,
         "per_task": {
             task_name: {
-                "num_samples": len(task_results),
+                "num_samples": sum(result.error is None for result in task_results),
                 "num_correct": sum(
                     result.error is None and result.reward > 0 for result in task_results
                 ),
@@ -268,6 +272,30 @@ def _load_completed_results(results_dir: Path) -> dict[tuple[str, int], TaskResu
     return completed
 
 
+async def _retry_infrastructure_errors(
+    operation: Callable[[], Awaitable[TaskResult]],
+    *,
+    max_retries: int,
+    task_name: str,
+    sample_index: int,
+) -> TaskResult:
+    """Retry failed eval attempts while retaining every attempt on disk."""
+    for attempt in range(max_retries + 1):
+        result = await operation()
+        if result.error is None:
+            return result
+        if attempt < max_retries:
+            logger.warning(
+                "Retrying task %s sample %d after infrastructure error (%d/%d): %s",
+                task_name,
+                sample_index + 1,
+                attempt + 1,
+                max_retries,
+                result.error,
+            )
+    return result
+
+
 async def run_eval(
     config: EvalConfig,
     tasks: list[HarborTask],
@@ -287,6 +315,8 @@ async def run_eval(
     """
     if config.num_samples < 1:
         raise ValueError("num_samples must be at least 1")
+    if config.max_infra_retries < 0:
+        raise ValueError("max_infra_retries must be non-negative")
     k_values = sorted({int(value.strip()) for value in config.pass_at_k.split(",")})
     if not k_values or k_values[0] < 1 or k_values[-1] > config.num_samples:
         raise ValueError("pass_at_k values must be between 1 and num_samples")
@@ -356,16 +386,25 @@ async def run_eval(
 
     async def evaluate_with_limit(task: HarborTask, sample_index: int) -> TaskResult:
         async with semaphore:
-            return await evaluate_task(
-                task,
-                policy,
-                renderer,
-                sandbox_factory,
-                config,
-                results_dir,
-                lock,
-                tokenizer,
-                sample_index,
+
+            async def operation() -> TaskResult:
+                return await evaluate_task(
+                    task,
+                    policy,
+                    renderer,
+                    sandbox_factory,
+                    config,
+                    results_dir,
+                    lock,
+                    tokenizer,
+                    sample_index,
+                )
+
+            return await _retry_infrastructure_errors(
+                operation,
+                max_retries=config.max_infra_retries,
+                task_name=task.task_name,
+                sample_index=sample_index,
             )
 
     new_results = list(

@@ -19,8 +19,8 @@ from tinker_cookbook.recipes.harbor_rl.harbor_env import (
 @chz.chz
 class CLIConfig:
     model_name: str = "openai/gpt-oss-120b:peft:131072"
-    tasks_dir: str = "data/kokkos/phase0/harbor"
-    output_path: str = "notes/experiments/kokkos_phase0/baselines"
+    tasks_dir: str = "data/kokkos/SWE-kokkos-bench-v2"
+    output_path: str = "notes/experiments/kokkos_rl/evals"
     checkpoint_url: str | None = None
     env_file: str = ".env"
 
@@ -50,6 +50,7 @@ class CLIConfig:
     num_samples: int = 1
     pass_at_k: str = "1"
     resume_dir: str | None = None
+    max_infra_retries: int = 2
 
 
 def load_env_file(path: Path) -> None:
@@ -116,6 +117,7 @@ async def main(cli_config: CLIConfig) -> None:
         num_samples=cli_config.num_samples,
         pass_at_k=cli_config.pass_at_k,
         resume_dir=cli_config.resume_dir,
+        max_infra_retries=cli_config.max_infra_retries,
     )
     print(
         f"Running {len(tasks)} Kokkos tasks with model={eval_config.model_name}, "

@@ -677,6 +677,19 @@ async def run_evaluations_parallel(
     return metrics
 
 
+def _should_evaluate(
+    step: int,
+    eval_every: int,
+    *,
+    is_final: bool = False,
+    last_evaluated_step: int | None = None,
+) -> bool:
+    """Return whether ``step`` needs evaluation, including the final weights."""
+    if eval_every <= 0 or step == last_evaluated_step:
+        return False
+    return is_final or step % eval_every == 0
+
+
 @trace.scope
 async def do_sync_training_with_stream_minibatch(
     start_batch: int,
@@ -736,9 +749,7 @@ async def do_sync_training_with_stream_minibatch(
 
         with trace.trace_iteration(step=i_batch) as window:
             # Run evaluations
-            if (
-                config.eval_every > 0 and i_batch % config.eval_every == 0
-            ) or i_batch == end_batch - 1:
+            if _should_evaluate(i_batch, config.eval_every):
                 async with trace.scope_span("run_evals"):
                     eval_metrics = await run_evaluations_parallel(
                         evaluators, sampling_client, config, i_batch, store=ml_logger.store
@@ -860,6 +871,14 @@ async def do_sync_training_with_stream_minibatch(
             iter_dir.mkdir(parents=True, exist_ok=True)
             trace.save_gantt_chart_html(window, i_batch, iter_dir / "timing_gantt.html")
         ml_logger.log_metrics(metrics, step=i_batch)
+
+    if evaluators and end_batch > start_batch:
+        final_step = end_batch
+        if _should_evaluate(final_step, config.eval_every, is_final=True):
+            eval_metrics = await run_evaluations_parallel(
+                evaluators, sampling_client, config, final_step, store=ml_logger.store
+            )
+            ml_logger.log_metrics(eval_metrics, step=final_step)
 
 
 @chz.chz
@@ -1264,7 +1283,8 @@ async def do_async_training(
         if len(evaluators) == 0 or config.eval_every == 0:
             return
 
-        while not evaluation_loop_should_shutdown_event.is_set():
+        last_evaluated_step: int | None = None
+        while True:
             await sampling_client_updated_event.wait()
             sampling_client_updated_event.clear()
 
@@ -1272,7 +1292,13 @@ async def do_async_training(
             # while we're running the evals
             sampling_client_eval_step = sampling_client_step
             sampling_client_eval = sampling_client
-            if config.eval_every > 0 and sampling_client_eval_step % config.eval_every == 0:
+            is_final = evaluation_loop_should_shutdown_event.is_set()
+            if _should_evaluate(
+                sampling_client_eval_step,
+                config.eval_every,
+                is_final=is_final,
+                last_evaluated_step=last_evaluated_step,
+            ):
                 metrics: dict[str, Any] = {}
                 with trace.trace_iteration(step=sampling_client_eval_step) as window:
                     eval_metrics = await run_evaluations_parallel(
@@ -1285,6 +1311,9 @@ async def do_async_training(
                     metrics.update(eval_metrics)
                 metrics.update(window.get_timing_metrics())
                 ml_logger.log_metrics(metrics, step=sampling_client_eval_step)
+                last_evaluated_step = sampling_client_eval_step
+            if is_final:
+                break
         logger.info("[evaluation_loop] Terminated")
 
     await asyncio.gather(
@@ -1743,7 +1772,7 @@ async def do_sync_training(
 
         with trace.trace_iteration(step=i_batch) as window:
             # Run evaluations
-            if config.eval_every > 0 and i_batch % config.eval_every == 0:
+            if _should_evaluate(i_batch, config.eval_every):
                 eval_metrics = await run_evaluations_parallel(
                     evaluators, sampling_client, config, i_batch, store=ml_logger.store
                 )
@@ -1853,6 +1882,14 @@ async def do_sync_training(
             iter_dir.mkdir(parents=True, exist_ok=True)
             trace.save_gantt_chart_html(window, i_batch, iter_dir / "timing_gantt.html")
         ml_logger.log_metrics(metrics, step=i_batch)
+
+    if evaluators and end_batch > start_batch:
+        final_step = end_batch
+        if _should_evaluate(final_step, config.eval_every, is_final=True):
+            eval_metrics = await run_evaluations_parallel(
+                evaluators, sampling_client, config, final_step, store=ml_logger.store
+            )
+            ml_logger.log_metrics(eval_metrics, step=final_step)
 
 
 @trace.scope

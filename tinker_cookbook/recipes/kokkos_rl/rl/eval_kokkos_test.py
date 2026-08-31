@@ -1,9 +1,15 @@
+import asyncio
 import os
 from dataclasses import dataclass
 
 import pytest
 
-from tinker_cookbook.recipes.harbor_rl.eval import TaskResult, summarize_pass_at_k
+from tinker_cookbook.recipes.harbor_rl.eval import (
+    TaskResult,
+    _retry_infrastructure_errors,
+    summarize_pass_at_k,
+)
+from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos import CLIConfig as KokkosEvalConfig
 from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos import load_env_file, select_tasks
 
 
@@ -17,6 +23,14 @@ def test_load_env_file_preserves_existing_values(tmp_path, monkeypatch) -> None:
 
     assert os.environ["KOKKOS_TEST_NEW"] == "loaded"
     assert os.environ["KOKKOS_TEST_EXISTING"] == "process"
+
+
+def test_eval_defaults_use_full_clean_room_dataset_and_retry_infra_errors() -> None:
+    config = KokkosEvalConfig()
+
+    assert config.tasks_dir == "data/kokkos/SWE-kokkos-bench-v2"
+    assert config.allow_network is False
+    assert config.max_infra_retries == 2
 
 
 @dataclass
@@ -52,3 +66,43 @@ def test_summarize_pass_at_k_uses_all_eight_samples() -> None:
         "4": pytest.approx(1.0 - 15.0 / 70.0),
         "8": pytest.approx(1.0),
     }
+
+
+def test_summarize_pass_at_k_excludes_infrastructure_errors() -> None:
+    results = [
+        TaskResult("a", 0, 1.0, {}, 1, 1.0),
+        TaskResult("a", 1, 0.0, {}, 0, 1.0, error="image failed"),
+        TaskResult("a", 2, 0.0, {}, 1, 1.0),
+    ]
+
+    summary = summarize_pass_at_k(results, [1])
+
+    assert summary["num_rollouts"] == 3
+    assert summary["num_valid_rollouts"] == 2
+    assert summary["num_errors"] == 1
+    assert summary["pass_at_k"] == {"1": pytest.approx(0.5)}
+
+
+def test_infrastructure_errors_are_retried_until_valid() -> None:
+    attempts = 0
+
+    async def operation() -> TaskResult:
+        nonlocal attempts
+        attempts += 1
+        return TaskResult(
+            "a",
+            0,
+            float(attempts == 3),
+            {},
+            1,
+            1.0,
+            error="image failed" if attempts < 3 else None,
+        )
+
+    result = asyncio.run(
+        _retry_infrastructure_errors(operation, max_retries=2, task_name="a", sample_index=0)
+    )
+
+    assert attempts == 3
+    assert result.error is None
+    assert result.reward == 1.0

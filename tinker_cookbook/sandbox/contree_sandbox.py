@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import contextvars
 import hashlib
 import json
 import os
@@ -64,39 +65,52 @@ class _SpawnRequestWithNetworking(InstanceSpawnRequest):
     networking: _InstanceNetworking = field(default_factory=_InstanceNetworking)
 
 
+_ORIGINAL_INSTANCE_SPAWN_REQUEST = InstanceSpawnRequest
+_ALLOW_SPAWN_NETWORK = contextvars.ContextVar("contree_allow_spawn_network", default=True)
+
+
+def _network_aware_spawn_request(*args, **kwargs) -> InstanceSpawnRequest:
+    """Construct a spawn request using the current asyncio task's policy."""
+    if _ALLOW_SPAWN_NETWORK.get():
+        return _ORIGINAL_INSTANCE_SPAWN_REQUEST(*args, **kwargs)
+    return _SpawnRequestWithNetworking(
+        *args, networking=_InstanceNetworking(enabled=False), **kwargs
+    )
+
+
+def _install_spawn_request_dispatcher() -> None:
+    """Install one stable SDK shim; policy selection remains task-local."""
+    import contree_sdk._internals.models.instance as instance_module
+    import contree_sdk.sdk.objects.image_like._base as image_like_module
+
+    instance_module.InstanceSpawnRequest = _network_aware_spawn_request  # type: ignore[assignment]
+    image_like_module.InstanceSpawnRequest = _network_aware_spawn_request  # type: ignore[assignment]
+
+
 @contextlib.contextmanager
 def _spawn_without_network(client: Contree) -> Iterator[None]:
     """Force every spawn started in this block to run with no network interface.
 
-    Two things have to be patched. The SDK constructs ``InstanceSpawnRequest``
-    deep inside ``run()`` with no hook for extra fields, so the class is swapped
-    for the duration of the call -- in both the module that defines it and the
-    module that imported the name directly. And ``_start_operation`` dispatches
-    on ``type(request)`` through an exact dict lookup, so the subclass has to be
-    registered there too or it raises ``KeyError``.
+    The SDK constructs ``InstanceSpawnRequest`` deep inside ``run()`` with no
+    hook for extra fields. A stable dispatcher is installed in both modules
+    that hold the constructor; a :class:`ContextVar` selects the policy for the
+    current asyncio task. This is safe when concurrent calls overlap or finish
+    out of order, unlike temporarily replacing and restoring module globals.
+
+    ``_start_operation`` dispatches on ``type(request)`` through an exact dict
+    lookup, so the networking subclass also has to be registered per client.
     """
-    import contree_sdk._internals.models.instance as instance_module
-    import contree_sdk.sdk.objects.image_like._base as image_like_module
-
-    original = instance_module.InstanceSpawnRequest
-
-    def _no_network(*args, **kwargs) -> _SpawnRequestWithNetworking:
-        return _SpawnRequestWithNetworking(
-            *args, networking=_InstanceNetworking(enabled=False), **kwargs
-        )
-
+    _install_spawn_request_dispatcher()
     operations = client._operations  # type: ignore[attr-defined]
     registered = _SpawnRequestWithNetworking in operations
     if not registered:
-        operations[_SpawnRequestWithNetworking] = operations[original]
+        operations[_SpawnRequestWithNetworking] = operations[_ORIGINAL_INSTANCE_SPAWN_REQUEST]
 
-    instance_module.InstanceSpawnRequest = _no_network  # type: ignore[assignment]
-    image_like_module.InstanceSpawnRequest = _no_network  # type: ignore[assignment]
+    token = _ALLOW_SPAWN_NETWORK.set(False)
     try:
         yield
     finally:
-        instance_module.InstanceSpawnRequest = original  # type: ignore[assignment]
-        image_like_module.InstanceSpawnRequest = original  # type: ignore[assignment]
+        _ALLOW_SPAWN_NETWORK.reset(token)
 
 
 def create_contree_client(timeout: int) -> Contree:

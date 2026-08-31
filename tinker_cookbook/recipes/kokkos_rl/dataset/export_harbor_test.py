@@ -19,6 +19,11 @@ def test_export_hides_tests_and_adds_clean_room_guard(tmp_path) -> None:
     assert (task_dir / "solution" / "gold.patch").read_text() == "code"
     assert "git apply" in (task_dir / "solution" / "solve.sh").read_text()
     assert "Foo.Regression" not in (task_dir / "instruction.md").read_text()
+    instruction = (task_dir / "instruction.md").read_text()
+    assert "Network access is unavailable" in instruction
+    assert "git history contains" in instruction
+    assert "only the base revision" in instruction
+    assert "/tests/test.sh" not in instruction
 
     test_script = (task_dir / "tests" / "test.sh").read_text()
     assert "git diff --name-only" in test_script
