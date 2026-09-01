@@ -1,8 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-- fix offset type of SpaceAwareAccesor
-- Improved test to catch the mistake, and added a typedef for nested_accessor which I believe every wrapping accessor should have
-- fix convertibility properties to match View convertibility
+Update SpaceAwareAccessor in both its MemorySpace and AnonymousSpace specializations. Fix offset() so it returns typename offset_policy::data_handle_type. Add the public nested_accessor_type typedef and a constexpr nested_accessor() const noexcept member that exposes the wrapped nested accessor. Restrict the converting constructor with SFINAE that permits cross-space construction only when the source and target memory spaces satisfy the library's accessibility rules (aligned with View convertibility) and the nested accessors are constructible. Preserve all standard accessor typedefs (element_type, reference, data_handle_type, offset_policy, memory_space). The accessor must remain no-throw move-constructible, move-assignable, and swappable.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

@@ -1,12 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-This PR adds [nexttoward](https://en.cppreference.com/w/cpp/numeric/math/nextafter.html).
-This function has following overloads
-
-[implementation suggestion omitted]
-
-As the second argument is always `long double`, this is a host-only function.
-In addition, some tests are skipped if `finite-math` is enabled
+Add host-only functions Kokkos::nexttoward, Kokkos::nexttowardf, and Kokkos::nexttowardl. Provide overloads for (float, long double) returning float, (double, long double) returning double, (long double, long double) returning long double, and (integral, long double) returning double. In all overloads the second argument is long double. These are host-only and must not be available on device.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

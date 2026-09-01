@@ -1,10 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-This PR aims at adding a batched interface for [rotmg](https://www.netlib.org/lapack/explore-html/d3/dd5/group__rotmg_gaebf62f1c90f0829a0a762a7f8918213f.html#gaebf62f1c90f0829a0a762a7f8918213f). 
-
-- [x] Refactor `rotmg_impl` under blas. Fixed the behavior for `d1 < 0`.
-- [x] Add batched interface `Rotmg`. `SerialRotmg` and `TeamRotmg` are not added because this kernel works only on scalars without any parallelization
-- [x] Tests introduced under batched. Some corner case (`d1 < 0`) is not covered
+Add a device-callable batched Rotmg interface for scalar real Givens rotation. Provide invoke accepting 0-D View scalars d1, d2, x1, y1 and a 1-D non-const real View param of length exactly 5; d1, d2, x1, and param are mutable, while y1 is input. The function updates d1, d2, x1, writes the five-element matrix (flag, h11, h21, h12, h22) into param, returns 0, supports only real types, and includes a debug check enforcing param length 5. Complex types are unsupported. Do not provide SerialRotmg or TeamRotmg. Refactor the BLAS rotmg_impl using mutable handles for d1, d2, x1, and param; correct the d1 < 0 path by setting flag to -1, zeroing d1, d2, and x1, then fully assigning all five param entries so the array is consistently populated regardless of branch.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

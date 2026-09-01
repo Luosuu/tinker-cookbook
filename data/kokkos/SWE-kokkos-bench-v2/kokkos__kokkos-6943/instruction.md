@@ -1,7 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-Specializing the swap algorithm for Kokkos arrays was initially proposed in #6697 but we dropped it to focus on the Kokkos swap ADL ordeal. Somehow we overlooked a stray <Kokkos_Swap.hpp> header include in the Kokkos::Array header file.  This PR reintroduce a
-`Kokkos::kokkos_swap(Kokkos::Array)` specialization, following closely what the standard library does for `std::swap(std::array)`.
+Restore `constexpr` `kokkos_swap` support for `Kokkos::Array<T, N>` in namespace `Kokkos`, including `N == 0`, matching `std::swap` behavior for `std::array`. For non-empty arrays, the overload must participate only when `T` is swappable, be `noexcept` exactly when swapping `T` is nothrow, and exchange elements through unqualified `kokkos_swap` calls so user-defined overloads are found by argument-dependent lookup. For zero-sized arrays, provide a no-op `noexcept` overload.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

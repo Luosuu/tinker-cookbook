@@ -1,6 +1,14 @@
 Fix the following issue in the Kokkos repository.
 
-The SELL sparse matrix format is helpful when a matrix has a well balanced number of non-zeros per row and can leverage that structure to perform faster matrix-vector operations.
+Add KokkosSparse::Experimental::SellMatrix, a sparse format for matrices with balanced nonzeros per row that enables faster matrix-vector operations. Provide the class template parameterized by scalar type, signed ordinal type, device, optional memory traits, and size type inside namespace KokkosSparse::Experimental.
+
+Expose nested aliases: execution_space, memory_space, device_type, memory_traits; value_type, ordinal_type, size_type; offsets_type, entries_type, and values_type as layout-right device views with the specified traits; const and non-const view variants; plus host_mirror_type and const_type.
+
+Public members must include row and column counts, rows per slice, slice count, nnz, sell_nnz (padded nnz), and the corresponding view members slice_offsets, entries, and values.
+
+The ordinal type must be signed. Provide a default constructor and a parameterized constructor accepting dimensions, nnz, padded nnz, rows per slice, and the three views. Enforce single-slice usage: rows_per_slice must be at least the number of rows. Reject configurations where slice offsets extent does not equal slice count plus one, where padded nnz is smaller than nnz, or where entries and values extents do not match padded nnz.
+
+Also provide is_sell_matrix and is_sell_matrix_v traits in the same namespace to identify this format.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

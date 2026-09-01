@@ -1,8 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-This makes sure that View::[type/const_type/non_const_type/host_mirror_type] are using mdspan-style args if the primary template used mdspan-style args.
-
-I am leaving Uniform type alone - because there is an argument that they should all map to the same. Though we may want to reconsider which style they should use.
+For Kokkos::View, the nested aliases `type`, `const_type`, `non_const_type`, and `host_mirror_type` must match the template-argument style of the primary View declaration. If the View uses mdspan-style arguments (`element_type`, `extents`, `layout`, `accessor`), these aliases must also use mdspan-style parameters, preserving correct element constness, extents, layout, and accessor or memory-space mapping. If the View uses legacy-style arguments (`data_type`, `array_layout`, `device`, `memory_traits`, `hooks_policy`), the aliases must retain their existing legacy-style definitions unchanged. Mirror-view deduction operations (`create_mirror`, `create_mirror_view`, and related mechanisms) must return view types consistent with the source view's style-matched nested aliases. A single uniform nested-type mapping that applies identically across both mdspan-style and legacy-style instantiations is explicitly out of scope.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

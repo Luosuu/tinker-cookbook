@@ -1,12 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-We didn't test v.stride(r) with r>= rank, we didn't test stride() for layout_stride at all, and we didn't test that the last value in the array overload of stride() is correct.
-
-I added the tests and made the new view implementation match the behavior of the legacy implementation. 
-
-Note: our documentation says you can't use r>=rank for stride(r): https://kokkos.org/kokkos-core-wiki/API/core/view/view.html#_CPPv4I0ENK6strideE6size_tRK5iType.
-
-I reintroduced this behavior under deprecation.
+Correct Kokkos::View::stride to match legacy behavior under deprecation. The scalar overload stride(iType r) requires r < rank() by default; when KOKKOS_ENABLE_DEPRECATED_CODE_4 is enabled and r >= rank(), return 1 for LayoutRight/right-padded layouts, stride(rank()-1)*extent(rank()-1) for LayoutLeft/left-padded layouts, and 0 for LayoutStride. The array overload stride(iType* s) must write per-dimension strides into s[0..rank()-1]; s[rank()] must be set to the product of the maximum stride among those dimensions and the extent of that same dimension, ensuring the correct total span for LayoutStride and consistency with legacy results.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

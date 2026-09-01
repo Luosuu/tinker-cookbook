@@ -1,11 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-In the deduction guide for `RangePolicy`, we do not have to explicitly pass the `DefaultExecutionSpace` template, since `Impl::PolicyTraits<>::execution_type` will correctly map to `DefaultExecutionSpace`, and the correct specialization for `RangePolicy` will be chosen, namely
-[implementation suggestion omitted]
-
-Explicitly passing in `DefaultExecutionSpace` as template in deduction guide was introduced in an early iteration of https://github.com/kokkos/kokkos/pull/8367 (before the TeamHandle trait was introduced). Then, it was necessary to explicitly pass this template since we required either a `TeamHandle` or `ExecSpace` template existed. That is no longer the case.
-
-What is in develop isn't incorrect, it just isn't necessary.
+RangePolicy provides class-template argument deduction guides for constructors that do not take an execution-space argument: RangePolicy(), RangePolicy(int64_t, int64_t), and RangePolicy(int64_t, int64_t, ChunkSize const&). These guides currently deduce RangePolicy<DefaultExecutionSpace>, but specifying the default execution space explicitly is unnecessary: the empty specialization resolves to the default execution space automatically and selects the correct specialization. Update only these three guides to deduce RangePolicy<>. Do not modify the deduction guide that accepts an explicit DefaultExecutionSpace& argument. The required observable behavior is that CTAD for the affected constructor forms yields RangePolicy<>.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

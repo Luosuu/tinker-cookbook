@@ -1,20 +1,13 @@
 Fix the following issue in the Kokkos repository.
 
-This fixes a bug that @crtrott pointed out:
+Fix the Kokkos::View constructor overload intended for pointer-like first arguments followed by optional view parameters (extents, mapping, or accessor). Currently it requires only copy-constructibility, so objects returned by data_handle() also match. Because such an object is not implicitly convertible to the view's pointer_type, the overload casts it to pointer_type in initialization, destroying reference counting instead of sharing ownership.
 
-[implementation suggestion omitted]
+Require implicit convertibility to pointer_type for that overload. This directs data-handle objects to the proper handle-sharing constructors and prevents erroneous selection.
 
-The issue is here:
-
-[implementation suggestion omitted]
-
-Where data_handle satisfies the constraints as it is copy-constructible, yet gets cast to `pointer_type` in the initialization list and so loses its reference count.
-
-This PR adds a check for _implicit_ convertibility to `pointer_type` which is imo the correct constraint here.
-
-Note that after this PR `Kokkos::View<int*> b(a.data_handle(), 5);` won't compile because there is no suitable constructor. I can work on a followup PR to add it (legacy view did not have such a constructor anyway).
-
-I would like this to be squeezed into 5.0 if possible.
+Requirements:
+- Kokkos::View built from data_handle() together with extents, mapping, or accessor must compile and correctly share the underlying handle, preserving reference counts.
+- Kokkos::View built from data_handle() with only a scalar extent must not compile; this constructor is intentionally unsupported, matching legacy behavior.
+- Target the modern view path only; behavior under KOKKOS_ENABLE_IMPL_VIEW_LEGACY must remain unchanged.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

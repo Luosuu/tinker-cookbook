@@ -1,12 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-`team_scratch_size(int)` and `thread_scratch_size(int)` are currently only implemented for the CUDA, HIP and SYCL backends, this PR adds the function for the remaining backends (host backends and OpenACC) and adds a test for these two functions.
-
-### Related issues / PRs
-
-### Changelog Entry
-
-Add support for querying the team and thread level scratch size on all backends
+TeamPolicy exposes team_scratch_size(int) and thread_scratch_size(int) to retrieve the per-level scratch size (size_t) previously set via set_scratch_size. These query methods are currently available only on CUDA, HIP, and SYCL backends. Implement them for all remaining backends—Serial, Threads, OpenMP, OpenACC, and HPX—so that each returns the corresponding configured team-level or thread-level scratch size. Behavior must match the existing backend implementations and remain compatible with host and accelerator execution spaces.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

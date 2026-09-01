@@ -1,6 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-Reapply the changes from #9033 that we reverted in #9051
+Restore the identity guard in Kokkos::deep_copy so that all overloads—whether with or without an execution space, and for both rank-0 and non-rank-0 Views—detect when the source and destination arguments are the same View instance. If they are identical and KOKKOS_ENABLE_DEPRECATED_CODE_5 is not defined, abort with a diagnostic stating that the source and destination View arguments are identical. If KOKKOS_ENABLE_DEPRECATED_CODE_5 is defined, permit the call for backward compatibility.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

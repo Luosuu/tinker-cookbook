@@ -319,9 +319,11 @@ def _apply_reports(
         if instance.instance_id in overrides:
             statement = overrides[instance.instance_id]
             revised += statement != instance.problem_statement.strip()
-        elif assessment == "needs_revision":
-            statement = str(report["revised_problem_statement"]).strip()
-            revised += statement != instance.problem_statement.strip()
+        elif assessment != "invalid":
+            candidate = str(report["revised_problem_statement"]).strip()
+            if candidate != instance.problem_statement.strip():
+                statement = candidate
+                revised += 1
         value = instance.to_dict()
         value["problem_statement"] = statement
         updated.append(KokkosInstance.from_dict(value))

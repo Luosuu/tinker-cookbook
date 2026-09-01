@@ -1,14 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-This PR aims at adding a batched interface for [rotg](https://www.netlib.org/lapack/explore-html/d7/dc5/group__rotg_gaafa91c51f75df6c3f2182032a221c2db.html#gaafa91c51f75df6c3f2182032a221c2db). 
-Discussing points
-
-1. Should we update the `b` value? It is updated only by (s/d)rotg but not with (c/z)rotg. It is unclear this value can be used in reality. 
-2. Should we manage more carefully the cases for extremely small `a` and `b`?  This kernel can overflow in the current implementation.
-
-- [x] Refactor `rotg_impl` under blas
-- [x] Add batched interface `Rotg`. `SerialRotg` and `TeamRotg` are not added because this kernel works only on scalars without any parallelization
-- [x] Tests introduced under batched (under blas tests are commented out for some reason)
+Add the batched scalar Givens rotation interface `KokkosBatched::Rotg::invoke(const SViewType& a, const SViewType& b, const MViewType& c, const SViewType& s)` returning `int`. All arguments must be rank-0 non-const views: `a` and `b` share a real or complex scalar type (`SViewType`); `c` is a real scalar magnitude (`MViewType`); `s` matches `SViewType`. The rotation must satisfy `[[c, s], [-conj(s), c]] * [[a], [b]] = [[r], [0]]`, with `a` overwritten by `r`. For real overloads, `b` must be updated by the result; for complex overloads, `b` must remain unchanged. Only the scalar `Rotg` interface is required; do not provide `SerialRotg` or `TeamRotg`. Refactor the internal BLAS `rotg_impl` to eliminate overflow for both real and complex scalar pointers, safely handling cases where `|a|` or `|b|` is zero or extremely small through appropriate scaling and norm computation, and preserve the real/complex distinction in `b` updates.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

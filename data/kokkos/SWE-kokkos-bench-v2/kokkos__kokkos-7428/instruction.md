@@ -1,6 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-Not included since https://github.com/kokkos/kokkos/pull/5178 and wasn't actually used either back then
+Remove the obsolete `impl/Kokkos_FixedBufferMemoryPool.hpp` header. Its `FixedBlockSizeMemoryPool` implementation is unused and has not been included by production code since the task-scheduler changes that made it redundant. Ensure no production reference to this header or type remains.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

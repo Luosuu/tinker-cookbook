@@ -1,16 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-This PR allows users to interact with the underlying backend graph node.
-
-It is an interoperability feature, hence the `<backend>_node` naming.
-
-For CUDA and HIP, I could easily demonstrate a simple yet meaningful use case: enabling/disabling a node in-between submission.
-
-~~For SYCL, I haven't experienced with it yet. So I'd suggest to go forward with this PR, we can deal with the SYCL case later.~~ SYCL is supported too.
-
-### Changelog Entry
-
-Definitely a changelog entry.
+Add backend-interoperability accessors to Kokkos::Experimental::GraphNodeRef and Kokkos::Experimental::Graph using the <backend>_node and <backend>_graph_exec naming: cuda_node, hip_node, sycl_node on node references, and cuda_graph_exec, hip_graph_exec, sycl_graph_exec on graphs. Availability requires the ExecutionSpace to match the backend and the corresponding backend enable/graph macro to be set (for SYCL, KOKKOS_ENABLE_SYCL with KOKKOS_IMPL_SYCL_GRAPH_SUPPORT). The node accessors expose native vendor graph node handles; the graph accessors expose native executable graph handles. For SYCL, the graph accessor returns an optional-like object with .has_value() and operator-> to the native command_graph; using its ->update() requires the graph was created with the updatable property, else it throws. This allows direct native manipulation—e.g., enabling or disabling nodes—between submissions. A changelog entry is required.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

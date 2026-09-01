@@ -1,10 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-We discussed in the developer meeting that we want to make `Kokkos_ScopeGuard.hpp` and `Kokkos_InitializeFinalize.hpp` public since these headers are very small and users might have translation units (like those containing `main`) that don't need more functionality than provided in these headers.
-~~Drive-by: Rename `Kokkos_Core.cpp` to `Kokkos_InitializeFinalize.cpp`.~~
-
-### Changelog Entry
- - Yes, needs one.
+Promote Kokkos_ScopeGuard.hpp and Kokkos_InitializeFinalize.hpp to public headers. Kokkos_InitializeFinalize.hpp must expose only initialization/finalization symbols (initialize, finalize, is_initialized, is_finalized, push_finalize_hook, and internal pre_finalize/post_finalize). It must not contain fence, print_configuration, device_id, num_devices, num_threads, show_warnings, tune_internals, or declare_configuration_metadata. Move those remaining declarations into separate new internal-only headers. Update Kokkos_Core.hpp to continue providing the full legacy API by including both promoted public headers plus the new internal split headers, replacing only the old internal includes for the moved headers; leave all other includes and behavior intact. Update Kokkos_ScopeGuard.hpp to include the public <Kokkos_InitializeFinalize.hpp>. Update all other source references from the old internal path for these headers to the new public paths. Do NOT rename Kokkos_Core.cpp. Preserve backward compatibility so that code including Kokkos_Core.hpp works unchanged. Add a changelog entry.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

@@ -1,9 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-To align with [Rotmg](#3088), we need to make `Flag` a runtime parameter included in param variable.
-This way we can use them like
-
-[implementation suggestion omitted]
+Convert the batched dense rotation (`rotm`) APIs to match `Rotmg` by making `Flag` a runtime parameter instead of a compile-time template argument. Remove the `Flag` template parameter from `SerialRotm`, `TeamRotm`, and `TeamVectorRotm`. The parameter vector must have length 5, with `param[0]` holding the flag and `param[1..4]` holding `h11`, `h21`, `h12`, and `h22`. Valid flags are `-2` (identity/no-op), `-1`, `0`, and `1`; any other value must make `invoke` return `1`. Read the flag at runtime and apply the rotation behavior consistent with `Rotmg`.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

@@ -1,8 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-This PR adds an overload of `Kokkos::Experimental::create_graph` that does not take a closure.
-
-This helps supporting advanced use cases for which creating the graph "in one shot" is not satisfactory.
+Add overloads of `Kokkos::Experimental::create_graph` that do not take a closure. Provide a template overload that accepts an optional execution-space instance and defaults to `Kokkos::DefaultExecutionSpace`, returning `Kokkos::Graph<ExecutionSpace>`. It must be callable as `create_graph()` (using the default space) or `create_graph(exec)` (using the provided space). Constrain the existing closure-based overload so execution-space types are rejected as closures, preventing ambiguity. The returned empty graph must be usable for manual node construction and submission within the associated execution space.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

@@ -1,13 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-* Fix identity operator in stl-like parallel numerics algorithms (used in prefix sums)
-* Silent warning in `ParallelReduceReturnValue<View>::return_value()`
-  * Current use is fine and I would want to get rid of it in a larger-scale refactoring
-* Fix reducer initialization selecting either the functor or the "return" value in `[then_}parallel_reduce()`
-  * The "forwarding switch" functionality is duplicated but it is unclear to me we need it anywhere else and I wasn't sure where we'd want it anyway
-* Remove (unused) `Impl::ParallelReduceFunctorType` class template
-* Remove `Impl::if_c` "trait"
-* Fix half type test
+Make the production code clean under clang-tidy's `bugprone-return-const-ref-from-parameter` check. Fix the identity functor used by STL-like inclusive and exclusive scan algorithms so it perfectly forwards its argument and no longer requires a value-type template parameter. In graph and ordinary parallel-reduce adapters, replace the obsolete conditional-selection helpers with a device-callable forwarding selection that preserves the chosen functor or reducer value category; remove the now-unused `Impl::ParallelReduceFunctorType` and `Impl::if_c` utilities. Where `ParallelReduceReturnValue<View>::return_value()` intentionally returns the supplied object by reference, retain the behavior and narrowly suppress the false positive.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

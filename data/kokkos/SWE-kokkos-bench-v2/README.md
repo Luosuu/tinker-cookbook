@@ -172,6 +172,10 @@ For v2.0, all 100 Oracle trials returned reward 1 and all 100 NOP trials returne
 with no infrastructure exceptions. The 30 unchanged v1.0 task payloads retained identical
 Harbor digests; the 70 additions were independently validated for the v2.0 release.
 
+The unreleased v2.3 instruction-quality update changes task digests without changing repository
+revisions, graders, held-out tests, or Oracle patches. Its refreshed digests must receive new
+Oracle/NOP validation records before the version is published.
+
 The agent cannot rely on modifying the scoring apparatus. Before grading, the verifier
 rejects or restores protected test, CMake-registration, and CI paths, injects the held-out
 test patch, and runs without network access.
@@ -245,6 +249,9 @@ corresponding upstream repository before redistribution or commercial use.
 - `v2.2`: the same environments and verifiers as v2.1, with instructions that state those
   clean-room constraints and prioritize local diagnosis, production edits, and focused public
   build/test targets.
+- `v2.3` (unreleased): verifier-aligned problem statements audited with Full Inkling and reviewed
+  to expose required API and compatibility behavior without revealing held-out tests or reference
+  implementations. Environments, repository revisions, graders, and patches remain unchanged.
 
 When citing results, use the dataset name, immutable version, model identifier, and complete
 rollout configuration. A suggested textual citation is:

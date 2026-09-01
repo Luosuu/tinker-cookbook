@@ -1,6 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-Release 4.3 unintentionally introduced the ability for `RangePolicy` constructor to take as it's final argument any type convertible to `ChunkSize` and implicitly construct a `ChunkSize` object for the input. Remove that by making the `ChunkSize(int)` constructor explicit.
+Make the ChunkSize(int) constructor explicit so that int is not implicitly converted to ChunkSize. This eliminates the unintended RangePolicy constructor behavior of accepting any type convertible to ChunkSize as its final argument and implicitly constructing ChunkSize. Explicit ChunkSize(int) construction must remain valid. When KOKKOS_ENABLE_DEPRECATED_CODE_4 is enabled, preserve implicit int-to-ChunkSize conversion for backward compatibility so RangePolicy continues to allow it; otherwise RangePolicy must require an explicit ChunkSize where one is expected.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

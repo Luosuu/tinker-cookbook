@@ -1,18 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-`CheckedRelaxedAtomicAccessor` ignores `MemoryScope` parameter
-
-[source location omitted]
-
-`AtomicAccessorRelaxed` has a MemoryScope argument:
-
-[source location omitted]
-
-I think we just need to use it:
-
-[implementation suggestion omitted]
-
-(same for `CheckedReferenceCountedRelaxedAtomicAccessor`)
+Correct the alias templates `CheckedRelaxedAtomicAccessor` and `CheckedReferenceCountedRelaxedAtomicAccessor` so they honor the `MemoryScope` template parameter instead of ignoring it. Both aliases must forward their `MemoryScope` argument—defaulting to `desul::MemoryScopeDevice`—to the underlying `AtomicAccessorRelaxed<ElementType, MemoryScope>`. This ensures the requested memory scope is respected consistently for both relaxed atomic accessor aliases.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

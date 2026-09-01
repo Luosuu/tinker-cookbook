@@ -1,17 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-Create an unmanaged subview from a view is broken (rank-1)
-
-Creating an unmanaged subview of a view as follows used to work until 8cfdfd8abe48b57cfb1b887fd8c9e3d77f990b51 from @crtrott :
-[implementation suggestion omitted]
-
-Reverting 8cfdfd8abe48b57cfb1b887fd8c9e3d77f990b51 makes the above code compile just fine. The question is, since there wasn't any test that captured the regression:
-> Is it allowed to create an unmanaged view from a view as done above?
-
-If so, this needs a fix @crtrott :wink: 
-
-Compiler output:
-[implementation suggestion omitted]
+Fix the Kokkos::View subview constructor so that constructing a subview from a source View with a different Kokkos::MemoryTraits (Managed vs Unmanaged) compiles correctly in both directions. Support rank-reducing cases, specifically rank-2 to rank-1, using standard index patterns such as (Kokkos::ALL, 1) and (0, Kokkos::ALL). The constructor that accepts a source View together with layout, memory-trait template parameters, and subview dimensions must work for layout-compatible combinations including LayoutLeft, LayoutRight, and LayoutStride. The result must be produced directly without requiring manual user casts or pointer adjustments. Ensure both managed-source-to-unmanaged-subview and unmanaged-source-to-managed-subview are valid.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

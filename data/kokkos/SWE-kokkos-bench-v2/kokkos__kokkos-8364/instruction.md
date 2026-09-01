@@ -1,11 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-This PR adds 2 new helpers for `Kokkos::Impl::type_list`:
-1. `type_list_size_v` to get its size.
-2. `type_list_contains_v` to know if it contains a type.
-
-Related to:
-- #8191
+In the `Kokkos::Impl` namespace, add three `constexpr` variable-template helpers for `Kokkos::Impl::type_list`: `type_list_size_v` (number of types, `0` if empty), `type_list_contains_v` (whether a specified type is present, `false` if empty), and `type_list_any_v` (whether any element satisfies a given unary predicate, `false` if empty). They must be usable in constant expressions and handle empty lists correctly.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

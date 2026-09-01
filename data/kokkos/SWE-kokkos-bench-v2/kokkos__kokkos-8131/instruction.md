@@ -1,11 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-In Sacado the accessor construction may require information from the mapping (specifically the span size) in some cases. Specifically it needs it if the elements of a FAD type are not consecutive but strided by the span size.
-
-The customization point works like the other ones via ADL finding an overload in the same namespace as the accessor.
-The default implementation constructs the accessor from `AccessorArg_t` value. 
-
-[implementation suggestion omitted]
+Some accessor types (e.g., Sacado FAD with non-consecutive, span-strided elements) need mapping information—particularly the span size—to construct correctly from an AccessorArg_t. Introduce an ADL-discoverable customization point in the accessor's namespace that accepts a mapping and an AccessorArg_t and yields the accessor. The default overload must build the accessor from the argument value alone, without requiring mapping data. Update BasicView constructors that initialize an accessor from AccessorArg_t (both with and without an accompanying pointer argument) to invoke this customization point and pass the view's mapping. For consistency, also make the existing allocation_size_from_mapping_and_accessor customization point constexpr. The change should preserve compatibility for accessors that do not need mapping-based construction.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

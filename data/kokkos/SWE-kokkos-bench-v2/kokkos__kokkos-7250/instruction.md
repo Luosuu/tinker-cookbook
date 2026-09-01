@@ -1,6 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-Address NVHPC CI warnings and add `-Werror` to jenkins build.
+Make NVHPC builds warning-clean when unreachable-code diagnostics are treated as errors. Add `KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_PUSH` and `KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_POP`: under `__NVCOMPILER` they must suppress and then restore the compiler's unreachable-code and unreachable-initialization diagnostics, and on other compilers they must be harmless no-ops. Also ensure the mdspan padded-layout fallback returns used for NVCC or Intel missing-return warnings are not enabled for `__NVCOMPILER`, where they themselves trigger unreachable-code warnings.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

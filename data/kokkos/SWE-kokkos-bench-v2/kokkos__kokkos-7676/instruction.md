@@ -1,6 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-It looks like free after finalize properly errors out, but currently malloc does not neither before initialize nor after finalize.
+Ensure kokkos_malloc (all overloads), kokkos_realloc, and kokkos_free abort when called before Kokkos::initialize() or after Kokkos::finalize(), consistent with the existing kokkos_free behavior. The state check must occur before any pointer dereference or internal tracking access, so invalid or fake pointers still produce the correct initialization-state error rather than undefined behavior. These guards must be disabled when KOKKOS_ENABLE_THREADS is defined, since the Threads backend calls kokkos_malloc during its own initialization. Apply uniformly to both the before-initialize and after-finalize cases across all three APIs.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

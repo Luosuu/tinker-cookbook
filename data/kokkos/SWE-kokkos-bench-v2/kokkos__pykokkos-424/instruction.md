@@ -1,42 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-## View Dtype Annotation Validation
-
-`pykokkos/interface/parallel_dispatch.py` now validates explicit `View` dtype annotations against the actual dtype of the provided `View`.
-
-### Changes
-
-A new helper has been added to:
-
-* Normalize PyKokkos and Python dtype aliases into comparable canonical names
-* Extract the expected dtype from annotations such as `pk.View1D[pk.int32]`
-* Compare the expected dtype against the actual `View.dtype`
-* Raise a clear and informative `TypeError` when the dtypes do not match
-
-### Examples
-
-[implementation suggestion omitted]
-
-Passing a `View` with dtype `int64` now raises a `TypeError` indicating the mismatch between the annotated and actual dtypes.
-
-### Tests
-
-Added `tests/test_view_dtype_mismatch.py` with coverage for:
-
-#### Invalid dtype combinations
-
-* Rejecting `int64` arrays passed to `pk.View1D[pk.int32]`
-* Rejecting NumPy `dtype=int` arrays passed to `pk.View1D[int]`
-* Rejecting `float64` arrays passed to `pk.View1D[pk.float]`
-* Rejecting `float32` arrays passed to `pk.View1D[float]`
-
-#### Valid dtype combinations
-
-* Accepting `int32` arrays passed to `pk.View1D[pk.int32]`
-
-#### Existing behavior preserved
-
-* Preserving type inference for unannotated `int64` views
+In the PyKokkos parallel dispatch interface, validate explicit generic `View` annotations (e.g., `pk.View1D[T]`) against the actual `View.dtype`. Resolve annotations and dtypes to canonical names: Python `int`→`int32`, `float`→`float64`, `bool`→`uint8`; PyKokkos aliases `float`→`float32`, `double`→`float64`, `bool`→`uint8`. Validation runs only when the argument value is a `View` and its parameter carries an explicit `View[...]` hint resolving to a non-null canonical dtype; otherwise skip. On mismatch, raise `TypeError` with message `Argument '{name}' expects a View with dtype {expected}, but received dtype {actual}.`. Unannotated parameters must remain unaffected, preserving inference (e.g., NumPy `int` arrays mapping to `int64`). Accept exact matches such as `np.int32` for `pk.View1D[pk.int32]`. Reject mismatches including `int64` for `int` or `int32`, `float64` for `float32`, and `float32` for `float` (`float64`). Non-`View` arguments and missing hints are unaffected.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

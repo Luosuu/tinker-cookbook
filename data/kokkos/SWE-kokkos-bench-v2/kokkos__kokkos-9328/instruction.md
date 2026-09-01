@@ -1,6 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-When `OtherProperties...` is `<>`, nvcc saw it as `TeamPolicy(const TeamPolicy<> p)`, which is not a valid copy-ctor. For some reason my Serial build was happy with that, but `nvcc` was not.
+Fix Kokkos::TeamPolicy’s templated converting constructor so it takes a const TeamPolicy<OtherProperties...>& rather than by value. When OtherProperties... is empty (<>), a by-value parameter becomes TeamPolicy(const TeamPolicy<> p), which conflicts with the copy constructor and fails with nvcc. The constructor must remain distinct, unambiguous, and valid for all property packs—including <>—without altering other behavior.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

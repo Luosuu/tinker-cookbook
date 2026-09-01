@@ -1,14 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-This PR relaxes the constraints on `Kokkos::Array` `operator[]` to allow custom type indexers.
-
-The current constraint, which requires `std::is_integral`, prevents the use of convertible types in its subscript operators, unlike `std::array`.
-
-This change aligns with `Kokkos::View` interface, which previously also mandated `std::is_integral` in its legacy implementation:
-[source location omitted]
-
-but was updated to:
-[source location omitted]
+Relax Kokkos::Array's const and non-const subscript operators so they accept any argument implicitly convertible to size_type, including enumeration values and user-defined types with conversion operators. Remove the integral-or-enum template constraint and associated static_assert, changing the overload signatures to take size_type directly. This aligns Array with std::array and the current Kokkos::View subscript interface, while preserving compatibility with existing integral indexes. The change affects only the public Array indexing contract; no other behavior is modified.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

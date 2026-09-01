@@ -1,7 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-Adding tests that checks that non-defaulted views can only be constructed after Kokkos::initialize() was called and must be destructed before Kokkos::finalize().
-Change the behavior from throwing a runtime error to aborting in the case of View creations.
+Modify the Kokkos::View contract so that any non-default construction initializing underlying data requires an active default execution space initialized via Kokkos::initialize; if uninitialized, the operation must abort instead of throwing a runtime exception. This applies even to zero-size allocations. On CUDA, HIP, SYCL, or OpenACC backends, the failure may manifest as the backend's own execution-space initialization error. Additionally, destroying an allocating view after Kokkos::finalize has been called must abort, enforcing that allocations do not outlive the initialized scope. Default-constructed views and assignments performed entirely within a valid initialize/finalize window must remain valid. The change affects public view lifetime and initialization ordering, preserving compatibility for correctly scoped usage.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

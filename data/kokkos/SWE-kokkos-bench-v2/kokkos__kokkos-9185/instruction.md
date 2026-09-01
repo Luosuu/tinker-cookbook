@@ -1,14 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-`create_mirror_view_and_copy` on unified memory architecture (MI300A)
-
-[implementation suggestion omitted]
-
-This does lead to a static_assert, due to incompatible types if compiled with `Kokkos_ARCH_AMD_GFX942_APU=ON`. As far as I have debugged the situation one of the types treats `Kokkos::HIPSpace` as beeing accessible from host and device, and therefore it is a valid host memory space (which is correct on MI300A). The other one does not and forces `Kokkos::HostSpace` leading to the type mismatch. I think I need to change `Kokkos::HostSpace()`, but was not able to figure out to what.
-
-The whole code snippets needs to work on unified memory architectures and traditional architectures.
-
-Tested on Kokkos develop branch with ROCM 7.2.
+Add one-argument overloads of `create_mirror_view_and_copy` that accept a source view (`View`, and analogous public forms for `DynamicView`, `DynRankView`, and `OffsetView` where applicable). Each overload must produce a mirror view residing in the source view's designated host-mirror memory space—not hard-coded to `Kokkos::HostSpace`—and must copy the source data into it. This fixes compilation errors such as static_assert type mismatches on unified-memory architectures (e.g., MI300A with `KOKKOS_ARCH_AMD_GFX942_APU=ON`), where `HIPSpace` is host-accessible and the correct mirror space differs from `HostSpace`. The overloads must work correctly on both unified-memory and traditional discrete-memory architectures. The existing two-argument `create_mirror_view_and_copy(Space, View)` overloads must remain fully available and unchanged.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

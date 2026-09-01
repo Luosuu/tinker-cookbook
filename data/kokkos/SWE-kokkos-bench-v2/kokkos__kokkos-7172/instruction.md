@@ -1,19 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-RangePolicy construction fails if input bound types are not convertible to the policy's IndexType
-
-Reported from https://github.com/ECP-copa/Cabana/pull/753#issuecomment-2103376470.
- 
-Changes made in #6754 expects `RangePolicy`'s input bound types to be convertible to the `RangePolicy`'s `IndexType`.
-
-However, the conversion safety check in `RangePolicy` actually requires a full roundtrip convertibility:
-[source location omitted]
-and fails if only one way conversion is available.
-
-Few options to mitigate this include:
-- Adding constraints to the `RangePolicy` constructors (more conditions in `enable_if`)
-- Making roundtrip convertibility a mandate (with a `static_assert`)
-- Skipping the value preserving/narrowing check if only convertible one way (output a warning message about skipping the check)
+RangePolicy construction must succeed when bound argument types are convertible to the policy's index type in only one direction, without requiring full roundtrip convertibility. The current conversion-safety validation demands bidirectional convertibility and therefore fails for one-way convertible types. Make the narrowing and sign-change validation conditional on mutual convertibility between the bound type and the index type: when present, preserve the existing behavior of aborting or emitting a deprecation warning according to the configured compatibility and deprecation modes. When mutual convertibility is absent, skip the validation entirely with no error and no warning. Do not add constructor enable_if constraints, do not mandate roundtrip convertibility, and ensure one-way convertible bound types construct without failure.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

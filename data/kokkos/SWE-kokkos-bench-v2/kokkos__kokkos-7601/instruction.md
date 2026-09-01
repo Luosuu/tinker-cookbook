@@ -1,20 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-`Kokkos::complex` should have `constexpr` constructor as well
-
-If I'm not mistaken, according to https://en.cppreference.com/w/cpp/numeric/complex/complex there are several constructors of `std::complex` that are declared `constexpr` already in the `c++14` standard.
-
-Looking at
-[source location omitted]
-it seems it is not the case for `Kokkos::complex`, and `constexpr` needs to be explicitly added.
-
-Here is a small code to test `constexpr`-ness:
-[implementation suggestion omitted]
-
-This should show (at least for `g++ 11.3.0`):
-[implementation suggestion omitted]
-
-If you agree on the changes, I can open a PR.
+Make `Kokkos::complex<RealType>` fully usable in constant expressions, matching C++14 `std::complex` behavior. The public API must support `constexpr` default construction, one-argument and two-argument constructors (`complex(const RealType&)` and `complex(const RealType&, const RealType&)`), copy and move construction and assignment, and scalar assignment (`operator=(const RealType&)`). All of these must be valid in `constexpr` contexts so instances can be initialized, assigned, copied, and moved inside `constexpr` functions and `static_assert` without requiring runtime evaluation.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

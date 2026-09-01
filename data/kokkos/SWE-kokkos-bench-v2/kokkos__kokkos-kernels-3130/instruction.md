@@ -1,10 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-This PR introduces a new class for batched norm computation.
-Based on the [older blas implementation](https://www.netlib.org/lapack/lapack-3.1.1/html/dznrm2.f.html), l2 norm can be computed without overflow/underflow.
-
-- [x] Add a new class `ScaledL2`
-- [x] Add an unit test to show that `ScaledL2` gives correct results without overflow while it gives the same results as `L2`
+Add `KokkosBatched::Norm::ScaledL2` to the norm enumeration and update the `is_norm` trait so it is recognized. Extend `SerialNrm`, `TeamNrm`, and `TeamVectorNrm` to support `Norm::ScaledL2` for both real and complex scalar types under `Mode::Serial`, `Mode::Team`, and `Mode::TeamVector`. The computation must determine the L2 norm using a scaled accumulation that prevents intermediate overflow and underflow, yielding results mathematically equivalent to `Norm::L2` within floating-point tolerance. For inputs with magnitudes near the scalar type's maximum finite value, it must not overflow, unlike a direct square-sum L2 approach.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

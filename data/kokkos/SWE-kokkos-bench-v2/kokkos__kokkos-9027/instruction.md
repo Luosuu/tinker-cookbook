@@ -1,24 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-This PR is a pre-requisite for #9012 , whose graph tests depend on being able to pass lvalue execution policies to `then_parallel_for` and `then_parallel_reduce`.
-
-## Summary
-
-- Fix `then_parallel_for` and `then_parallel_reduce` in the graph API to accept lvalue execution policies (e.g., policies stored in variables or modified via `set_scratch_size`)
-- Add a missing `(Label, Policy, Functor, ReturnType)` convenience overload for `then_parallel_reduce`, matching the existing pattern in `then_parallel_for`
-- Fix `noexcept` mismatch in `GraphNodeImpl` destructor overrides that caused compilation failures with complex functor types (destructors that can throw)
-- Minor expansion of test coverage, test a TeamPolicy with launch bounds
-
-## Graph API fixes
-
-The forwarding reference deduction in `then_parallel_for` and `then_parallel_reduce` (`Kokkos_GraphNode.hpp`) caused `Policy` to be deduced as a reference type when an lvalue was passed, making the `PolicyUpdate` constructor call ill-formed. Fixed by using `std::remove_cvref_t<Policy>`.
-
-## Test plan
-
-New tests:
-- `lvalue_policies`: Lvalue RangePolicy, MDRangePolicy, TeamPolicy in graph nodes
-- `lvalue_policies_reduce`: Lvalue RangePolicy with `then_parallel_reduce`
-- `team_launch_bounds_in_graph`: TeamPolicy with `LaunchBounds` in graph nodes
+Fix the graph API so `then_parallel_for` and `then_parallel_reduce` accept execution policies passed as lvalues, including stored `RangePolicy`, `MDRangePolicy`, and `TeamPolicy` objects and policies modified through methods such as `set_scratch_size`. Policy handling must use the underlying non-reference policy type while preserving normal forwarding behavior. Add the missing convenience overload `then_parallel_reduce(Label, Policy, Functor, ReturnType)` consistent with the labeled `then_parallel_for` interface. Also make `GraphNodeImpl` destructor overrides explicitly `noexcept` so graph nodes with complex functor types compile without an exception-specification mismatch. Existing rvalue-policy calls and TeamPolicy launch-bound properties must continue to work.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

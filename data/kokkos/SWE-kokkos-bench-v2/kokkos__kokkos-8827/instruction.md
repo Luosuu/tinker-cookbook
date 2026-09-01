@@ -1,12 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-Implement missing functions under "Classification and comparison"
-* `isgreater`
-* `sgreaterequal`
-* `isless`
-* `islessequal`
-* `islessgreater`
-* `isunordered`
+Add the missing Kokkos binary comparison predicates under classification and comparison: `isgreater`, `isgreaterequal`, `isless`, `islessequal`, `islessgreater`, and `isunordered`. Each takes two arithmetic arguments and returns `bool`. Provide overloads for `float`, `double`, `long double`, and a generic arithmetic-template overload that promotes mixed types and returns `bool`. Semantics must match the C math library: `isgreater` (`x > y`), `isgreaterequal` (`x >= y`), `isless` (`x < y`), `islessequal` (`x <= y`), `islessgreater` (`x < y || x > y`, false for equality or unordered pairs), and `isunordered` (true if either argument is NaN). The predicates must correctly handle NaN, infinity, and unordered comparisons according to standard rules, distinguishing them from relational operators.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

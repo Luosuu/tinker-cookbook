@@ -1,8 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-(Part of issue #6355, intended to be applied after #6372, as that contains the initial unit tests for `Kokkos::array`.)
-
-Adding `Kokkos::to_Array` for `Kokkos::Array<T, N, void>`, analogous to `std::to_array` for `std::array`, as well as unit tests.
+Add the public utility `Kokkos::to_array`, analogous to `std::to_array`, that produces `Kokkos::Array<std::remove_cv_t<T>, N>` from built-in arrays and braced-init-lists. Provide `constexpr KOKKOS_FUNCTION` overloads taking `T (&)[N]` and `T (&&)[N]`, deducing element type and length. Also support braced-init-list temporary arrays with deduced size and type, and allow explicit element-type specification with implicit conversion (for example, `Kokkos::to_array<long>({0, 1, 3})`). The result must have cv-qualifiers removed from the element type.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

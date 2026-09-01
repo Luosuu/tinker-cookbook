@@ -1,8 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-Implementing DynRankView in a way that it is compatible with the current and the next impl of View gets a bit smoother by already introducing some of the mdspan typedefs (the ones which make trivially sense for now). In the process I implemented a test for all the View member typedefs and found that the const versions of the uniform typedefs are broken. So the last commit fixes that. 
-
-Before `uniform_const_type` was effectively something like `View<T* const, ...>` instead of `View<const T*>` ...
+Add mdspan-compatible member typedefs to the legacy View class: element_type, index_type, rank_type, data_handle_type, and reference, mapped from the corresponding existing value, memory-space size, rank, pointer, and reference types. Fix const propagation in all uniform const-view typedefs—uniform_const_type, uniform_runtime_const_type, uniform_const_nomemspace_type, and uniform_runtime_const_nomemspace_type—so that const applies to the element being accessed (yielding a data/access pattern equivalent to const T*) instead of making the pointer const (T* const). All four variants, including the nomemspace forms, must behave consistently, and existing non-const uniform typedefs must remain unchanged.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

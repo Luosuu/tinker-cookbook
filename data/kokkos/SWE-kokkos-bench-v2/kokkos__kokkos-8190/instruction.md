@@ -1,6 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-This is the only missing execution policy argument that we are allowed to pass to the node.
+Add `Kokkos::Experimental::ThenPolicy<WorkTag>` (default `WorkTag = void`; `WorkTag` must be empty or `void`) so graph nodes can receive an execution-policy work tag. Extend `GraphNodeRef::then` with overloads accepting `(label, policy, functor)`, `(policy, functor)`, `(label, functor)`, and `(label, exec, policy, functor)`, with existing overloads defaulting to `ThenPolicy<>`. Invoke the functor as `functor()` when the work tag is `void`, and as `functor(WorkTag{})` when it is a non-void empty type. Preserve full backward compatibility so all prior `then` usages compile unchanged.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

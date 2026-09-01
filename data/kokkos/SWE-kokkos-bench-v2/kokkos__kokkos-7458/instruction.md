@@ -1,17 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-Implementing the changes discussed in #7449
-There was no objections at the developer meeting to proceed with all the deprecations that were proposed.
-Fell free to speak up if you disagree with any of it.
-
-Summary:
-* Deprecated `atomic_query_version()` (no known usage and unclear how that is useful)
-* Deprecated `atomic_assign()` in favor of `atomic_store()`
-* Deprecated `atomic_compare_exchange_strong()`
-* Deprecated `atomic_{increment, decrement}`
-* ~~Deprecated `atomic_{fetch_nand, nand_fetch, nand}`~~ **withdrawn**
-(I only feel strongly about the three first deprecation items)
-* Added `atomic_{mod,xor,nand,lshift,rshift}` that were missing
+Implement the atomic API updates: deprecate `atomic_query_version()` without a replacement, `atomic_assign()` in favor of `atomic_store()`, `atomic_compare_exchange_strong()` in favor of `atomic_compare_exchange()`, `atomic_increment()` in favor of `atomic_inc()`, and `atomic_decrement()` in favor of `atomic_dec()`. Do not deprecate `atomic_fetch_nand`, `nand_fetch`, or `nand`. Guard deprecated APIs behind `KOKKOS_ENABLE_DEPRECATED_CODE_4` and annotate them with the repository's standard deprecation mechanism and replacement guidance. Add the missing void-returning atomic updates that discard the old value: `atomic_mod`, `atomic_xor`, `atomic_nand`, `atomic_lshift`, and `atomic_rshift`. Update remaining production-library call sites to use the replacement APIs.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

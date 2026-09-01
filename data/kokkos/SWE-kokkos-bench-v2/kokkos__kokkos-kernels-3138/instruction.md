@@ -1,10 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-This PR aims at adding Team and TeamVector implementations of batched Iamax.
-
-- [x] Adding `Team` and `TeamVector` implementations of batched Iamax
-- [x] Add unit-tests for them
-- [x] Integrate `Serial`, `Team` and `TeamVector` implementations in a single file
+Extend `KokkosBatched` Iamax with Team and TeamVector variants and unify them with the existing Serial interface. `SerialIamax::invoke(x)`, `TeamIamax<MemberType>::invoke(member, x)`, and `TeamVectorIamax<MemberType>::invoke(member, x)` must accept a one-dimensional view and return its `size_type`. Return the index of the first element having the largest absolute value; return 0 when the view has at most one element. Use the scalar type's appropriate absolute-value behavior. The Team and TeamVector forms must perform the reduction over execution-appropriate team or vector ranges and preserve first-location tie breaking.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

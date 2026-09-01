@@ -1,9 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-This is enabled by introducing `begin()` and `end()` free functions that take const and non-const  `Array` and return pointers to elements.
-
-Whether or not to introduce them as member function can be decided elsewhere.
-We would still need the free functions as the `std::` functions would lack the `__host__ __device__` annotations.
+In the Kokkos namespace, add constexpr, noexcept free functions begin() and end() for Kokkos::Array<T, N>. Provide non-const overloads returning T* and const overloads returning const T*; all must carry __host__ __device__ annotations (e.g., KOKKOS_FUNCTION). They must work for every N, including N==0 where they return nullptr, and must be usable in constexpr contexts and with range-based for loops. To enable constexpr usage, both overloads of Array<T, 0>::data() must also become constexpr. Member begin/end may be added optionally, but the annotated free functions are required because std::begin/std::end lack the necessary execution-space annotations.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

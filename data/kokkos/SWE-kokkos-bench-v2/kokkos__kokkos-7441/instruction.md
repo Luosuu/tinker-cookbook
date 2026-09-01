@@ -1,29 +1,12 @@
 Fix the following issue in the Kokkos repository.
 
-This PR introduces a signed `index_type` for each memory and execution space and standardizes `size_type` as unsigned across all Kokkos backends. This aligns Kokkos with the mdspan model where `index_type` is signed and `size_type` is unsigned.
+Add a signed index_type (std::make_signed_t<size_type>) to every Kokkos memory space—including Cuda (all variants), HIP (all variants), Host, Anonymous, OpenACC, SYCL (all variants), ScratchMemorySpace, NextSiliconSharedSpace, and SYCLInternal—while keeping size_type unsigned everywhere. Propagate this signed index_type from the associated memory space to all execution spaces (Cuda, HIP, HPX, OpenACC, OpenMP, SYCL, Serial, Threads, NextSilicon, and any others).
 
-### Motivation
-- **Signed indexing**: Signed indices are safer for arithmetic (e.g., negative ranges) and avoid undefined behavior in overflow cases.
-- **Consistency**: Different backends previously used different index/size semantics; this makes them uniform.
-- **mdspan compatibility**: `std::mdspan` uses `index_type` (signed) and `size_type` (unsigned); Kokkos Views should mirror this.
+Update RangePolicy so its default index type is the execution space’s index_type, not size_type. RangePolicy must support potentially negative work bounds. For each bound, enforce safe implicit conversions: a conversion is permitted only if it preserves the original value through round-trip casting; for arithmetic types with differing signs, the value must also fit within the target type’s limits. Unsafe conversions must abort with an error identifying the offending bound and the unsafe conversion.
 
-### Changes
-Memory spaces
-- Add `index_type = std::make_signed_t<size_type>` to all memory spaces:
-  - Cuda: `CudaSpace`, `CudaUVMSpace`, `CudaHostPinnedSpace`
-  - HIP: `HIPSpace`, `HIPHostPinnedSpace`, `HIPManagedSpace`
-  - Host: `HostSpace`, `AnonymousSpace`
-  - OpenACC: `OpenACCSpace`
-  - SYCL: `SYCLDeviceUSMSpace`, `SYCLSharedUSMSpace`, `SYCLHostUSMSpace`
-Execution spaces
-- Propagate `index_type` from memory space to execution spaces (Cuda, HIP, HPX, OpenACC, OpenMP, SYCL, Serial, Threads).
-Policies
-- Default policy `index_type` is now `execution_space::index_type` instead of `execution_space::size_type`.
-- Improved overflow handling in `RangePolicy` for signed index types.
-Views and CRS
-- `BasicView`: Use `mdspan_type::index_type` for `index_type`.
-- `ViewTraits`: Add `index_type`.
-- `Crs`: Use `index_type` in transpose and count/fill utilities.
+Align Views with std::mdspan: BasicView should use mdspan_type::index_type (signed) for index_type and mdspan_type::size_type (unsigned) for size_type. Add index_type to ViewTraits, and update CRS transpose and count/fill utilities to use the signed index_type. Execution policy traits must derive index_type from execution_space::index_type.
+
+For internal consistency, size-based allocation loops must explicitly use an unsigned RangePolicy (size_t index, zero-based bounds) rather than relying on signed defaults. In OpenACC parallel reduction, loops over signed index ranges must not carry sequential loop annotations.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

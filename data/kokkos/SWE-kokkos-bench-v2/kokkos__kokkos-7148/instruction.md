@@ -1,12 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-This supercedes #6599 (it incorporates the run time tests that @maartenarnst wrote there).
-
-Adds hidden friends `==` and `!=` to `Kokkos::Array<T, N>` for all `N`, including 0.
-
-Deliberately does not add them to the deprecated forms of `Kokkos::Array`.
-
-Adds a compile time test for equality comparable.
+Add constexpr hidden-friend == and != operators to Kokkos::Array<T, N> for all dimensions N, including N==0. For N>0 perform element-wise comparison; for N==0, == returns true and != returns false. These operators apply only between arrays with identical element type T and size N. Do not provide them for deprecated Kokkos::Array forms.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

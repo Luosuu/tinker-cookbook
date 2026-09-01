@@ -1,9 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-Implement `Kokkos::norm` both for `Kokkos::complex` and additional overloads for floating point and integer types.
-
-Quick reference:
-* https://en.cppreference.com/w/cpp/numeric/complex/norm.html
+Implement `Kokkos::norm` overloads for `Kokkos::complex<RealType>` and scalar arithmetic types (integral and floating-point). For complex values, return the squared magnitude (`real()*real() + imag()*imag()`) with a result type matching the real component type. For arithmetic values, return `x * x` with promoted return types: integral arguments yield `double`, while floating-point arguments preserve their original type (e.g., `float` yields `float`). Both overloads must be declared `constexpr` and annotated with `KOKKOS_INLINE_FUNCTION`. Ensure `norm` is exported through the Kokkos module interface as part of the public API.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

@@ -1,15 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-This modernizes ErrorReporter and moves it out of Experimental.
-- Make member functions follow naming conventions.
-- Deprecate (under deprecated code 4) old names.
-- Remove use of DualView.
-- New get_reports() returns pair of std::vector.
-- introduce default argument for device type
-
-The biggest change is the `get_reports`
-
-[implementation suggestion omitted]
+Modernize Kokkos::Experimental::ErrorReporter, keeping it in the Experimental namespace. Replace DualView usage with Kokkos::View. Add a default template parameter DeviceType = DefaultExecutionSpace::device_type. Rename public members to snake_case: capacity(), num_reports(), num_report_attempts(), full(), clear(), resize(), add_report(), and get_reports(). Add constructors ErrorReporter(const std::string& label, int max_results) and ErrorReporter(int max_results), with the latter defaulting the label to "ErrorReporter". The const member get_reports() must return std::pair<std::vector<int>, std::vector<report_type>> with size equal to min(num_report_attempts(), capacity()). Deprecate the old camelCase names—getCapacity, getNumReports, getNumReportAttempts, and getReports overloads accepting std::vector or host mirror Views—under KOKKOS_ENABLE_DEPRECATED_CODE_4. Implement clear() to reset the attempt counter to 0. Implement full() as attempts >= capacity. For resize(): growing beyond the prior capacity resets attempts to num_reports() only when prior attempts exceeded the old capacity; shrinking clamps visible reports but does not reset attempts.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

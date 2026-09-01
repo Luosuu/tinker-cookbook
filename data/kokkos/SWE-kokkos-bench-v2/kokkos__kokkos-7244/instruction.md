@@ -1,14 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-There are 2 host mirror view types defined in `Kokkos::View`:
-- `HostMirror` (`PascalCase`)
-- `host_mirror_type` (`snake_case`)
-
-This PR aligns both types so they are strictly equivalent (tested),
-
-Note that the type defined by `HostMirror` is kept, the one defined previously by `host_mirror_type` disappears. This is because `HostMirror` is used all over the place in `Kokkos`, `host_mirror_type` was not.
-
-This PR addresses #6996.
+Make the two host-mirror aliases exposed by `Kokkos::View`, `HostMirror` and `host_mirror_type`, exactly the same type. Preserve the established `HostMirror` semantics: the mirror uses the view's non-const data type and array layout, `DefaultHostExecutionSpace` paired with the selected host-mirror memory space, and the existing hooks policy. Define `host_mirror_type` with those semantics and make `HostMirror` an alias of it so existing code using either spelling remains compatible.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the

@@ -1,9 +1,6 @@
 Fix the following issue in the Kokkos repository.
 
-* Get rid of the GCC 10.3 workaround.
-* Fix copy semantics (broken in https://github.com/kokkos/kokkos/pull/4348, giving a link time error instead of compile time)
-* Modernize the implementation
-* Add test coverage
+Modernize `Kokkos::Timer` and remove the obsolete GCC 10.3 workaround and `gettimeofday` fallback. Use `std::chrono::high_resolution_clock` with a stored clock time point. Preserve the public default constructor, `reset()`, and const `seconds()` returning `double`. Explicitly delete copy construction, copy assignment, move construction, and move assignment so misuse is rejected at compile time rather than failing at link time. No compiler-specific timing path should remain.
 
 The repository is checked out at `/workspace/repo`. Work only on production
 source code. Do not modify tests, CMake registration, CI configuration, or the
