@@ -292,8 +292,18 @@ def _apply_reports(
     output_dir: Path,
     *,
     org: str,
+    overrides_path: Path | None,
 ) -> tuple[int, int]:
     instances = _read_instances(instances_path)
+    overrides: dict[str, str] = {}
+    if overrides_path is not None:
+        overrides = {
+            str(key): str(value).strip()
+            for key, value in json.loads(overrides_path.read_text()).items()
+        }
+        unknown = set(overrides) - {instance.instance_id for instance in instances}
+        if unknown:
+            raise ValueError(f"instruction overrides contain unknown instances: {sorted(unknown)}")
     updated: list[KokkosInstance] = []
     revised = 0
     invalid = 0
@@ -306,7 +316,10 @@ def _apply_reports(
         if assessment == "invalid":
             invalid += 1
         statement = instance.problem_statement
-        if assessment == "needs_revision":
+        if instance.instance_id in overrides:
+            statement = overrides[instance.instance_id]
+            revised += statement != instance.problem_statement.strip()
+        elif assessment == "needs_revision":
             statement = str(report["revised_problem_statement"]).strip()
             revised += statement != instance.problem_statement.strip()
         value = instance.to_dict()
@@ -345,6 +358,14 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--env-file", type=Path, default=Path(".env"))
     parser.add_argument("--org", default="luosuu")
     parser.add_argument(
+        "--overrides",
+        type=Path,
+        default=Path(
+            "tinker_cookbook/recipes/kokkos_rl/dataset/instruction_overrides.json"
+        ),
+        help="reviewed statement replacements applied in preference to model drafts",
+    )
+    parser.add_argument(
         "--refine-from",
         type=Path,
         help="directory of first-pass reports to edit without resending private patches",
@@ -358,7 +379,11 @@ async def _main(args: argparse.Namespace) -> None:
         raise ValueError("thinking_effort must be finite and in [0, 1)")
     if args.apply:
         revised, invalid = _apply_reports(
-            args.instances, args.reports_dir, args.output_dir, org=args.org
+            args.instances,
+            args.reports_dir,
+            args.output_dir,
+            org=args.org,
+            overrides_path=args.overrides,
         )
         print(f"Applied {revised} revised statements; {invalid} tasks remain marked invalid")
         return

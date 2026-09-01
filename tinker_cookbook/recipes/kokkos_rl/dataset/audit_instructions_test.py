@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -46,3 +47,10 @@ def test_refinement_prompt_forbids_private_implementation_details() -> None:
     assert "Remove private" in REFINEMENT_SYSTEM_PROMPT
     assert "instructions to add/edit tests" in REFINEMENT_SYSTEM_PROMPT
     assert "prescribed algorithms" in REFINEMENT_SYSTEM_PROMPT
+
+
+def test_reviewed_instruction_overrides_are_nonempty() -> None:
+    path = Path(__file__).with_name("instruction_overrides.json")
+    overrides = json.loads(path.read_text())
+    assert "kokkos__kokkos-6375" in overrides
+    assert all(isinstance(value, str) and value.strip() for value in overrides.values())
