@@ -48,6 +48,27 @@ tests, build files, or CI. Keep clear statements unchanged. For revisions, prese
 from the original while writing a concise standalone issue statement. Mark a task invalid when its
 essential request is test/build/CI-only or cannot be made fair without changing the verifier."""
 
+REFINEMENT_SYSTEM_PROMPT = """You edit a first-pass benchmark instruction audit into a fair,
+implementation-neutral coding task. Return exactly one JSON object using this schema:
+{
+  "instance_id": "unchanged input id",
+  "assessment": "clear" | "needs_revision" | "invalid",
+  "issues": ["short reason the original needed revision"],
+  "revised_problem_statement": "complete replacement statement",
+  "confidence": 0.0
+}
+
+The first-pass draft was produced while viewing private verifier patches and may overfit them. Keep
+only requirements a developer needs to understand the public contract: the affected public API,
+the observed bug, required behavior, important edge cases, and compatibility modes. Remove private
+test identities, instructions to add/edit tests, CMake or CI work, exact file paths, patch structure,
+reference-only internal helper names, prescribed algorithms, and exact diagnostic prose. Do not
+mention private evidence or upstream links. It is acceptable to name an internal type only when
+that type is itself the API the task asks to add or change. Use concise prose of at most 300 words;
+do not turn the reference patch into a checklist. Mark the task invalid if its essential request is
+only tests, build configuration, or CI and no production behavior remains. Preserve the assessment
+"clear" and the original text when no revision is needed."""
+
 
 @dataclass(frozen=True)
 class AuditResult:
@@ -194,6 +215,77 @@ async def _audit_one(
     raise RuntimeError(f"failed to audit {instance.instance_id}: {last_error}")
 
 
+async def _refine_one(
+    instance: KokkosInstance,
+    first_pass: dict[str, object],
+    *,
+    sampling_client: tinker.SamplingClient,
+    renderer: TmlV0Renderer,
+    effort: float,
+    max_tokens: int,
+    attempts: int,
+) -> AuditResult:
+    if first_pass["assessment"] == "clear":
+        return AuditResult(
+            instance_id=instance.instance_id,
+            assessment="clear",
+            issues=tuple(str(item) for item in first_pass["issues"]),
+            revised_problem_statement=instance.problem_statement.strip(),
+            confidence=float(first_pass["confidence"]),
+            termination=str(first_pass["termination"]),
+        )
+    messages = [
+        Message(role="system", content=REFINEMENT_SYSTEM_PROMPT),
+        Message(
+            role="user",
+            content=(
+                f"INSTANCE ID: {instance.instance_id}\n\n"
+                "ORIGINAL STATEMENT:\n"
+                f"{instance.problem_statement.strip()}\n\n"
+                "FIRST-PASS ISSUES:\n"
+                f"{json.dumps(first_pass['issues'])}\n\n"
+                "OVERFIT FIRST-PASS DRAFT:\n"
+                f"{first_pass['revised_problem_statement']}"
+            ),
+        ),
+    ]
+    last_error: Exception | None = None
+    for _attempt in range(attempts):
+        prompt = renderer.build_generation_prompt(messages, effort=effort)
+        response = await sampling_client.sample_async(
+            prompt=prompt,
+            num_samples=1,
+            sampling_params=tinker.SamplingParams(
+                max_tokens=max_tokens,
+                temperature=1.0,
+                stop=renderer.get_stop_sequences(),
+            ),
+        )
+        message, termination = renderer.parse_response(response.sequences[0].tokens)
+        text = get_text_content(message)
+        try:
+            result = AuditResult.from_model_text(
+                text,
+                expected_instance_id=instance.instance_id,
+                termination=termination,
+            )
+            if len(result.revised_problem_statement.split()) > 300:
+                raise ValueError("revised_problem_statement exceeds 300 words")
+            return result
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+            last_error = error
+            messages.extend(
+                [
+                    Message(role="assistant", content=text),
+                    Message(
+                        role="user",
+                        content=f"The response failed validation: {error}. Return corrected JSON only.",
+                    ),
+                ]
+            )
+    raise RuntimeError(f"failed to refine {instance.instance_id}: {last_error}")
+
+
 def _apply_reports(
     instances_path: Path,
     reports_dir: Path,
@@ -252,6 +344,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--attempts", type=int, default=2)
     parser.add_argument("--env-file", type=Path, default=Path(".env"))
     parser.add_argument("--org", default="luosuu")
+    parser.add_argument(
+        "--refine-from",
+        type=Path,
+        help="directory of first-pass reports to edit without resending private patches",
+    )
     parser.add_argument("--apply", action="store_true")
     return parser.parse_args()
 
@@ -295,14 +392,28 @@ async def _main(args: argparse.Namespace) -> None:
                 termination=str(value["termination"]),
             )
         async with semaphore:
-            result = await _audit_one(
-                instance,
-                sampling_client=sampling_client,
-                renderer=renderer,
-                effort=args.thinking_effort,
-                max_tokens=args.max_tokens,
-                attempts=args.attempts,
-            )
+            if args.refine_from is None:
+                result = await _audit_one(
+                    instance,
+                    sampling_client=sampling_client,
+                    renderer=renderer,
+                    effort=args.thinking_effort,
+                    max_tokens=args.max_tokens,
+                    attempts=args.attempts,
+                )
+            else:
+                first_pass_path = args.refine_from / f"{instance.instance_id}.json"
+                if not first_pass_path.is_file():
+                    raise FileNotFoundError(f"missing first-pass report: {first_pass_path}")
+                result = await _refine_one(
+                    instance,
+                    json.loads(first_pass_path.read_text()),
+                    sampling_client=sampling_client,
+                    renderer=renderer,
+                    effort=args.thinking_effort,
+                    max_tokens=args.max_tokens,
+                    attempts=args.attempts,
+                )
         report_path.write_text(json.dumps(result.to_dict(), indent=2, sort_keys=True) + "\n")
         print(f"{instance.instance_id}: {result.assessment}")
         return result

@@ -2,7 +2,10 @@ import json
 
 import pytest
 
-from tinker_cookbook.recipes.kokkos_rl.dataset.audit_instructions import AuditResult
+from tinker_cookbook.recipes.kokkos_rl.dataset.audit_instructions import (
+    REFINEMENT_SYSTEM_PROMPT,
+    AuditResult,
+)
 from tinker_cookbook.renderers import ParseTermination
 
 
@@ -37,3 +40,9 @@ def test_audit_result_rejects_wrong_instance() -> None:
             expected_instance_id="expected",
             termination=ParseTermination.STOP_SEQUENCE,
         )
+
+
+def test_refinement_prompt_forbids_private_implementation_details() -> None:
+    assert "Remove private" in REFINEMENT_SYSTEM_PROMPT
+    assert "instructions to add/edit tests" in REFINEMENT_SYSTEM_PROMPT
+    assert "prescribed algorithms" in REFINEMENT_SYSTEM_PROMPT
