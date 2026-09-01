@@ -1,5 +1,29 @@
 # Kokkos Coding-RL Dataset: Phase 0 Plan
 
+## Inkling instruction-quality audit (2026-08-31)
+
+Research question: do the 100 released SWE-kokkos-bench v2 task statements expose enough of the
+observable contract for a capable coding model to satisfy their held-out verifiers without relying
+on upstream history or guessing private symbol names?
+
+Hypothesis: most statements are adequate, but a model-assisted comparison against the private test
+and reference patches will identify a small set of API-name mistakes, omitted compatibility modes,
+underspecified interfaces, and CI-only requests that materially depress measured model performance.
+
+Experiment design: run `thinkingmachines/Inkling:peft:262144` over all 100 tasks with explicit
+thinking effort 0.99, temperature 1.0, and one structured audit per task. Give the auditor the
+current statement plus private test/reference patches as evidence, but require a concise behavioral
+contract that does not reveal test identities or reference implementation details. Review all
+proposed revisions and apply only statements that improve agreement with the verifier. Regenerate
+the executable task payloads from the updated source JSONL.
+
+Controls and success criteria: preserve statements assessed as clear; do not change gold patches,
+test patches, verifier commands, or repository revisions; reject outputs that disclose hidden-test
+details or prescribe an unnecessary implementation; keep invalid CI/test-only tasks explicitly
+separate rather than disguising them as production fixes. The audit is complete when all 100 tasks
+have parseable reports, every applied statement matches its verifier's observable contract, and
+source JSONL, metadata, and exported instructions agree.
+
 ## Research question
 
 Can recent host-backend Kokkos bug-fix pull requests be converted into stable,
