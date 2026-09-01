@@ -36,9 +36,10 @@ The dataset supports two complementary interfaces:
 - the executable Harbor release packages repository environments, protected graders, and
   task metadata for agent evaluation and reinforcement learning.
 
-Version 2.2 contains the unchanged 100 task environments and verifiers from v2.1, with
-clean-room instructions that explicitly direct agents away from unavailable network and Git
-history lookup paths and toward local source diagnosis and focused public verification.
+Version 2.3 keeps the 100 task environments and verifiers from v2.2 and replaces the task
+instructions with verifier-aligned problem statements audited by Full Inkling and manually
+reviewed. The release preserves the clean-room network and Git-history constraints while
+making required API, compatibility, and observable behavior explicit.
 
 ## Links
 
@@ -65,12 +66,12 @@ Run the executable benchmark through Harbor:
 
 ```bash
 uvx harbor run \
-  -d luosuu/SWE-kokkos-bench@v2.2 \
+  -d luosuu/SWE-kokkos-bench@v2.3 \
   -a <agent> \
   -m <model>
 ```
 
-Use the immutable `v2.2` tag for reported results. `latest` currently points to the same
+Use the immutable `v2.3` tag for reported results. `latest` currently points to the same
 revision but may move in the future.
 
 ## Dataset composition
@@ -172,9 +173,10 @@ For v2.0, all 100 Oracle trials returned reward 1 and all 100 NOP trials returne
 with no infrastructure exceptions. The 30 unchanged v1.0 task payloads retained identical
 Harbor digests; the 70 additions were independently validated for the v2.0 release.
 
-The unreleased v2.3 instruction-quality update changes task digests without changing repository
-revisions, graders, held-out tests, or Oracle patches. Its refreshed digests must receive new
-Oracle/NOP validation records before the version is published.
+For v2.3, all 100 refreshed task digests independently passed the release gate: every Oracle
+trial returned reward 1 and every NOP trial returned reward 0, with no infrastructure
+exceptions. Repository revisions, graders, held-out tests, and Oracle patches are unchanged
+from v2.2; only verifier-aligned task instructions and their resulting digests changed.
 
 The agent cannot rely on modifying the scoring apparatus. Before grading, the verifier
 rejects or restores protected test, CMake-registration, and CI paths, injects the held-out
@@ -249,12 +251,12 @@ corresponding upstream repository before redistribution or commercial use.
 - `v2.2`: the same environments and verifiers as v2.1, with instructions that state those
   clean-room constraints and prioritize local diagnosis, production edits, and focused public
   build/test targets.
-- `v2.3` (unreleased): verifier-aligned problem statements audited with Full Inkling and reviewed
-  to expose required API and compatibility behavior without revealing held-out tests or reference
+- `v2.3`: verifier-aligned problem statements audited with Full Inkling and reviewed to expose
+  required API and compatibility behavior without revealing held-out tests or reference
   implementations. Environments, repository revisions, graders, and patches remain unchanged.
 
 When citing results, use the dataset name, immutable version, model identifier, and complete
 rollout configuration. A suggested textual citation is:
 
-> SWE-kokkos-bench v2.2, a 100-task verifier-backed benchmark mined from merged Kokkos
+> SWE-kokkos-bench v2.3, a 100-task verifier-backed benchmark mined from merged Kokkos
 > ecosystem pull requests, released through Harbor and Hugging Face in 2026.
