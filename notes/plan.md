@@ -1,5 +1,34 @@
 # Kokkos Coding-RL Dataset: Phase 0 Plan
 
+## SWE-kokkos-bench v2.3 paired 20-task model evaluation (2026-09-01)
+
+Research question: on the same 20 Kokkos tasks used for the prior Terra comparison, do the
+verifier-aligned v2.3 instructions change pass@1 for GLM-5.3 and Inkling-Small relative to their
+pre-v2.3 trajectories?
+
+Hypothesis: clarifying observable API and compatibility requirements should help both models on
+previously underspecified tasks, with the largest gains on failures caused by guessing the wrong
+surface contract. A 20-task pass@1 run is noisy, so task-level flips and the historical
+Inkling-Small eight-sample success frequencies are more informative than the aggregate delta alone.
+
+Experiment design:
+
+1. Use the exact 20 task IDs from the GPT-5.6-Terra comparison and the local v2.3 task payloads.
+2. Run one rollout per task for `zai-org/GLM-5.3:peft:262144` with the automatically recommended
+   `glm5_3_max_reasoning` renderer.
+3. Run one rollout per task for `thinkingmachines/Inkling-Small:peft:262144` with the automatically
+   recommended `tml_v0` renderer and explicit thinking effort 0.9.
+4. Hold temperature (1.0), turn/tool/token budgets (40 turns, 80 tool calls, 64K sampled tokens),
+   network isolation, and Modal concurrency (4 per model) fixed. Use a 900-second grader timeout
+   so slow Kokkos compilation is not scored as a model failure.
+5. Retry infrastructure errors only, then compare paired pass/fail outcomes with historical
+   pre-v2.3 records on the same task IDs.
+
+Controls and success criteria: require 20 valid graded results per model and report infrastructure
+errors separately. Do not retry incorrect solutions. Record exact model IDs, renderer, effort,
+commit, task list, and result paths. Treat any aggregate movement as directional unless supported
+by consistent task-level flips, because one sample per task has substantial sampling variance.
+
 ## SWE-kokkos-bench v2.3 release validation and Terra cost audit (2026-08-31)
 
 Research questions: do all 100 verifier-aligned v2.3 task payloads still satisfy the Harbor
