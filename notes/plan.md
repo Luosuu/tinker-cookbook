@@ -29,6 +29,11 @@ errors separately. Do not retry incorrect solutions. Record exact model IDs, ren
 commit, task list, and result paths. Treat any aggregate movement as directional unless supported
 by consistent task-level flips, because one sample per task has substantial sampling variance.
 
+Outcome: both runs produced 20 valid graded trajectories with zero final errors. GLM-5.3 improved
+from 3/20 to 12/20 (nine positive and zero negative paired flips), while Inkling-Small improved
+from 7/20 to 13/20 (seven positive and one negative paired flips). See
+`notes/experiments/SWE-kokkos-bench/v2.3-paired20/report.md` for task-level results and caveats.
+
 ## SWE-kokkos-bench v2.3 release validation and Terra cost audit (2026-08-31)
 
 Research questions: do all 100 verifier-aligned v2.3 task payloads still satisfy the Harbor
