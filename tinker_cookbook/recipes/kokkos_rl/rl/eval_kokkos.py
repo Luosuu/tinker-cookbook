@@ -16,6 +16,9 @@ from tinker_cookbook.recipes.harbor_rl.harbor_env import (
 )
 
 
+DEFAULT_CONTREE_CACHE_PATH = "/tmp/tinker-examples/kokkos_rl/contree_images.json"
+
+
 @chz.chz
 class CLIConfig:
     model_name: str = "openai/gpt-oss-120b:peft:131072"
@@ -43,7 +46,10 @@ class CLIConfig:
     base_url: str | None = None
     renderer_name: str | None = None
     thinking_effort: float | None = None
-    sandbox_backend: str = "modal"
+    # Prefer ConTree for routine Kokkos runs because prepared images are reusable
+    # and substantially cheaper. Use Modal explicitly to retry tasks affected by
+    # a confirmed ConTree infrastructure failure.
+    sandbox_backend: str = "contree"
     contree_cache_path: str | None = None
     # Rollout sandboxes get no network interface when False. Tasks derive from
     # merged PRs, so an evaluation with network open measures answer-lookup as
@@ -134,9 +140,7 @@ async def main(cli_config: CLIConfig) -> None:
     elif cli_config.sandbox_backend == "contree":
         from tinker_cookbook.sandbox.contree_sandbox import ContreeDockerfileSandboxFactory
 
-        cache_path = Path(
-            cli_config.contree_cache_path or Path(cli_config.output_path) / "contree_images.json"
-        )
+        cache_path = Path(cli_config.contree_cache_path or DEFAULT_CONTREE_CACHE_PATH)
         sandbox_factory = ContreeDockerfileSandboxFactory(
             cache_path=cache_path,
             timeout=cli_config.sandbox_timeout,

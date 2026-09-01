@@ -21,7 +21,11 @@ from tinker_cookbook.recipes.harbor_rl.harbor_env import (
 )
 from tinker_cookbook.recipes.harbor_rl.train import CLIConfig as HarborCLIConfig
 from tinker_cookbook.recipes.harbor_rl.train import cli_main
-from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos import load_env_file, select_tasks
+from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos import (
+    DEFAULT_CONTREE_CACHE_PATH,
+    load_env_file,
+    select_tasks,
+)
 from tinker_cookbook.rl.rollout_strategy import RolloutStrategy
 
 
@@ -54,8 +58,9 @@ class CLIConfig:
     context_overflow_reward: float = -0.1
     thinking_effort: float | None = None
 
-    # Sandbox backend (mirrors ``eval_kokkos.py``).
-    sandbox_backend: str = "modal"
+    # Sandbox backend (mirrors ``eval_kokkos.py``). ConTree is the economical
+    # default; Modal remains an explicit fallback for backend failures.
+    sandbox_backend: str = "contree"
     contree_cache_path: str | None = None
     sandbox_build_parallelism: int | None = None
     # Image preparation may use the network, but rollout sandboxes default to no
@@ -140,9 +145,6 @@ def _to_harbor_config(cli_config: CLIConfig) -> HarborCLIConfig:
         max_steps_off_policy=cli_config.max_steps_off_policy,
         max_steps=cli_config.max_steps,
     )
-
-
-DEFAULT_CONTREE_CACHE_PATH = "/tmp/tinker-examples/kokkos_rl/contree_images.json"
 
 
 def _build_sandbox_factory(cli_config: CLIConfig) -> SandboxFactory:

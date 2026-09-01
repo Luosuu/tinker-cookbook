@@ -44,12 +44,11 @@ def test_defaults_use_full_clean_room_dataset_and_long_context_budget() -> None:
     assert cli.max_tokens == 16384
 
 
-def test_default_sandbox_backend_is_modal_and_blocks_network() -> None:
+def test_default_sandbox_backend_is_contree_and_blocks_network() -> None:
     factory = _build_sandbox_factory(CLIConfig())
 
-    assert isinstance(factory, functools.partial)
-    assert factory.func is default_sandbox_factory
-    assert factory.keywords == {"allow_network": False}
+    assert factory._cache_path == Path(DEFAULT_CONTREE_CACHE_PATH)
+    assert factory._allow_network is False
 
 
 def test_heldout_and_gradient_hygiene_fields_are_forwarded() -> None:
@@ -113,7 +112,9 @@ def test_contree_backend_uses_shared_image_cache(tmp_path) -> None:
 
 
 def test_network_can_be_explicitly_enabled_for_both_backends(tmp_path) -> None:
-    modal_factory = _build_sandbox_factory(CLIConfig(allow_network=True))
+    modal_factory = _build_sandbox_factory(
+        CLIConfig(sandbox_backend="modal", allow_network=True)
+    )
     assert isinstance(modal_factory, functools.partial)
     assert modal_factory.keywords == {"allow_network": True}
 

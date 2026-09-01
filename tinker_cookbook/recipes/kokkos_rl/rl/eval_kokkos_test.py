@@ -29,6 +29,7 @@ def test_eval_defaults_use_full_clean_room_dataset_and_retry_infra_errors() -> N
     config = KokkosEvalConfig()
 
     assert config.tasks_dir == "data/kokkos/SWE-kokkos-bench-v2"
+    assert config.sandbox_backend == "contree"
     assert config.allow_network is False
     assert config.max_infra_retries == 2
 

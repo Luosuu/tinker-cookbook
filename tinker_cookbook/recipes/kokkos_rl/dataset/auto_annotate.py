@@ -829,8 +829,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--sandbox-backend",
         choices=("modal", "contree"),
-        default="modal",
-        help="cloud sandbox used to validate generated tasks",
+        default="contree",
+        help="cloud sandbox used to validate generated tasks (default: contree)",
     )
     parser.add_argument(
         "--no-resume",

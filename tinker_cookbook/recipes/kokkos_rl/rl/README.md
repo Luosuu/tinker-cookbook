@@ -23,8 +23,14 @@ temperature, and thinking effort.
 
 ConTree evaluations prepare each task's exported Dockerfile once and branch isolated
 sessions from that immutable image for subsequent samples. Prepared image UUIDs are cached
-in `contree_images.json`. Set `resume_dir` to an interrupted timestamped result directory to
-skip successful rollouts and retry only infrastructure errors.
+at `/tmp/tinker-examples/kokkos_rl/contree_images.json` by default, shared with training. Set
+`resume_dir` to an interrupted timestamped result directory to skip successful rollouts and
+retry only infrastructure errors.
+
+ConTree is the default backend for Kokkos evaluation, training, and task auto-annotation because
+its prepared images can be reused at lower cost. Keep a run on one backend for interpretable
+results. If retries confirm a ConTree infrastructure failure, rerun only the affected task IDs
+with `sandbox_backend=modal` and report the backend split explicitly.
 
 Both Modal and ConTree rollout sandboxes disable network access by default. Image preparation
 still has network access so repositories and build dependencies can be fetched. Only set
@@ -64,7 +70,7 @@ shared RL trainer. Advantages are centered within each task group. Use multiple 
 task when estimating task difficulty: a single pass/fail observation is not a calibrated
 success probability.
 
-`sandbox_backend` selects `modal` (default) or `contree`, matching the evaluator. ConTree
+`sandbox_backend` selects `contree` (default) or `modal`, matching the evaluator. ConTree
 caches prepared image UUIDs by Dockerfile digest, so `contree_cache_path` defaults to a
 shared path rather than the run's log directory; point it at the cache an evaluation already
 wrote to reuse those images instead of rebuilding them.
