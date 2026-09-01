@@ -169,6 +169,9 @@ class ContreeSandbox:
         self._default_env = default_env or {}
         self._allow_network = allow_network
         self._closed = False
+        # ContreeSession mutates in place. Serializing state-changing operations
+        # keeps one failed command from racing another command's image update.
+        self._operation_lock = asyncio.Lock()
 
     @classmethod
     async def create(
@@ -238,24 +241,53 @@ class ContreeSandbox:
     ) -> SandboxResult:
         self._ensure_open()
         cap = max_output_bytes if max_output_bytes is not None else self._max_stream_output_bytes
-        try:
-            with self._network_policy():
-                result = await self._session.run(
-                    shell=command,
-                    env=self._default_env or None,
-                    cwd=workdir or self._default_workdir,
-                    timeout=timedelta(seconds=min(timeout, self._timeout)),
-                    disposable=False,
-                    truncate_output_at=cap,
+        async with self._operation_lock:
+            stable_image = self.sandbox_id
+            try:
+                with self._network_policy():
+                    result = await self._session.run(
+                        shell=command,
+                        env=self._default_env or None,
+                        cwd=workdir or self._default_workdir,
+                        timeout=timedelta(seconds=min(timeout, self._timeout)),
+                        disposable=False,
+                        truncate_output_at=cap,
+                    )
+                return SandboxResult(
+                    stdout=_as_text(result.stdout),
+                    stderr=_as_text(result.stderr),
+                    exit_code=result.exit_code,
+                    metrics={"elapsed_seconds": result.elapsed.total_seconds()},
                 )
-            return SandboxResult(
-                stdout=_as_text(result.stdout),
-                stderr=_as_text(result.stderr),
-                exit_code=result.exit_code,
-                metrics={"elapsed_seconds": result.elapsed.total_seconds()},
-            )
-        except Exception as error:
-            return SandboxResult(stdout="", stderr=str(error), exit_code=-1)
+            except Exception as error:
+                await self._recover_session(stable_image, error)
+                return SandboxResult(
+                    stdout="",
+                    stderr=str(error),
+                    exit_code=-1,
+                    metrics={"sandbox_recovered": True},
+                )
+
+    async def _recover_session(self, stable_image: str, operation_error: Exception) -> None:
+        """Restore the session after ConTree poisons it on an operation failure.
+
+        Non-disposable ConTree runs form an immutable image chain. The SDK's
+        session object mutates in place and enters the terminal ``FAILED`` state
+        when an operation times out, while its UUID still identifies the last
+        successful image. Recreate a session from that image so a tool timeout
+        remains a recoverable tool result instead of making every later command
+        and the grader fail.
+        """
+
+        try:
+            image = await self._client.images.use(stable_image)
+            self._session = image.session()
+        except Exception as recovery_error:
+            self._closed = True
+            raise SandboxTerminatedError(
+                "ConTree operation failed and the last successful image could not be restored: "
+                f"operation={operation_error}; recovery={recovery_error}"
+            ) from recovery_error
 
     def _network_policy(self):
         """Disable the guest network interface when this sandbox forbids egress."""
@@ -289,22 +321,30 @@ class ContreeSandbox:
         self._ensure_open()
         payload = content.encode() if isinstance(content, str) else content
         mode = 0o755 if executable else 0o644
-        try:
-            result = await self._session.run(
-                shell="true",
-                files=[UploadFileSpec(source=payload, path=path, mode=mode)],
-                timeout=timedelta(seconds=min(timeout, self._timeout)),
-                disposable=False,
-                truncate_output_at=self._max_stream_output_bytes,
-            )
-            return SandboxResult(
-                stdout=_as_text(result.stdout),
-                stderr=_as_text(result.stderr),
-                exit_code=result.exit_code,
-                metrics={"elapsed_seconds": result.elapsed.total_seconds()},
-            )
-        except Exception as error:
-            return SandboxResult(stdout="", stderr=str(error), exit_code=-1)
+        async with self._operation_lock:
+            stable_image = self.sandbox_id
+            try:
+                result = await self._session.run(
+                    shell="true",
+                    files=[UploadFileSpec(source=payload, path=path, mode=mode)],
+                    timeout=timedelta(seconds=min(timeout, self._timeout)),
+                    disposable=False,
+                    truncate_output_at=self._max_stream_output_bytes,
+                )
+                return SandboxResult(
+                    stdout=_as_text(result.stdout),
+                    stderr=_as_text(result.stderr),
+                    exit_code=result.exit_code,
+                    metrics={"elapsed_seconds": result.elapsed.total_seconds()},
+                )
+            except Exception as error:
+                await self._recover_session(stable_image, error)
+                return SandboxResult(
+                    stdout="",
+                    stderr=str(error),
+                    exit_code=-1,
+                    metrics={"sandbox_recovered": True},
+                )
 
     async def cleanup(self) -> None:
         # Completed ConTree operations are immutable image versions; there is no

@@ -28,11 +28,13 @@ class CLIConfig:
     max_tokens: int = 16384
     temperature: float = 1.0
     sandbox_timeout: int = 3600
-    command_timeout: int = 180
+    # Kokkos' serial unit-test targets take about 400 seconds on ConTree even
+    # without competing rollouts. Leave headroom for backend load variance.
+    command_timeout: int = 900
     grader_timeout: int = 180
     sandbox_build_parallelism: int | None = None
     max_tasks: int | None = None
-    max_concurrency: int = 6
+    max_concurrency: int = 2
     task_names: str | None = None
     max_trajectory_tokens: int = 112 * 1024
     max_sampled_tokens: int = 64 * 1024

@@ -44,7 +44,9 @@ class CLIConfig:
     # Environment configuration (matches the long-context eval budget).
     max_turns: int = 20
     sandbox_timeout: int = 3600
-    command_timeout: int = 180
+    # Kokkos' serial unit-test targets take about 400 seconds on ConTree even
+    # without competing rollouts. Leave headroom for backend load variance.
+    command_timeout: int = 900
     grader_timeout: int = 180
     max_trajectory_tokens: int = 112 * 1024
     max_tool_calls: int | None = 80
