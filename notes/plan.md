@@ -1,5 +1,36 @@
 # Kokkos Coding-RL Dataset: Phase 0 Plan
 
+## SWE-kokkos-bench v2.3 release validation and Terra cost audit (2026-08-31)
+
+Research questions: do all 100 verifier-aligned v2.3 task payloads still satisfy the Harbor
+Oracle=1/NOP=0 release gate under their new digests, and why did the 20-task GPT-5.6-Terra run
+cost about $7 despite using the balanced model tier?
+
+Hypotheses: because v2.3 changes only public instructions and metadata, every Oracle and NOP
+transition should remain unchanged. Terra's observed cost is expected to come primarily from
+hundreds of stateful tool-use turns repeatedly billing a growing context, amplified by unbounded
+shell output and high reasoning effort; the evaluator currently obscures this by recording only
+the final turn's input usage instead of cumulative input and cache details.
+
+Experiment design:
+
+1. Run all 100 local v2.3 tasks through Harbor's Oracle and NOP agents on Modal, concurrency 6,
+   retaining one result per new task digest.
+2. Require 100 completed Oracle rewards of 1 and 100 completed NOP rewards of 0 with no task or
+   infrastructure errors; retry infrastructure failures only.
+3. Generate a new digest-bound validation manifest from those exact results and publish the local
+   dataset publicly with immutable tag `v2.3` only after the gate passes.
+4. Reconstruct cumulative request input, output, reasoning, and tool-output volume from the prior
+   20 unique Terra transcripts. Compare the implied charge with current official token prices and
+   the user's observed bill.
+5. Fix usage accounting and add bounded tool output, cumulative input/cost budgets, and lower-cost
+   defaults while preserving explicit CLI overrides for full-budget evaluations.
+
+Controls and success criteria: do not reuse v2.2 validation evidence for v2.3 digests; do not
+publish on partial success; do not retry incorrect model answers as infrastructure errors. A cost
+optimization is accepted only if its resolved config and token accounting are saved, tests cover
+the accounting/truncation behavior, and any changed evaluation budget is reported with scores.
+
 ## Inkling instruction-quality audit (2026-08-31)
 
 Research question: do the 100 released SWE-kokkos-bench v2 task statements expose enough of the
