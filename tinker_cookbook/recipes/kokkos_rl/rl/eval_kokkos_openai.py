@@ -47,11 +47,18 @@ class CLIConfig:
     tasks_dir: str = "data/kokkos/SWE-kokkos-bench-v2"
     output_path: str = "notes/experiments/SWE-kokkos-bench/gpt-5.6-terra/pass-at-1"
     env_file: str = ".env"
-    reasoning_effort: str = "high"
-    max_turns: int = 40
-    max_tokens: int = 16384
-    max_sampled_tokens: int = 64 * 1024
-    max_tool_calls: int = 80
+    reasoning_effort: str = "medium"
+    max_turns: int = 24
+    max_tokens: int = 8192
+    max_sampled_tokens: int = 32 * 1024
+    max_input_tokens: int = 750_000
+    max_tool_calls: int = 48
+    max_tool_output_chars: int = 12_000
+    max_cost_usd_per_task: float | None = 0.75
+    input_price_per_million: float = 2.0
+    cached_input_price_per_million: float = 0.2
+    cache_write_price_per_million: float = 2.5
+    output_price_per_million: float = 12.0
     sandbox_timeout: int = 3600
     # Kokkos' serial unit-test targets take about 400 seconds on ConTree even
     # without competing rollouts. Leave headroom for backend load variance.
@@ -79,6 +86,9 @@ class OpenAITaskResult:
     reasoning_tokens: int
     time_seconds: float
     stop_reason: str
+    cached_input_tokens: int = 0
+    cache_write_input_tokens: int = 0
+    estimated_cost_usd: float = 0.0
     error: str | None = None
 
 
@@ -104,10 +114,46 @@ def select_tasks(tasks: list[HarborTask], task_names: str | None) -> list[Harbor
     return [by_name[name] for name in ordered_names]
 
 
-def _usage(response: Any) -> tuple[int, int, int]:
+def _usage(response: Any) -> tuple[int, int, int, int, int]:
     usage = response.usage
     reasoning = getattr(getattr(usage, "output_tokens_details", None), "reasoning_tokens", 0)
-    return usage.input_tokens, usage.output_tokens, reasoning or 0
+    input_details = getattr(usage, "input_tokens_details", None)
+    cached = getattr(input_details, "cached_tokens", 0) or 0
+    cache_write = getattr(input_details, "cache_write_tokens", 0) or 0
+    return usage.input_tokens, usage.output_tokens, reasoning or 0, cached, cache_write
+
+
+def _request_cost_usd(
+    *,
+    input_tokens: int,
+    cached_input_tokens: int,
+    cache_write_input_tokens: int,
+    output_tokens: int,
+    config: CLIConfig,
+) -> float:
+    cached = min(input_tokens, cached_input_tokens)
+    cache_write = min(input_tokens - cached, cache_write_input_tokens)
+    uncached = input_tokens - cached - cache_write
+    return (
+        uncached * config.input_price_per_million
+        + cached * config.cached_input_price_per_million
+        + cache_write * config.cache_write_price_per_million
+        + output_tokens * config.output_price_per_million
+    ) / 1_000_000
+
+
+def _truncate_tool_output(output: str, max_chars: int) -> str:
+    if max_chars <= 0:
+        raise ValueError("max_tool_output_chars must be positive")
+    if len(output) <= max_chars:
+        return output
+    marker = f"\n... {len(output) - max_chars:,} characters omitted ...\n"
+    available = max_chars - len(marker)
+    if available <= 0:
+        return output[-max_chars:]
+    head_chars = available // 3
+    tail_chars = available - head_chars
+    return output[:head_chars] + marker + output[-tail_chars:]
 
 
 def _function_calls(response: Any) -> list[Any]:
@@ -126,6 +172,8 @@ async def evaluate_task(
     sandbox = None
     transcript: list[dict[str, Any]] = []
     turns = tool_calls = input_tokens = output_tokens = reasoning_tokens = 0
+    cached_input_tokens = cache_write_input_tokens = 0
+    estimated_cost_usd = 0.0
     stop_reason = "error"
     try:
         sandbox = await sandbox_factory(task.task_dir / "environment", config.sandbox_timeout)
@@ -133,7 +181,15 @@ async def evaluate_task(
         request_input: Any = [{"role": "user", "content": task.instruction}]
         previous_response_id: str | None = None
 
-        while turns < config.max_turns and output_tokens < config.max_sampled_tokens:
+        while (
+            turns < config.max_turns
+            and output_tokens < config.max_sampled_tokens
+            and input_tokens < config.max_input_tokens
+            and (
+                config.max_cost_usd_per_task is None
+                or estimated_cost_usd < config.max_cost_usd_per_task
+            )
+        ):
             remaining = max(16, min(config.max_tokens, config.max_sampled_tokens - output_tokens))
             kwargs: dict[str, Any] = {
                 "model": config.model_name,
@@ -148,10 +204,25 @@ async def evaluate_task(
             response = await client.responses.create(**kwargs)
             turns += 1
             previous_response_id = response.id
-            latest_input, latest_output, latest_reasoning = _usage(response)
-            input_tokens = latest_input
+            (
+                latest_input,
+                latest_output,
+                latest_reasoning,
+                latest_cached_input,
+                latest_cache_write_input,
+            ) = _usage(response)
+            input_tokens += latest_input
             output_tokens += latest_output
             reasoning_tokens += latest_reasoning
+            cached_input_tokens += latest_cached_input
+            cache_write_input_tokens += latest_cache_write_input
+            estimated_cost_usd += _request_cost_usd(
+                input_tokens=latest_input,
+                cached_input_tokens=latest_cached_input,
+                cache_write_input_tokens=latest_cache_write_input,
+                output_tokens=latest_output,
+                config=config,
+            )
             calls = _function_calls(response)
             transcript.append(
                 {
@@ -162,6 +233,9 @@ async def evaluate_task(
                         "input_tokens": latest_input,
                         "output_tokens": latest_output,
                         "reasoning_tokens": latest_reasoning,
+                        "cached_input_tokens": latest_cached_input,
+                        "cache_write_input_tokens": latest_cache_write_input,
+                        "estimated_cost_usd": round(estimated_cost_usd, 6),
                     },
                     "function_calls": [
                         {"call_id": call.call_id, "name": call.name, "arguments": call.arguments}
@@ -188,18 +262,37 @@ async def evaluate_task(
                         ToolInput(arguments=arguments, call_id=call.call_id)
                     )
                     output = str(result.messages[0]["content"])
+                model_output = _truncate_tool_output(output, config.max_tool_output_chars)
                 request_input.append(
-                    {"type": "function_call_output", "call_id": call.call_id, "output": output}
+                    {
+                        "type": "function_call_output",
+                        "call_id": call.call_id,
+                        "output": model_output,
+                    }
                 )
                 transcript[-1].setdefault("tool_outputs", []).append(
-                    {"call_id": call.call_id, "output": output}
+                    {
+                        "call_id": call.call_id,
+                        "output": output,
+                        "model_output_truncated": model_output != output,
+                    }
                 )
                 tool_calls += 1
             if tool_calls >= config.max_tool_calls:
                 stop_reason = "max_tool_calls"
                 break
         else:
-            stop_reason = "max_sampled_tokens" if output_tokens >= config.max_sampled_tokens else "max_turns"
+            if output_tokens >= config.max_sampled_tokens:
+                stop_reason = "max_sampled_tokens"
+            elif input_tokens >= config.max_input_tokens:
+                stop_reason = "max_input_tokens"
+            elif (
+                config.max_cost_usd_per_task is not None
+                and estimated_cost_usd >= config.max_cost_usd_per_task
+            ):
+                stop_reason = "max_cost_usd"
+            else:
+                stop_reason = "max_turns"
 
         reward, reward_details = await HarborReward(
             tests_dir=task.task_dir / "tests",
@@ -219,6 +312,9 @@ async def evaluate_task(
             reasoning_tokens=reasoning_tokens,
             time_seconds=round(time.monotonic() - start, 1),
             stop_reason=stop_reason,
+            cached_input_tokens=cached_input_tokens,
+            cache_write_input_tokens=cache_write_input_tokens,
+            estimated_cost_usd=round(estimated_cost_usd, 6),
         )
     except Exception as error:
         logger.exception("Task %s failed", task.task_name)
@@ -233,6 +329,9 @@ async def evaluate_task(
             reasoning_tokens=reasoning_tokens,
             time_seconds=round(time.monotonic() - start, 1),
             stop_reason="error",
+            cached_input_tokens=cached_input_tokens,
+            cache_write_input_tokens=cache_write_input_tokens,
+            estimated_cost_usd=round(estimated_cost_usd, 6),
             error=f"{type(error).__name__}: {error}",
         )
     finally:
@@ -249,7 +348,8 @@ async def evaluate_task(
         with (results_dir / "asummary.txt").open("a") as file:
             file.write(
                 f"{result.task_name:<40} {result.reward:>5.1f} {result.turns_used:>4} "
-                f"{result.tool_calls:>4} {result.time_seconds:>8.1f} {status:>7}\n"
+                f"{result.tool_calls:>4} ${result.estimated_cost_usd:>7.3f} "
+                f"{result.time_seconds:>8.1f} {status:>7}\n"
             )
         (results_dir / f"{task.task_name}.json").write_text(json.dumps(transcript, indent=2))
     return result
@@ -314,6 +414,16 @@ async def run_eval(
         "num_errors": len(results) - len(valid),
         "num_passed": passed,
         "pass_at_1": passed / len(valid) if valid else None,
+        "input_tokens": sum(result.input_tokens for result in valid),
+        "cached_input_tokens": sum(result.cached_input_tokens for result in valid),
+        "cache_write_input_tokens": sum(
+            result.cache_write_input_tokens for result in valid
+        ),
+        "output_tokens": sum(result.output_tokens for result in valid),
+        "reasoning_tokens": sum(result.reasoning_tokens for result in valid),
+        "estimated_cost_usd": round(
+            sum(result.estimated_cost_usd for result in valid), 6
+        ),
     }
     (results_dir / "result.json").write_text(json.dumps(summary, indent=2))
     print(json.dumps(summary, indent=2), flush=True)

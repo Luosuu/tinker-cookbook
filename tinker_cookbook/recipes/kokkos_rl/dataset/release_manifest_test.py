@@ -57,6 +57,8 @@ digest = "sha256:new"
     manifest = build_manifest(dataset, old_instances, [evidence])
 
     assert manifest["instance_count"] == 2
+    assert manifest["dataset"] == "org/data"
+    assert manifest["version"] == "2.0.0"
     assert manifest["oracle_passed"] == 2
     assert manifest["nop_rejected"] == 2
     assert [item["release_group"] for item in manifest["instances"]] == [

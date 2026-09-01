@@ -17,12 +17,14 @@ class TrialEvidence:
     reward: float
 
 
-def _dataset_digests(dataset_dir: Path) -> dict[str, str]:
+def _dataset_metadata(dataset_dir: Path) -> tuple[str, str, dict[str, str]]:
     manifest = tomllib.loads((dataset_dir / "dataset.toml").read_text())
-    return {
+    dataset = manifest["dataset"]
+    digests = {
         str(item["name"]).split("/", maxsplit=1)[-1]: str(item["digest"])
         for item in manifest["tasks"]
     }
+    return str(dataset["name"]), str(dataset["version"]), digests
 
 
 def _instance_ids(path: Path) -> set[str]:
@@ -65,7 +67,7 @@ def build_manifest(
     old_instances: Path,
     evidence_roots: list[Path],
 ) -> dict[str, object]:
-    digests = _dataset_digests(dataset_dir)
+    dataset_name, dataset_version, digests = _dataset_metadata(dataset_dir)
     old_ids = _instance_ids(old_instances)
     construction = json.loads((dataset_dir / "manifest.json").read_text())
     construction_by_id = {
@@ -104,8 +106,8 @@ def build_manifest(
             }
         )
     return {
-        "dataset": "luosuu/SWE-kokkos-bench",
-        "version": "2.0.0",
+        "dataset": dataset_name,
+        "version": dataset_version,
         "instance_count": len(instances),
         "oracle_passed": sum(item["oracle"]["reward"] == 1.0 for item in instances),
         "nop_rejected": sum(item["nop"]["reward"] == 0.0 for item in instances),

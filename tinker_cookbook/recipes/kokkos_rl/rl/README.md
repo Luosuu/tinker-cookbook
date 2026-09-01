@@ -31,6 +31,19 @@ still has network access so repositories and build dependencies can be fetched. 
 `allow_network=True` for tasks whose runtime contract explicitly requires external services;
 doing so makes PR-derived benchmark scores vulnerable to solution lookup.
 
+### OpenAI Responses evaluation
+
+`eval_kokkos_openai` provides the same task and grader interface for OpenAI Responses API
+models. Stateful tool-use responses bill the input context again on every turn, so the final
+response's token count is not the run's total input usage. The evaluator records cumulative
+input, cached input, cache-write input, output, reasoning tokens, and estimated cost.
+
+The defaults are deliberately bounded: medium reasoning, 24 turns, 48 tool calls, 32K sampled
+tokens, 12,000 characters returned to the model per tool result, and a $0.75 estimated per-task
+cost cap. Adjust the four per-million-token price fields when provider pricing changes. Treat
+the cost cap as an estimate and provider billing as authoritative; a request already in flight
+can cross the cap before the evaluator stops the next turn.
+
 ## Reinforcement learning
 
 ```bash
