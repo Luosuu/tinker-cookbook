@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import math
 import os
@@ -20,6 +21,11 @@ import aiohttp
 import tinker
 
 from tinker_cookbook import model_info, tokenizer_utils
+from tinker_cookbook.recipes.kokkos_rl.chat_inference import (
+    TINKER_CHAT_BASE_URL,
+    ChatAnnotationCompleter,
+    prepare_annotation_state,
+)
 from tinker_cookbook.recipes.kokkos_rl.dataset.annotate import apply_annotations
 from tinker_cookbook.recipes.kokkos_rl.dataset.ecosystem import get_repository_profile
 from tinker_cookbook.recipes.kokkos_rl.dataset.modal_validate import (
@@ -803,7 +809,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--reports-dir", type=Path, required=True)
     parser.add_argument("--failed-output", type=Path)
-    parser.add_argument("--provider", choices=("openai", "tinker"), default="openai")
+    parser.add_argument("--provider", choices=("openai", "tinker", "tinker-chat"), default="openai")
     parser.add_argument("--model-name", default="thinkingmachines/Inkling:peft:262144")
     parser.add_argument("--openai-model", default="gpt-5.6-terra")
     parser.add_argument(
@@ -848,7 +854,39 @@ def _parse_args() -> argparse.Namespace:
 async def _main(args: argparse.Namespace) -> None:
     _load_env_file(args.env_file)
     completer: AnnotationCompleter
-    if args.provider == "openai":
+    if args.provider == "tinker-chat" or (args.reports_dir / "inference_config.json").exists():
+        prepare_annotation_state(
+            args.reports_dir,
+            {
+                "provider": args.provider,
+                "model": args.checkpoint_url or args.model_name,
+                "openai_model": args.openai_model,
+                "base_url": args.base_url or TINKER_CHAT_BASE_URL,
+                "thinking_effort": args.thinking_effort,
+                "temperature": args.temperature,
+                "max_tokens": args.max_tokens,
+                "max_attempts": args.max_attempts,
+                "sandbox_backend": args.sandbox_backend,
+                "flaky_repetitions": args.flaky_repetitions,
+                "sandbox_timeout": args.sandbox_timeout,
+                "command_timeout": args.command_timeout,
+                "candidates_sha256": hashlib.sha256(args.candidates.read_bytes()).hexdigest(),
+            },
+        )
+    if args.provider == "tinker-chat":
+        if args.renderer_name:
+            raise ValueError(
+                "Hosted Chat Completions uses the server renderer; omit --renderer-name"
+            )
+        completer = ChatAnnotationCompleter(
+            model=args.checkpoint_url or args.model_name,
+            max_tokens=args.max_tokens,
+            thinking_effort=args.thinking_effort,
+            temperature=args.temperature,
+            base_url=args.base_url or TINKER_CHAT_BASE_URL,
+            reports_dir=args.reports_dir / "api_calls",
+        )
+    elif args.provider == "openai":
         completer = OpenAIAnnotationCompleter(
             api_key=os.environ.get("OPENAI_API_KEY", ""),
             model=args.openai_model,
@@ -918,7 +956,11 @@ async def _main(args: argparse.Namespace) -> None:
             print(f"{instance.instance_id}: {status} after {len(item.attempts)} attempt(s)")
             return item
 
-    results = await asyncio.gather(*(run_one(instance) for instance in instances))
+    try:
+        results = await asyncio.gather(*(run_one(instance) for instance in instances))
+    finally:
+        if isinstance(completer, ChatAnnotationCompleter):
+            await completer.close()
     validated = [
         item.validated_instance.to_dict()
         for item in results

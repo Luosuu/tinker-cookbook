@@ -79,3 +79,31 @@ publishable task must score Oracle reward 1 and NOP reward 0 without infrastruct
 
 Do not publish raw queues or failed annotation reports as benchmark examples. They are
 provenance and debugging artifacts, not verified tasks.
+
+## Hosted Tinker annotation and instruction audit
+
+The LLM stages accept `--provider tinker-chat`, using `TINKER_API_KEY` and the hosted
+Chat Completions endpoint. GitHub candidate mining and all existing sandbox validation
+rules are unchanged.
+
+```bash
+uv run python -m tinker_cookbook.recipes.kokkos_rl.dataset.auto_annotate \
+  --provider tinker-chat --model-name thinkingmachines/Inkling-Small:peft:262144 \
+  --thinking-effort 0.9 --candidates data/kokkos/candidates.jsonl \
+  --output data/kokkos/validated-chat.jsonl \
+  --reports-dir notes/experiments/kokkos-annotation-chat --max-candidates 1
+
+uv run python -m tinker_cookbook.recipes.kokkos_rl.dataset.audit_instructions \
+  --provider tinker-chat --model-name thinkingmachines/Inkling-Small:peft:262144 \
+  --thinking-effort 0.9 --instances data/kokkos/validated-chat.jsonl \
+  --reports-dir notes/experiments/kokkos-audit-chat
+```
+
+Pass `--checkpoint-url tinker://.../sampler_weights/...` to use saved weights or
+`--base-url` to override the endpoint. Hosted inference selects the server renderer;
+`--renderer-name` is rejected for this provider. Start with a fresh reports directory:
+resume checks bind cached annotations to the provider, model, effort and input digest.
+`api_calls/` retains response/usage evidence, including truncated responses which cannot
+be accepted as annotations. These are local research artifacts and may contain private
+verifier-derived information. Review audit reports before explicitly using `--apply`.
+Native `--provider tinker` remains supported.

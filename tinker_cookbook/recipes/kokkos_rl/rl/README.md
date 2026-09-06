@@ -131,3 +131,37 @@ runs a single pass, so the number of training tasks caps the number of steps
 Inkling models require an explicit `thinking_effort`; use the recommended renderer and a
 long-context model variant for terminal trajectories. Do not impose client-side timeouts or
 retry loops around Tinker sampling requests.
+
+## Hosted Tinker Chat Completions evaluation
+
+Use the OpenAI-compatible endpoint for independent, message-based evaluations. It accepts
+both a base model identifier and a `tinker://.../sampler_weights/...` checkpoint as
+`model_name`; a separate deployment is unnecessary.
+
+```bash
+uv run python -m tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos_tinker_chat \
+  model_name=thinkingmachines/Inkling-Small:peft:262144 \
+  task_names=kokkos__kokkos-6375 max_concurrency=1
+```
+
+The preset reads `TINKER_API_KEY` from the environment or `.env` and uses
+`https://tinker.thinkingmachines.dev/services/tinker-prod/oai/api/v1`.
+It defaults to effort 0.9, temperature 1, 40 turns, 80 tool calls, 16,384 output tokens per
+request and 65,536 per attempt. Input usage is cumulative across requests, capped at
+5,000,000 before starting another request; the final request can cross this input threshold.
+No whole-task retries run by default. The OpenAI SDK handles transient transport retries.
+ConTree, protected Harbor grading and tool-output truncation use the existing evaluator.
+
+Each task retains the complete returned assistant messages (including reasoning), tool
+outputs, stop reasons and usage. Missing reasoning-token counts and unconfigured dollar
+costs are `null`, not zero. Token and turn limits still apply. To enable a dollar budget,
+explicitly set `estimate_cost=True`, all four verified price fields and
+`max_cost_usd_per_task`; cost is an estimate and is checked between requests.
+Use `resume_dir` only with the same model, endpoint, effort, budgets and task contents.
+
+This endpoint is documented as beta for testing/evaluation; compatibility does not imply
+higher throughput. See the [official API guide](https://tinker-docs.thinkingmachines.ai/tinker/compatible-apis/openai/).
+Server rendering can differ from native renderers, so run a paired transport comparison
+before replacing a research baseline. This path produces evaluation transcripts, not exact
+sampled token IDs or training masks. Keep native Tinker collection for the self-training/RL
+pipeline. The existing `eval_kokkos_openai` Responses API defaults remain available.

@@ -9,16 +9,23 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import math
 import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import tinker
 
 from tinker_cookbook import model_info, tokenizer_utils
+from tinker_cookbook.recipes.kokkos_rl.chat_inference import (
+    TINKER_CHAT_BASE_URL,
+    ChatAnnotationCompleter,
+    prepare_annotation_state,
+)
 from tinker_cookbook.recipes.kokkos_rl.dataset.export_harbor import export_instance
 from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
 from tinker_cookbook.renderers import Message, ParseTermination, get_renderer, get_text_content
@@ -81,7 +88,11 @@ class AuditResult:
 
     @classmethod
     def from_model_text(
-        cls, text: str, *, expected_instance_id: str, termination: ParseTermination
+        cls,
+        text: str,
+        *,
+        expected_instance_id: str,
+        termination: ParseTermination | Literal["api_stop"],
     ) -> AuditResult:
         match = re.search(r"\{.*\}", text, flags=re.DOTALL)
         if match is None:
@@ -106,7 +117,9 @@ class AuditResult:
             issues=issues,
             revised_problem_statement=statement,
             confidence=confidence,
-            termination=termination.value,
+            termination=termination.value
+            if isinstance(termination, ParseTermination)
+            else termination,
         )
 
     def to_dict(self) -> dict[str, object]:
@@ -171,11 +184,12 @@ PRIVATE REFERENCE PATCH (evidence only; do not disclose its implementation):
 async def _audit_one(
     instance: KokkosInstance,
     *,
-    sampling_client: tinker.SamplingClient,
-    renderer: TmlV0Renderer,
+    sampling_client: tinker.SamplingClient | None,
+    renderer: TmlV0Renderer | None,
     effort: float,
     max_tokens: int,
     attempts: int,
+    chat_completer: ChatAnnotationCompleter | None = None,
 ) -> AuditResult:
     messages = [
         Message(role="system", content=SYSTEM_PROMPT),
@@ -183,17 +197,22 @@ async def _audit_one(
     ]
     last_error: Exception | None = None
     for _attempt in range(attempts):
-        prompt = renderer.build_generation_prompt(messages, effort=effort)
-        response = await sampling_client.sample_async(
-            prompt=prompt,
-            num_samples=1,
-            sampling_params=tinker.SamplingParams(
-                max_tokens=max_tokens,
-                temperature=1.0,
-                stop=renderer.get_stop_sequences(),
-            ),
-        )
-        message, termination = renderer.parse_response(response.sequences[0].tokens)
+        if chat_completer is not None:
+            message = await chat_completer(messages)
+            termination = "api_stop"
+        else:
+            assert sampling_client is not None and renderer is not None
+            prompt = renderer.build_generation_prompt(messages, effort=effort)
+            response = await sampling_client.sample_async(
+                prompt=prompt,
+                num_samples=1,
+                sampling_params=tinker.SamplingParams(
+                    max_tokens=max_tokens,
+                    temperature=1.0,
+                    stop=renderer.get_stop_sequences(),
+                ),
+            )
+            message, termination = renderer.parse_response(response.sequences[0].tokens)
         text = get_text_content(message)
         try:
             return AuditResult.from_model_text(
@@ -219,19 +238,24 @@ async def _refine_one(
     instance: KokkosInstance,
     first_pass: dict[str, object],
     *,
-    sampling_client: tinker.SamplingClient,
-    renderer: TmlV0Renderer,
+    sampling_client: tinker.SamplingClient | None,
+    renderer: TmlV0Renderer | None,
     effort: float,
     max_tokens: int,
     attempts: int,
+    chat_completer: ChatAnnotationCompleter | None = None,
 ) -> AuditResult:
     if first_pass["assessment"] == "clear":
+        issues = first_pass["issues"]
+        confidence = first_pass["confidence"]
+        if not isinstance(issues, list) or not isinstance(confidence, (str, int, float)):
+            raise ValueError("Invalid first-pass issues or confidence")
         return AuditResult(
             instance_id=instance.instance_id,
             assessment="clear",
-            issues=tuple(str(item) for item in first_pass["issues"]),
+            issues=tuple(str(item) for item in issues),
             revised_problem_statement=instance.problem_statement.strip(),
-            confidence=float(first_pass["confidence"]),
+            confidence=float(confidence),
             termination=str(first_pass["termination"]),
         )
     messages = [
@@ -251,17 +275,22 @@ async def _refine_one(
     ]
     last_error: Exception | None = None
     for _attempt in range(attempts):
-        prompt = renderer.build_generation_prompt(messages, effort=effort)
-        response = await sampling_client.sample_async(
-            prompt=prompt,
-            num_samples=1,
-            sampling_params=tinker.SamplingParams(
-                max_tokens=max_tokens,
-                temperature=1.0,
-                stop=renderer.get_stop_sequences(),
-            ),
-        )
-        message, termination = renderer.parse_response(response.sequences[0].tokens)
+        if chat_completer is not None:
+            message = await chat_completer(messages)
+            termination = "api_stop"
+        else:
+            assert sampling_client is not None and renderer is not None
+            prompt = renderer.build_generation_prompt(messages, effort=effort)
+            response = await sampling_client.sample_async(
+                prompt=prompt,
+                num_samples=1,
+                sampling_params=tinker.SamplingParams(
+                    max_tokens=max_tokens,
+                    temperature=1.0,
+                    stop=renderer.get_stop_sequences(),
+                ),
+            )
+            message, termination = renderer.parse_response(response.sequences[0].tokens)
         text = get_text_content(message)
         try:
             result = AuditResult.from_model_text(
@@ -352,6 +381,9 @@ def _parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("notes/experiments/SWE-kokkos-bench/instruction-audit/inkling"),
     )
+    parser.add_argument("--provider", choices=("tinker", "tinker-chat"), default="tinker")
+    parser.add_argument("--base-url")
+    parser.add_argument("--checkpoint-url")
     parser.add_argument("--model-name", default="thinkingmachines/Inkling:peft:262144")
     parser.add_argument("--thinking-effort", type=float, default=0.99)
     parser.add_argument("--max-tokens", type=int, default=8192)
@@ -362,9 +394,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--overrides",
         type=Path,
-        default=Path(
-            "tinker_cookbook/recipes/kokkos_rl/dataset/instruction_overrides.json"
-        ),
+        default=Path("tinker_cookbook/recipes/kokkos_rl/dataset/instruction_overrides.json"),
         help="reviewed statement replacements applied in preference to model drafts",
     )
     parser.add_argument(
@@ -393,16 +423,50 @@ async def _main(args: argparse.Namespace) -> None:
     _load_env_file(args.env_file)
     instances = _read_instances(args.instances)
     args.reports_dir.mkdir(parents=True, exist_ok=True)
-    service_client = tinker.ServiceClient(
-        user_metadata=recipe_user_metadata("kokkos_instruction_audit")
-    )
-    sampling_client = await service_client.create_sampling_client_async(
-        base_model=args.model_name
-    )
-    renderer_name = model_info.get_recommended_renderer_name(args.model_name)
-    renderer = get_renderer(renderer_name, tokenizer_utils.get_tokenizer(args.model_name))
-    if not isinstance(renderer, TmlV0Renderer):
-        raise TypeError(f"instruction audit requires TmlV0Renderer, got {type(renderer).__name__}")
+    chat_completer: ChatAnnotationCompleter | None = None
+    sampling_client = None
+    renderer = None
+    if args.provider == "tinker-chat" or (args.reports_dir / "inference_config.json").exists():
+        prepare_annotation_state(
+            args.reports_dir,
+            {
+                "provider": args.provider,
+                "model": args.checkpoint_url or args.model_name,
+                "base_url": args.base_url or TINKER_CHAT_BASE_URL,
+                "thinking_effort": args.thinking_effort,
+                "max_tokens": args.max_tokens,
+                "attempts": args.attempts,
+                "instances_sha256": hashlib.sha256(args.instances.read_bytes()).hexdigest(),
+                "refinement_sha256": {
+                    p.name: hashlib.sha256(p.read_bytes()).hexdigest()
+                    for p in sorted(args.refine_from.glob("*.json"))
+                }
+                if args.refine_from
+                else None,
+            },
+        )
+    if args.provider == "tinker-chat":
+        chat_completer = ChatAnnotationCompleter(
+            model=args.checkpoint_url or args.model_name,
+            max_tokens=args.max_tokens,
+            thinking_effort=args.thinking_effort,
+            base_url=args.base_url or TINKER_CHAT_BASE_URL,
+            reports_dir=args.reports_dir / "api_calls",
+        )
+    else:
+        service_client = tinker.ServiceClient(
+            base_url=args.base_url, user_metadata=recipe_user_metadata("kokkos_instruction_audit")
+        )
+        sampling_client = await service_client.create_sampling_client_async(
+            base_model=args.model_name,
+            model_path=args.checkpoint_url,
+        )
+        renderer_name = model_info.get_recommended_renderer_name(args.model_name)
+        renderer = get_renderer(renderer_name, tokenizer_utils.get_tokenizer(args.model_name))
+        if not isinstance(renderer, TmlV0Renderer):
+            raise TypeError(
+                f"instruction audit requires TmlV0Renderer, got {type(renderer).__name__}"
+            )
     semaphore = asyncio.Semaphore(args.max_concurrency)
 
     async def run_one(instance: KokkosInstance) -> AuditResult:
@@ -423,6 +487,7 @@ async def _main(args: argparse.Namespace) -> None:
                 result = await _audit_one(
                     instance,
                     sampling_client=sampling_client,
+                    chat_completer=chat_completer,
                     renderer=renderer,
                     effort=args.thinking_effort,
                     max_tokens=args.max_tokens,
@@ -436,6 +501,7 @@ async def _main(args: argparse.Namespace) -> None:
                     instance,
                     json.loads(first_pass_path.read_text()),
                     sampling_client=sampling_client,
+                    chat_completer=chat_completer,
                     renderer=renderer,
                     effort=args.thinking_effort,
                     max_tokens=args.max_tokens,
@@ -445,12 +511,17 @@ async def _main(args: argparse.Namespace) -> None:
         print(f"{instance.instance_id}: {result.assessment}")
         return result
 
-    results = await asyncio.gather(*(run_one(instance) for instance in instances))
-    counts = dict.fromkeys(("clear", "needs_revision", "invalid"), 0)
+    try:
+        results = await asyncio.gather(*(run_one(instance) for instance in instances))
+    finally:
+        if chat_completer is not None:
+            await chat_completer.close()
+    counts: dict[str, int] = dict.fromkeys(("clear", "needs_revision", "invalid"), 0)
     for result in results:
         counts[result.assessment] += 1
     summary = {
-        "model_name": args.model_name,
+        "provider": args.provider,
+        "model_name": args.checkpoint_url or args.model_name,
         "thinking_effort": args.thinking_effort,
         "temperature": 1.0,
         "max_tokens": args.max_tokens,

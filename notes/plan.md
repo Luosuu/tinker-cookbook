@@ -1,5 +1,18 @@
 # Kokkos Coding-RL Dataset: Phase 0 Plan
 
+## Hosted Chat Completions integration smoke (2026-09-06)
+
+Question: can the existing annotation, instruction-audit and Harbor evaluation paths use
+the hosted API without changing sandbox validation, mixing task histories or losing usage?
+Add an opt-in transport; keep native token collection and the running self-training
+comparison unchanged. First run offline protocol and regression tests. After committing
+this plan and implementation, make one real instruction-audit request and run one
+independent Small evaluation on the already Oracle/NOP-validated task `kokkos__kokkos-6375`.
+Use effort 0.9, temperature 1, at most 40 turns and 65,536 output tokens, with no full-task
+retry. Keep evidence in a separate ignored output directory. This tests integration only;
+one task cannot establish transport parity or a benchmark improvement. No dataset edits,
+new collection batches or optimizer steps are part of this smoke.
+
 ## Hosted OpenAI-compatible endpoint connectivity (2026-09-06)
 
 Test the hosted Tinker Chat Completions endpoint with the existing Tinker API key.

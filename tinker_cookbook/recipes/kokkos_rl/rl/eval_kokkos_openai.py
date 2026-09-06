@@ -1,4 +1,4 @@
-"""Evaluate an OpenAI Responses API model on exported Kokkos Harbor tasks."""
+"""Evaluate Responses or hosted Tinker Chat Completions on Kokkos Harbor tasks."""
 
 from __future__ import annotations
 
@@ -21,6 +21,11 @@ from tinker_cookbook.recipes.harbor_rl.harbor_env import (
     SandboxFactory,
 )
 from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborBashTool, HarborReward
+from tinker_cookbook.recipes.kokkos_rl.chat_inference import (
+    ChatSession,
+    ChatTurn,
+    create_chat_client,
+)
 from tinker_cookbook.recipes.kokkos_rl.rl.tasks import prepared_kokkos_tasks
 from tinker_cookbook.sandbox.contree_sandbox import ContreeDockerfileSandboxFactory
 from tinker_cookbook.tool_use import ToolInput
@@ -48,6 +53,13 @@ class CLIConfig:
     tasks_dir: str = "data/kokkos/SWE-kokkos-bench-v2"
     output_path: str = "notes/experiments/SWE-kokkos-bench/gpt-5.6-terra/pass-at-1"
     env_file: str = ".env"
+    api_mode: str = "responses"
+    base_url: str | None = None
+    api_key_env: str = "OPENAI_API_KEY"
+    thinking_effort: float = 0.9
+    temperature: float = 1.0
+    estimate_cost: bool = True
+    sandbox_build_parallelism: int | None = None
     reasoning_effort: str = "medium"
     max_turns: int = 24
     max_tokens: int = 8192
@@ -82,12 +94,12 @@ class OpenAITaskResult:
     tool_calls: int
     input_tokens: int
     output_tokens: int
-    reasoning_tokens: int
+    reasoning_tokens: int | None
     time_seconds: float
     stop_reason: str
     cached_input_tokens: int = 0
     cache_write_input_tokens: int = 0
-    estimated_cost_usd: float = 0.0
+    estimated_cost_usd: float | None = 0.0
     error: str | None = None
 
 
@@ -113,13 +125,25 @@ def select_tasks(tasks: list[HarborTask], task_names: str | None) -> list[Harbor
     return [by_name[name] for name in ordered_names]
 
 
-def _usage(response: Any) -> tuple[int, int, int, int, int]:
+def _usage(response: Any) -> tuple[int, int, int | None, int, int]:
     usage = response.usage
-    reasoning = getattr(getattr(usage, "output_tokens_details", None), "reasoning_tokens", 0)
+    if usage is None:
+        raise ValueError("API omitted usage; cannot enforce token budgets")
+    if isinstance(response, ChatTurn):
+        details = usage.prompt_tokens_details
+        reasoning = getattr(usage.completion_tokens_details, "reasoning_tokens", None)
+        return (
+            usage.prompt_tokens,
+            usage.completion_tokens,
+            reasoning,
+            getattr(details, "cached_tokens", 0) or 0,
+            0,
+        )
+    reasoning = getattr(getattr(usage, "output_tokens_details", None), "reasoning_tokens", None)
     input_details = getattr(usage, "input_tokens_details", None)
     cached = getattr(input_details, "cached_tokens", 0) or 0
     cache_write = getattr(input_details, "cache_write_tokens", 0) or 0
-    return usage.input_tokens, usage.output_tokens, reasoning or 0, cached, cache_write
+    return usage.input_tokens, usage.output_tokens, reasoning, cached, cache_write
 
 
 def _request_cost_usd(
@@ -171,15 +195,21 @@ async def evaluate_task(
     start = time.monotonic()
     sandbox = None
     transcript: list[dict[str, Any]] = []
-    turns = tool_calls = input_tokens = output_tokens = reasoning_tokens = 0
+    turns = tool_calls = input_tokens = output_tokens = 0
+    reasoning_tokens: int | None = 0
     cached_input_tokens = cache_write_input_tokens = 0
-    estimated_cost_usd = 0.0
+    estimated_cost_usd: float | None = 0.0 if config.estimate_cost else None
     stop_reason = "error"
     try:
         sandbox = await sandbox_factory(task.task_dir / "environment", config.sandbox_timeout)
         bash_tool = HarborBashTool(sandbox, command_timeout=config.command_timeout)
         request_input: Any = [{"role": "user", "content": task.instruction}]
         previous_response_id: str | None = None
+        chat = (
+            ChatSession(client, config.model_name, config.thinking_effort, config.temperature)
+            if config.api_mode == "chat"
+            else None
+        )
 
         while (
             turns < config.max_turns
@@ -187,10 +217,10 @@ async def evaluate_task(
             and input_tokens < config.max_input_tokens
             and (
                 config.max_cost_usd_per_task is None
-                or prior_cost_usd + estimated_cost_usd < config.max_cost_usd_per_task
+                or prior_cost_usd + (estimated_cost_usd or 0.0) < config.max_cost_usd_per_task
             )
         ):
-            remaining = max(16, min(config.max_tokens, config.max_sampled_tokens - output_tokens))
+            remaining = min(config.max_tokens, config.max_sampled_tokens - output_tokens)
             kwargs: dict[str, Any] = {
                 "model": config.model_name,
                 "instructions": HARBOR_SYSTEM_PROMPT,
@@ -201,7 +231,15 @@ async def evaluate_task(
             }
             if previous_response_id is not None:
                 kwargs["previous_response_id"] = previous_response_id
-            response = await client.responses.create(**kwargs)
+            if chat is not None:
+                response = await chat.create(
+                    request_input,
+                    instructions=HARBOR_SYSTEM_PROMPT,
+                    tools=[BASH_TOOL],
+                    max_tokens=remaining,
+                )
+            else:
+                response = await client.responses.create(**kwargs)
             turns += 1
             previous_response_id = response.id
             (
@@ -213,16 +251,21 @@ async def evaluate_task(
             ) = _usage(response)
             input_tokens += latest_input
             output_tokens += latest_output
-            reasoning_tokens += latest_reasoning
+            reasoning_tokens = (
+                reasoning_tokens + latest_reasoning
+                if reasoning_tokens is not None and latest_reasoning is not None
+                else None
+            )
             cached_input_tokens += latest_cached_input
             cache_write_input_tokens += latest_cache_write_input
-            estimated_cost_usd += _request_cost_usd(
-                input_tokens=latest_input,
-                cached_input_tokens=latest_cached_input,
-                cache_write_input_tokens=latest_cache_write_input,
-                output_tokens=latest_output,
-                config=config,
-            )
+            if estimated_cost_usd is not None:
+                estimated_cost_usd += _request_cost_usd(
+                    input_tokens=latest_input,
+                    cached_input_tokens=latest_cached_input,
+                    cache_write_input_tokens=latest_cache_write_input,
+                    output_tokens=latest_output,
+                    config=config,
+                )
             calls = _function_calls(response)
             transcript.append(
                 {
@@ -235,7 +278,9 @@ async def evaluate_task(
                         "reasoning_tokens": latest_reasoning,
                         "cached_input_tokens": latest_cached_input,
                         "cache_write_input_tokens": latest_cache_write_input,
-                        "estimated_cost_usd": round(estimated_cost_usd, 6),
+                        "estimated_cost_usd": round(estimated_cost_usd, 6)
+                        if estimated_cost_usd is not None
+                        else None,
                     },
                     "function_calls": [
                         {"call_id": call.call_id, "name": call.name, "arguments": call.arguments}
@@ -243,6 +288,16 @@ async def evaluate_task(
                     ],
                 }
             )
+            if isinstance(response, ChatTurn):
+                transcript[-1]["assistant_message"] = response.assistant_message
+                transcript[-1]["finish_reason"] = response.finish_reason
+                if response.finish_reason not in {"stop", "tool_calls"}:
+                    stop_reason = (
+                        "max_tokens"
+                        if response.finish_reason == "length"
+                        else response.finish_reason
+                    )
+                    break
             if not calls:
                 stop_reason = "model_finished"
                 break
@@ -288,7 +343,7 @@ async def evaluate_task(
                 stop_reason = "max_input_tokens"
             elif (
                 config.max_cost_usd_per_task is not None
-                and prior_cost_usd + estimated_cost_usd >= config.max_cost_usd_per_task
+                and prior_cost_usd + (estimated_cost_usd or 0.0) >= config.max_cost_usd_per_task
             ):
                 stop_reason = "max_cost_usd"
             else:
@@ -300,6 +355,7 @@ async def evaluate_task(
             grader_timeout=config.grader_timeout,
             raise_on_grading_error=True,
             task_name=task.task_name,
+            grading_log_path=results_dir / "grading_logs" / f"{task.task_name}.json",
         )([])
         result = OpenAITaskResult(
             task_name=task.task_name,
@@ -314,7 +370,9 @@ async def evaluate_task(
             stop_reason=stop_reason,
             cached_input_tokens=cached_input_tokens,
             cache_write_input_tokens=cache_write_input_tokens,
-            estimated_cost_usd=round(estimated_cost_usd, 6),
+            estimated_cost_usd=round(estimated_cost_usd, 6)
+            if estimated_cost_usd is not None
+            else None,
         )
     except Exception as error:
         logger.exception("Task %s failed", task.task_name)
@@ -331,7 +389,9 @@ async def evaluate_task(
             stop_reason="error",
             cached_input_tokens=cached_input_tokens,
             cache_write_input_tokens=cache_write_input_tokens,
-            estimated_cost_usd=round(estimated_cost_usd, 6),
+            estimated_cost_usd=round(estimated_cost_usd, 6)
+            if estimated_cost_usd is not None
+            else None,
             error=f"{type(error).__name__}: {error}",
         )
     finally:
@@ -342,13 +402,18 @@ async def evaluate_task(
                 logger.warning("Sandbox cleanup failed for %s", task.task_name, exc_info=True)
 
     status = "ERROR" if result.error else ("PASS" if result.reward > 0 else "FAIL")
+    cost_text = (
+        f"${result.estimated_cost_usd:7.3f}"
+        if result.estimated_cost_usd is not None
+        else "     n/a"
+    )
     async with lock:
         with (results_dir / "results.jsonl").open("a") as file:
             file.write(json.dumps(asdict(result)) + "\n")
         with (results_dir / "asummary.txt").open("a") as file:
             file.write(
                 f"{result.task_name:<40} {result.reward:>5.1f} {result.turns_used:>4} "
-                f"{result.tool_calls:>4} ${result.estimated_cost_usd:>7.3f} "
+                f"{result.tool_calls:>4} {cost_text} "
                 f"{result.time_seconds:>8.1f} {status:>7}\n"
             )
         (results_dir / f"{task.task_name}.json").write_text(json.dumps(transcript, indent=2))
@@ -385,6 +450,23 @@ async def run_eval(
         raise ValueError("max_concurrency must be positive and max_infra_retries non-negative")
     if config.max_cost_usd_per_task is not None and config.max_cost_usd_per_task <= 0:
         raise ValueError("max_cost_usd_per_task must be positive or None")
+    if config.api_mode not in {"responses", "chat"}:
+        raise ValueError("api_mode must be responses or chat")
+    if config.api_mode == "chat" and not config.base_url:
+        raise ValueError("Chat Completions requires base_url")
+    if not config.estimate_cost and config.max_cost_usd_per_task is not None:
+        raise ValueError("A dollar budget requires verified prices and estimate_cost=True")
+    if (
+        min(
+            config.max_turns,
+            config.max_tokens,
+            config.max_sampled_tokens,
+            config.max_input_tokens,
+            config.max_tool_calls,
+        )
+        < 1
+    ):
+        raise ValueError("Turn, token and tool budgets must be positive")
     results_dir = (
         Path(config.resume_dir)
         if config.resume_dir
@@ -397,7 +479,11 @@ async def run_eval(
     if not (results_dir / "config.json").exists():
         (results_dir / "config.json").write_text(json.dumps(config_dict, indent=2))
 
-    client = AsyncOpenAI()
+    client = (
+        create_chat_client(config.base_url, config.api_key_env)
+        if config.base_url
+        else AsyncOpenAI()
+    )
     lock = asyncio.Lock()
     task_names = {task.task_name for task in tasks}
     attempts = [r for r in _load_attempts(results_dir) if r.task_name in task_names]
@@ -409,7 +495,7 @@ async def run_eval(
     async def run_one(task: HarborTask) -> OpenAITaskResult:
         async with semaphore:
             previous = [r for r in attempts if r.task_name == task.task_name]
-            spent = sum(r.estimated_cost_usd for r in previous)
+            spent = sum(r.estimated_cost_usd or 0.0 for r in previous)
             result: OpenAITaskResult | None = previous[-1] if previous else None
             for attempt in range(config.max_infra_retries + 1):
                 if (
@@ -430,7 +516,7 @@ async def run_eval(
                     prior_cost_usd=spent,
                 )
                 attempts.append(result)
-                spent += result.estimated_cost_usd
+                spent += result.estimated_cost_usd or 0.0
                 if result.error is None:
                     return result
                 logger.warning(
@@ -443,9 +529,13 @@ async def run_eval(
             assert result is not None
             return result
 
-    new_results = await asyncio.gather(
-        *[run_one(task) for task in tasks if task.task_name not in completed]
-    )
+    try:
+        new_results = await asyncio.gather(
+            *[run_one(task) for task in tasks if task.task_name not in completed]
+        )
+    finally:
+        if config.base_url:
+            await client.close()
     results = list(completed.values()) + list(new_results)
     valid = [result for result in results if result.error is None]
     passed = sum(result.reward > 0 for result in valid)
@@ -461,8 +551,13 @@ async def run_eval(
         "cached_input_tokens": sum(result.cached_input_tokens for result in attempts),
         "cache_write_input_tokens": sum(result.cache_write_input_tokens for result in attempts),
         "output_tokens": sum(result.output_tokens for result in attempts),
-        "reasoning_tokens": sum(result.reasoning_tokens for result in attempts),
-        "estimated_cost_usd": round(sum(result.estimated_cost_usd for result in attempts), 6),
+        "reasoning_tokens": sum(result.reasoning_tokens or 0 for result in attempts)
+        if all(result.reasoning_tokens is not None for result in attempts)
+        else None,
+        "estimated_cost_usd": round(sum(result.estimated_cost_usd or 0.0 for result in attempts), 6)
+        if config.estimate_cost
+        and all(result.estimated_cost_usd is not None for result in attempts)
+        else None,
     }
     (results_dir / "result.json").write_text(json.dumps(summary, indent=2))
     print(json.dumps(summary, indent=2), flush=True)
@@ -478,6 +573,7 @@ async def main(config: CLIConfig) -> None:
             cache_path=Path(config.contree_cache_path),
             timeout=config.sandbox_timeout,
             allow_network=config.allow_network,
+            runtime_build_parallelism=config.sandbox_build_parallelism,
         )
         print(
             f"Running {len(tasks)} tasks with {config.model_name}, reasoning={config.reasoning_effort}",
