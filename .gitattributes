@@ -1,0 +1,6 @@
+# Exported benchmark payloads are retained for reproducible training/evaluation.
+# Omit their bulk text patches from Git diffs and collapse them on GitHub.
+data/kokkos/** -diff linguist-generated=true
+
+# Dataset documentation remains reviewable as normal text.
+data/kokkos/**/README.md diff linguist-generated=false
