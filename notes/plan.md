@@ -342,3 +342,37 @@ must remain unchanged; known-good stdin and functional C++ submissions must pass
 the baseline must finish without infrastructure errors; and training must produce finite loss,
 nonzero within-group reward variance, and at least one valid checkpoint. Results on a checkpoint
 trained with this dataset must not be reported as an uncontaminated public LiveCodeBench score.
+
+## Nebius Kokkos pass@1 comparison (2026-09-06)
+
+Compare the four requested hosted models on the same frozen 100-task snapshot,
+using one attempt per task, at most 40 turns, 65,536 output tokens in total,
+16,384 output tokens per request, 80 tool calls and the existing verifier.
+Use Nebius Chat Completions with explicit high reasoning effort, server-default
+sampling temperature, and preserve assistant reasoning across tool turns.
+The authenticated verbose model catalog supplies exact model IDs and token prices;
+cache discounts are not published in that response, so cost estimates use the
+undiscounted input price and are not invoices.
+
+Run one already validated task for each model first; these four attempts count
+within the final 400 model-task attempts. After all four complete without API or
+sandbox errors, continue only tasks whose NOP/Oracle gate has passed. The four
+models share a single concurrency limit of four new sandboxes while the existing
+self-training verifier process continues. Failed or pending verifier tasks wait;
+they are not counted as model failures. Preserve each model-task transcript,
+grading evidence, task digest and token/cost/turn measurements. A restart never
+resamples a completed or errored trajectory. Diagnose errors before deciding
+whether an infrastructure-only recovery can preserve the pass@1 protocol.
+
+Success means 100 valid attempts per model and comparable pass@1, turn counts,
+token counts, and estimated inference cost. Partial valid-task pass rates are
+labeled partial and never substituted for the final 100-task denominator.
+
+Two tasks have confirmed environment failures under the default ConTree resources:
+7244 requires a single 4 GiB allocation and 8164 exceeds the cold-build deadline.
+Use a fixed resource policy for all four models: those two tasks run on Modal
+with 16 GiB memory and four CPUs; the remaining tasks use ConTree. The resource
+mapping is part of every model's resumable experiment identity. Before either
+exception task is sampled, its unchanged verifier must pass independent NOP/Oracle
+checks on that backend. Keep these checks in the sweep's validation_overrides
+folder and preserve the running self-training experiment's original evidence.

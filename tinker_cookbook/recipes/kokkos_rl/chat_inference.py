@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import cast
 from uuid import uuid4
 
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, omit
 from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolParam
 from openai.types.completion_usage import CompletionUsage
 
@@ -49,11 +49,25 @@ class ChatSession:
     """One task's conversation; never share a session across concurrent tasks."""
 
     def __init__(
-        self, client: AsyncOpenAI, model: str, effort: float, temperature: float = 1.0
+        self,
+        client: AsyncOpenAI,
+        model: str,
+        effort: float,
+        temperature: float | None = 1.0,
+        *,
+        provider: str = "tinker",
+        reasoning_effort: str = "high",
     ) -> None:
         if not math.isfinite(effort) or not 0 <= effort <= 0.99:
             raise ValueError("Chat reasoning effort must be finite and in [0, 0.99]")
         self.client, self.model, self.effort, self.temperature = client, model, effort, temperature
+        if provider not in {"tinker", "nebius"}:
+            raise ValueError(f"Unsupported chat provider: {provider}")
+        self.extra_body: dict[str, object] = (
+            {"reasoning_effort": effort, "separate_reasoning": True}
+            if provider == "tinker"
+            else {"reasoning_effort": reasoning_effort}
+        )
         self.messages: list[ChatCompletionMessageParam] = []
 
     async def create(
@@ -89,8 +103,8 @@ class ChatSession:
             messages=self.messages,
             tools=chat_tools,
             max_tokens=max_tokens,
-            temperature=self.temperature,
-            extra_body={"reasoning_effort": self.effort, "separate_reasoning": True},
+            temperature=self.temperature if self.temperature is not None else omit,
+            extra_body=self.extra_body,
         )
         choice = response.choices[0]
         message = choice.message.model_dump(exclude_none=True)

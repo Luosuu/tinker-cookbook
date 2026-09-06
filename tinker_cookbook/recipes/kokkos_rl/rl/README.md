@@ -165,3 +165,32 @@ Server rendering can differ from native renderers, so run a paired transport com
 before replacing a research baseline. This path produces evaluation transcripts, not exact
 sampled token IDs or training masks. Keep native Tinker collection for the self-training/RL
 pipeline. The existing `eval_kokkos_openai` Responses API defaults remain available.
+
+## Nebius four-model pass@1 sweep
+
+`eval_kokkos_nebius` runs GLM-5.3-Flash, Kimi-K3, DeepSeek-V4-Pro and
+DeepSeek-V4-Flash-0731 through Nebius Token Factory Chat Completions. Resolve and save
+an authenticated verbose `/models` response as `models.json` in the output directory
+before launching; exact model identifiers and current catalog prices are required.
+
+```bash
+uv run python -m tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos_nebius \
+  output_path=notes/experiments/nebius-kokkos-pass1-20260906 max_concurrency=4
+```
+
+The default configuration binds all 100 tasks to the existing verifier manifest. Each
+model's smoke task counts toward its 100 trials; subsequent tasks wait for their Oracle/NOP
+gates. Four models share four additional sandbox slots, a private image cache, and a
+controller lock. The 40-turn/65,536-output-token caps apply to every model. Provider-specific
+reasoning parameters are recorded; Tinker-only request fields are not sent to Nebius.
+
+Two tasks with demonstrated ConTree resource limitations (`7244` and `8164`) use a static
+Modal policy of 16 GiB and four CPUs. They wait for separate matching verifier evidence in
+`validation_overrides/`. Every model uses that same policy, which is bound to its resume
+identity. The existing self-training process is unchanged.
+
+A partial score is labeled explicitly; final pass@1 remains unavailable until all 100
+trials have valid grading. API/infrastructure errors and interrupted attempts require
+review and are never automatically resampled on restart. Costs use the captured catalog
+rates with undiscounted input pricing where no cache rate is published; they are estimates,
+not invoices. Keep credentials in the environment or `.env`, never in artifacts.

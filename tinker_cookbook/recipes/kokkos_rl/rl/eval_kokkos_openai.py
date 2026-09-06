@@ -54,12 +54,14 @@ class CLIConfig:
     output_path: str = "notes/experiments/SWE-kokkos-bench/gpt-5.6-terra/pass-at-1"
     env_file: str = ".env"
     api_mode: str = "responses"
+    chat_provider: str = "tinker"
     base_url: str | None = None
     api_key_env: str = "OPENAI_API_KEY"
     thinking_effort: float = 0.9
-    temperature: float = 1.0
+    temperature: float | None = 1.0
     estimate_cost: bool = True
     sandbox_build_parallelism: int | None = None
+    sandbox_resource_policy: str | None = None
     reasoning_effort: str = "medium"
     max_turns: int = 24
     max_tokens: int = 8192
@@ -206,7 +208,14 @@ async def evaluate_task(
         request_input: Any = [{"role": "user", "content": task.instruction}]
         previous_response_id: str | None = None
         chat = (
-            ChatSession(client, config.model_name, config.thinking_effort, config.temperature)
+            ChatSession(
+                client,
+                config.model_name,
+                config.thinking_effort,
+                config.temperature,
+                provider=config.chat_provider,
+                reasoning_effort=config.reasoning_effort,
+            )
             if config.api_mode == "chat"
             else None
         )
@@ -288,9 +297,16 @@ async def evaluate_task(
                     ],
                 }
             )
+            (results_dir / f"{task.task_name}.json").write_text(json.dumps(transcript, indent=2))
             if isinstance(response, ChatTurn):
                 transcript[-1]["assistant_message"] = response.assistant_message
+                transcript[-1]["raw_usage"] = (
+                    response.usage.model_dump() if response.usage is not None else None
+                )
                 transcript[-1]["finish_reason"] = response.finish_reason
+                (results_dir / f"{task.task_name}.json").write_text(
+                    json.dumps(transcript, indent=2)
+                )
                 if response.finish_reason not in {"stop", "tool_calls"}:
                     stop_reason = (
                         "max_tokens"
@@ -312,11 +328,19 @@ async def evaluate_task(
                 if call.name != "bash":
                     output = json.dumps({"error": f"unknown tool: {call.name}"})
                 else:
-                    arguments = json.loads(call.arguments)
-                    result = await bash_tool.bash.run(
-                        ToolInput(arguments=arguments, call_id=call.call_id)
-                    )
-                    output = str(result.messages[0]["content"])
+                    try:
+                        arguments = json.loads(call.arguments)
+                        if not isinstance(arguments, dict) or not isinstance(
+                            arguments.get("command"), str
+                        ):
+                            raise ValueError("bash requires a string command")
+                    except (json.JSONDecodeError, ValueError) as error:
+                        output = json.dumps({"error": f"invalid tool arguments: {error}"})
+                    else:
+                        result = await bash_tool.bash.run(
+                            ToolInput(arguments=arguments, call_id=call.call_id)
+                        )
+                        output = str(result.messages[0]["content"])
                 model_output = _truncate_tool_output(output, config.max_tool_output_chars)
                 request_input.append(
                     {
@@ -333,6 +357,7 @@ async def evaluate_task(
                     }
                 )
                 tool_calls += 1
+            (results_dir / f"{task.task_name}.json").write_text(json.dumps(transcript, indent=2))
             if tool_calls >= config.max_tool_calls:
                 stop_reason = "max_tool_calls"
                 break
@@ -575,7 +600,11 @@ async def main(config: CLIConfig) -> None:
             allow_network=config.allow_network,
             runtime_build_parallelism=config.sandbox_build_parallelism,
         )
-        effort = config.thinking_effort if config.api_mode == "chat" else config.reasoning_effort
+        effort = (
+            config.thinking_effort
+            if config.api_mode == "chat" and config.chat_provider == "tinker"
+            else config.reasoning_effort
+        )
         print(
             f"Running {len(tasks)} tasks with {config.model_name}, api={config.api_mode}, reasoning={effort}",
             flush=True,
