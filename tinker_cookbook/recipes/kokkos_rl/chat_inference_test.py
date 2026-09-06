@@ -235,3 +235,110 @@ async def test_missing_usage_fails_closed_and_exact_remaining_token_budget():
     assert sent[0]["max_tokens"] == 1
     with pytest.raises(ValueError, match="omitted usage"):
         evaluation._usage(response)
+
+
+@pytest.mark.asyncio
+async def test_chat_audit_and_refinement_keep_private_evidence_boundary(tmp_path, monkeypatch):
+    from dataclasses import replace
+
+    from tinker_cookbook.recipes.kokkos_rl.dataset.audit_instructions import _audit_one, _refine_one
+    from tinker_cookbook.recipes.kokkos_rl.dataset.models_test import _instance
+
+    instance = replace(
+        _instance(), code_patch="PRIVATE_CODE_SENTINEL", test_patch="PRIVATE_TEST_SENTINEL"
+    )
+    text = json.dumps(
+        {
+            "instance_id": instance.instance_id,
+            "assessment": "needs_revision",
+            "issues": ["Clarify behavior"],
+            "revised_problem_statement": "Describe observable behavior.",
+            "confidence": 0.8,
+        }
+    )
+    requests = []
+
+    def handler(request):
+        requests.append(json.loads(request.content))
+        return httpx.Response(200, json=completion(content=text))
+
+    client = api_client(handler)
+    monkeypatch.setattr(chat_inference, "create_chat_client", lambda *a: client)
+    completer = ChatAnnotationCompleter(
+        model="test", max_tokens=100, thinking_effort=0.9, reports_dir=tmp_path
+    )
+    try:
+        result = await _audit_one(
+            instance,
+            sampling_client=None,
+            renderer=None,
+            effort=0.9,
+            max_tokens=100,
+            attempts=1,
+            chat_completer=completer,
+        )
+        refined = await _refine_one(
+            instance,
+            result.to_dict(),
+            sampling_client=None,
+            renderer=None,
+            effort=0.9,
+            max_tokens=100,
+            attempts=1,
+            chat_completer=completer,
+        )
+    finally:
+        await completer.close()
+    assert result.termination == refined.termination == "api_stop"
+    assert "PRIVATE_TEST_SENTINEL" in json.dumps(requests[0])
+    assert "PRIVATE_CODE_SENTINEL" in json.dumps(requests[0])
+    assert "PRIVATE_TEST_SENTINEL" not in json.dumps(requests[1])
+    assert "PRIVATE_CODE_SENTINEL" not in json.dumps(requests[1])
+
+
+@pytest.mark.asyncio
+async def test_chat_mining_preserves_verifier_feedback_and_validation(tmp_path, monkeypatch):
+    from tinker_cookbook.recipes.kokkos_rl.dataset.auto_annotate import (
+        annotate_and_validate_instance,
+    )
+    from tinker_cookbook.recipes.kokkos_rl.dataset.auto_annotate_test import (
+        _annotation,
+        _FakeSandbox,
+    )
+    from tinker_cookbook.recipes.kokkos_rl.dataset.models_test import _instance
+
+    requests = []
+
+    def handler(request):
+        requests.append(json.loads(request.content))
+        target = "BadTarget" if len(requests) == 1 else "GoodTarget"
+        return httpx.Response(200, json=completion(content=_annotation(target)))
+
+    client = api_client(handler)
+    monkeypatch.setattr(chat_inference, "create_chat_client", lambda *a: client)
+    completer = ChatAnnotationCompleter(
+        model="test", max_tokens=100, thinking_effort=0.9, reports_dir=tmp_path
+    )
+    sandboxes = []
+
+    async def factory(instance, timeout):
+        sandbox = _FakeSandbox(instance.build_targets[0])
+        sandboxes.append(sandbox)
+        return sandbox
+
+    try:
+        result = await annotate_and_validate_instance(
+            _instance(),
+            completer=completer,
+            max_attempts=2,
+            flaky_repetitions=1,
+            sandbox_factory=factory,
+        )
+    finally:
+        await completer.close()
+    assert result.passed
+    assert result.validated_instance.build_targets == ("Kokkos_GoodTarget",)
+    assert len(result.attempts) == 2
+    assert "unknown target BadTarget" in json.dumps(requests[1])
+    assert all(sandbox.cleaned for sandbox in sandboxes)
+    assert len(list(tmp_path.glob("*.json"))) == 2

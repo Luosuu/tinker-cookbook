@@ -575,8 +575,9 @@ async def main(config: CLIConfig) -> None:
             allow_network=config.allow_network,
             runtime_build_parallelism=config.sandbox_build_parallelism,
         )
+        effort = config.thinking_effort if config.api_mode == "chat" else config.reasoning_effort
         print(
-            f"Running {len(tasks)} tasks with {config.model_name}, reasoning={config.reasoning_effort}",
+            f"Running {len(tasks)} tasks with {config.model_name}, api={config.api_mode}, reasoning={effort}",
             flush=True,
         )
         await run_eval(config, tasks, sandbox_factory)
