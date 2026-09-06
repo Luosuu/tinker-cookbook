@@ -18,10 +18,28 @@ from tinker_cookbook.recipes.kokkos_rl.rl.self_train import (
     RecordedDataset,
     RecordedDatasetBuilder,
     choose_donors,
+    validate_instruction_quality,
 )
 from tinker_cookbook.renderers.base import ToolCall
 from tinker_cookbook.rl.types import Trajectory, Transition
 from tinker_cookbook.sandbox import SandboxResult
+
+
+def test_known_instruction_contradiction_blocks_training(tmp_path: Path) -> None:
+    task = HarborTask(
+        "kokkos__kokkos-7043",
+        "Resolve aliases, suppress anonymous-namespace\n prefixes that vary by compiler.",
+        tmp_path,
+    )
+    with pytest.raises(ValueError, match="Instruction quality gate failed"):
+        validate_instruction_quality([task])
+
+
+def test_reviewed_instruction_is_accepted(tmp_path: Path) -> None:
+    overrides_path = Path(__file__).parents[1] / "dataset/instruction_overrides.json"
+    instruction = json.loads(overrides_path.read_text())["kokkos__kokkos-7043"]
+    assert "preserve compiler-specific anonymous-namespace prefixes" in instruction
+    validate_instruction_quality([HarborTask("kokkos__kokkos-7043", instruction, tmp_path)])
 
 
 def donor(task="train", sample=0, turns=10):

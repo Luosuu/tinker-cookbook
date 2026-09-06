@@ -388,3 +388,24 @@ to resource_validation_v2, not the running controller's validation_overrides.
 The current processes keep their existing policies. A later evaluation on the
 repaired task requires a separate identity or a documented drained-controller
 transition, with the same policy applied to all four models.
+
+Task 8164 passed this four-thread Modal gate. Investigate the subsequent Oracle
+timeouts on 8399 and 8827 with the same independent NOP/Oracle diagnostic,
+one task at a time, in resource_validation_v3. Reuse the unchanged frozen task
+bytes, keep the 900-second deadline, and make no model inference requests.
+These records also cannot unlock the running controller's older resource policy.
+
+## Instruction quality gate follow-up (2026-09-06)
+
+Task 7043's frozen instruction asks to suppress anonymous-namespace prefixes,
+but its gold implementation and compiler-specific hidden assertions preserve
+them. A passing NOP/Oracle pair therefore does not establish instruction
+correctness. Keep the running 100-task evaluation snapshot and its raw scores
+unchanged, flag this task in the report, and do not resample model failures.
+The reviewed instruction override now requires preserving those prefixes.
+Self-training must reject the known contradictory wording before any baseline
+or donor sampling. Recovery requires applying the override to a fresh dataset
+and experiment snapshot, recording the new hashes, and rerunning its gate;
+never edit the active manifest or borrow a validation record with another hash.
+The original validation process may finish collecting its remaining evidence,
+but its existing resource failures already prevent it advancing to sampling.

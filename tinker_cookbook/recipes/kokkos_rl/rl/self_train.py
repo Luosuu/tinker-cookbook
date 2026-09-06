@@ -66,6 +66,25 @@ def write_json(path: Path, value: object) -> None:
     temporary.replace(path)
 
 
+def validate_instruction_quality(tasks: list[HarborTask]) -> None:
+    """Reject confirmed instruction defects even when NOP/Oracle passes.
+
+    This targeted regression guard does not replace a full instruction audit.
+    Historical evaluation snapshots remain usable for reproducing raw scores.
+    """
+    for task in tasks:
+        instruction = " ".join(task.instruction.lower().split())
+        if task.task_name == "kokkos__kokkos-7043" and (
+            "suppress anonymous-namespace prefixes" in instruction
+        ):
+            raise ValueError(
+                "Instruction quality gate failed: kokkos__kokkos-7043 asks to suppress "
+                "anonymous-namespace prefixes but its verifier requires them. Apply the "
+                "reviewed instruction override in a fresh dataset/experiment snapshot "
+                "before baseline evaluation or self-training."
+            )
+
+
 class RecordedDataset(SupervisedDataset):
     def __init__(self, paths: list[str], batch_size: int) -> None:
         self.paths = paths
@@ -264,6 +283,7 @@ async def main(config: Config) -> None:
             tasks = [t for t in tasks if t.task_name in wanted]
             if len(tasks) != len(wanted):
                 raise ValueError("Unknown task names")
+        validate_instruction_quality(tasks)
         shuffled = list(tasks)
         random.Random(config.split_seed).shuffle(shuffled)
         heldout, training = shuffled[: config.eval_size], shuffled[config.eval_size :]
