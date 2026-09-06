@@ -11,6 +11,11 @@ from contextlib import nullcontext
 
 from tinker_cookbook.recipes.kokkos_rl.dataset.ecosystem import get_repository_profile
 from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
+from tinker_cookbook.recipes.kokkos_rl.dataset.runtime_coverage import ERROR_MARKER
+from tinker_cookbook.recipes.kokkos_rl.dataset.test_commands import (
+    guarded_command,
+    normalize_test_command,
+)
 from tinker_cookbook.recipes.kokkos_rl.dataset.validate import CommandResult, ValidationReport
 from tinker_cookbook.sandbox import SandboxInterface
 
@@ -277,10 +282,11 @@ async def _run(
     *,
     timeout: int,
     expected_exit: str = "zero",
+    runtime_check: bool = False,
 ) -> CommandResult:
     started = time.monotonic()
     result = await sandbox.run_command(
-        command,
+        guarded_command(command) if runtime_check else command,
         workdir="/workspace/repo",
         timeout=timeout,
     )
@@ -291,11 +297,16 @@ async def _run(
         seconds=time.monotonic() - started,
         stdout=result.stdout[-16000:],
         stderr=result.stderr[-16000:],
+        coverage_error=result.stderr[-16000:]
+        if runtime_check and ERROR_MARKER in result.stderr
+        else None,
     )
 
 
 def _record(report: ValidationReport, result: CommandResult) -> None:
     report.results.append(result)
+    if result.coverage_error:
+        raise RuntimeError(result.coverage_error)
     if not result.matched_expectation:
         raise RuntimeError(
             f"unexpected exit {result.exit_code} for {result.command!r}; "
@@ -310,6 +321,7 @@ async def _run_and_record(
     *,
     timeout: int,
     expected_exit: str = "zero",
+    runtime_check: bool = False,
 ) -> None:
     _record(
         report,
@@ -318,6 +330,7 @@ async def _run_and_record(
             command,
             timeout=timeout,
             expected_exit=expected_exit,
+            runtime_check=runtime_check,
         ),
     )
 
@@ -384,7 +397,15 @@ async def validate_instance_in_sandbox(
                 f"unexpected exit {baseline_build.exit_code} for {build_command!r}; expected zero"
             )
         for command in instance.p2p_commands:
-            await _run_and_record(report, sandbox, command, timeout=command_timeout)
+            await _run_and_record(
+                report,
+                sandbox,
+                normalize_test_command(
+                    command, test_patch=instance.test_patch, after_test_patch=False
+                ),
+                timeout=command_timeout,
+                runtime_check=True,
+            )
 
         await _write_patch(
             report,
@@ -423,9 +444,10 @@ async def validate_instance_in_sandbox(
                     await _run_and_record(
                         report,
                         sandbox,
-                        command,
+                        normalize_test_command(command, test_patch=instance.test_patch),
                         timeout=command_timeout,
                         expected_exit="nonzero",
+                        runtime_check=True,
                     )
         else:
             raise ValueError(f"unsupported metadata.f2p_stage: {failure_stage!r}")
@@ -445,7 +467,13 @@ async def validate_instance_in_sandbox(
         )
         await _run_and_record(report, sandbox, build_command, timeout=command_timeout)
         for command in (*instance.f2p_commands, *instance.p2p_commands):
-            await _run_and_record(report, sandbox, command, timeout=command_timeout)
+            await _run_and_record(
+                report,
+                sandbox,
+                normalize_test_command(command, test_patch=instance.test_patch),
+                timeout=command_timeout,
+                runtime_check=True,
+            )
         report.passed = True
     except Exception as error:
         report.error = f"{type(error).__name__}: {error}"

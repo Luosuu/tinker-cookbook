@@ -146,8 +146,8 @@ def test_recent_core_build_failure_uses_all_cpu_aggregate_targets() -> None:
         "Kokkos_CoreUnitTest_Serial1",
         "Kokkos_CoreUnitTest_Serial2",
     ]
-    assert normalized["p2p_commands"] == []
-    assert normalized["pass_to_pass"] == normalized["build_targets"]
+    assert normalized["p2p_commands"] == ["ctest --verbose --test-dir build -R TooBroad"]
+    assert normalized["pass_to_pass"] == ["TooBroad"]
 
 
 def test_core_target_is_inferred_from_cmake_source_list() -> None:
@@ -243,7 +243,7 @@ def test_test_stage_removes_build_command_and_expands_category_macro() -> None:
 
     assert normalized["f2p_commands"] == [
         '"$(find build -type f -name Kokkos_CoreUnitTest_Serial1 '
-        "-perm -111 -print -quit)\" --gtest_filter='*numeric_traits_denorm_min*'"
+        "-perm -111 -print -quit)\" --gtest_filter='*.numeric_traits_denorm_min'"
     ]
 
 

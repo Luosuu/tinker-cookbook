@@ -35,6 +35,10 @@ from tinker_cookbook.recipes.kokkos_rl.dataset.modal_validate import (
     validate_instance_in_sandbox,
 )
 from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
+from tinker_cookbook.recipes.kokkos_rl.dataset.test_commands import (
+    normalize_filter,
+    normalize_test_command,
+)
 from tinker_cookbook.renderers import Message, Renderer, get_renderer, get_text_content
 from tinker_cookbook.renderers.tml_v0 import TmlV0Renderer
 from tinker_cookbook.utils.git_rev import recipe_user_metadata
@@ -606,9 +610,7 @@ def _normalize_toolchain_annotation(
                     if "--gtest_filter" in command:
                         selector = command.split("--gtest_filter", maxsplit=1)[1].lstrip(" =")
                         unquoted_selector = selector.strip("'\"")
-                        if "TEST_CATEGORY" in unquoted_selector:
-                            case_name = unquoted_selector.split(".")[-1]
-                            selector = shlex.quote(f"*{case_name}*")
+                        selector = shlex.quote(normalize_filter(unquoted_selector))
                         normalized_commands.append(f"{binary} --gtest_filter={selector}")
                         continue
                     if not command.lstrip().startswith("ctest "):
@@ -640,11 +642,8 @@ def _normalize_toolchain_annotation(
             "Kokkos_CoreUnitTest_Serial1",
             "Kokkos_CoreUnitTest_Serial2",
         ]
-        if metadata.get("f2p_stage") == "build":
-            # The successful baseline aggregate build is the P2P invariant. Avoid
-            # model-authored ctest regexes that may select unrelated executables.
-            annotation["p2p_commands"] = []
-            annotation["pass_to_pass"] = list(annotation["build_targets"])
+        # Preserve requested runtime P2P checks even for compile-failure tasks.
+        # A bad selector must be repaired, not silently removed to pass validation.
 
     if profile.full_build_for_validation:
         annotation["build_command"] = "cmake --build build --parallel"
@@ -668,6 +667,16 @@ def _normalize_toolchain_annotation(
             if "-DKRS_ENABLE_TESTS=" not in configure:
                 configure += " -DKRS_ENABLE_TESTS=ON"
             annotation["configure_command"] = configure
+
+    for key in ("f2p_commands", "p2p_commands"):
+        commands = annotation.get(key)
+        if isinstance(commands, list):
+            annotation[key] = [
+                normalize_test_command(command, after_test_patch=False)
+                if isinstance(command, str)
+                else command
+                for command in commands
+            ]
 
     if not isinstance(metadata, dict) or metadata.get("toolchain") != "cuda":
         return annotation

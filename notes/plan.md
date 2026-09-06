@@ -459,6 +459,34 @@ controller and its existing resume identities are unaffected. Previously
 completed attempts lack this artifact; do not claim they can all be regraded
 without reconstructing their source changes from the retained evidence.
 
+## Runtime-test coverage repair (2026-09-06)
+
+Oracle logs revealed commands that exited successfully after selecting zero
+tests. The annotation normalizer previously expanded TEST_CATEGORY only for
+runtime F2P tasks, leaving runtime P2P checks on compile-failure tasks unchanged.
+Use one selector normalizer in annotation, local/sandbox validation and Harbor
+export: preserve every positive/negative filter alternative, repair literal
+macro suites and quoting, and apply a renamed case only when the hidden patch
+contains unambiguous corresponding old/new declarations. Baseline P2P uses the
+old case name; test-only and gold stages use the post-patch name. Do not remove
+an invalid runtime P2P check to make an annotation validate.
+
+Use the same standalone runtime guard in all verification paths. GoogleTest
+must report nonzero selected tests and, for a successful command, matching
+nonzero passed summaries. Reject any zero-test invocation, including one mixed
+with successful invocations, all-skipped runs and missing execution evidence.
+CTest runs verbosely from the build directory so nested empty GoogleTest runs
+are visible; reject missing/empty CTest execution and masked failures. A coverage
+error cannot count as an expected F2P failure. Compile-only checks remain legal.
+These checks use output evidence compatible with older bundled toolchains,
+rather than assuming a recently added GoogleTest flag is available.
+
+Audit all 100 frozen command sets and create a distinct corrected task snapshot;
+never rewrite the running task payload. Unknown selectors and hardware-specific
+requirements remain blocked for diagnosis. Revalidate under the corrected hash
+before sampling, and regrade retained candidates without resampling model text.
+The original quarantined evidence and raw scores stay available for comparison.
+
 ## Runtime coverage audit (2026-09-06)
 
 Oracle logs exposed zero-test GoogleTest invocations on 18 tasks, including

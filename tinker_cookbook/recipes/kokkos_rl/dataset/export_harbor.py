@@ -13,6 +13,10 @@ from tinker_cookbook.recipes.kokkos_rl.dataset.patching import (
     is_forbidden_agent_path,
     split_unified_diff,
 )
+from tinker_cookbook.recipes.kokkos_rl.dataset.test_commands import (
+    guard_source,
+    normalize_test_command,
+)
 
 ERA_IMAGES = {
     "cpp14": "ubuntu:20.04",
@@ -173,10 +177,16 @@ if ! {build_command}; then
   exit 0
 fi
 
-{_shell_array("f2p_commands", instance.f2p_commands)}
-{_shell_array("p2p_commands", instance.p2p_commands)}
+run_checked() {{
+  python3 - "$1" <<'KOKKOS_RUNTIME_GUARD'
+{guard_source()}
+KOKKOS_RUNTIME_GUARD
+}}
+
+{_shell_array("f2p_commands", tuple(normalize_test_command(command, test_patch=instance.test_patch) for command in instance.f2p_commands))}
+{_shell_array("p2p_commands", tuple(normalize_test_command(command, test_patch=instance.test_patch) for command in instance.p2p_commands))}
 for command in "${{f2p_commands[@]}}" "${{p2p_commands[@]}}"; do
-  if [[ -n "$command" ]] && ! bash -lc "$command"; then
+  if [[ -n "$command" ]] && ! run_checked "$command"; then
     exit 0
   fi
 done

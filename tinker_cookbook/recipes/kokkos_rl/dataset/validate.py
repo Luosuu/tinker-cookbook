@@ -11,6 +11,11 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
+from tinker_cookbook.recipes.kokkos_rl.dataset.runtime_coverage import ERROR_MARKER
+from tinker_cookbook.recipes.kokkos_rl.dataset.test_commands import (
+    guarded_command,
+    normalize_test_command,
+)
 
 
 @dataclass(frozen=True)
@@ -21,9 +26,12 @@ class CommandResult:
     seconds: float
     stdout: str
     stderr: str
+    coverage_error: str | None = None
 
     @property
     def matched_expectation(self) -> bool:
+        if self.coverage_error:
+            return False
         return self.exit_code == 0 if self.expected_exit == "zero" else self.exit_code != 0
 
 
@@ -50,10 +58,11 @@ def _run(
     timeout: int,
     expected_exit: str = "zero",
     input_text: str | None = None,
+    runtime_check: bool = False,
 ) -> CommandResult:
     started = time.monotonic()
     completed = subprocess.run(
-        ["bash", "-lc", command],
+        ["bash", "-lc", guarded_command(command) if runtime_check else command],
         cwd=cwd,
         input=input_text,
         text=True,
@@ -68,11 +77,16 @@ def _run(
         seconds=time.monotonic() - started,
         stdout=completed.stdout[-16000:],
         stderr=completed.stderr[-16000:],
+        coverage_error=completed.stderr[-16000:]
+        if runtime_check and ERROR_MARKER in completed.stderr
+        else None,
     )
 
 
 def _record(report: ValidationReport, result: CommandResult) -> None:
     report.results.append(result)
+    if result.coverage_error:
+        raise RuntimeError(result.coverage_error)
     if not result.matched_expectation:
         raise RuntimeError(
             f"unexpected exit {result.exit_code} for {result.command!r}; "
@@ -123,7 +137,17 @@ def validate_instance(
             )
             _record(report, _run(build_command, cwd=worktree, timeout=command_timeout))
             for command in instance.p2p_commands:
-                _record(report, _run(command, cwd=worktree, timeout=command_timeout))
+                _record(
+                    report,
+                    _run(
+                        normalize_test_command(
+                            command, test_patch=instance.test_patch, after_test_patch=False
+                        ),
+                        cwd=worktree,
+                        timeout=command_timeout,
+                        runtime_check=True,
+                    ),
+                )
 
             _record(
                 report,
@@ -151,10 +175,11 @@ def validate_instance(
                         _record(
                             report,
                             _run(
-                                command,
+                                normalize_test_command(command, test_patch=instance.test_patch),
                                 cwd=worktree,
                                 timeout=command_timeout,
                                 expected_exit="nonzero",
+                                runtime_check=True,
                             ),
                         )
 
@@ -169,7 +194,15 @@ def validate_instance(
             )
             _record(report, _run(build_command, cwd=worktree, timeout=command_timeout))
             for command in (*instance.f2p_commands, *instance.p2p_commands):
-                _record(report, _run(command, cwd=worktree, timeout=command_timeout))
+                _record(
+                    report,
+                    _run(
+                        normalize_test_command(command, test_patch=instance.test_patch),
+                        cwd=worktree,
+                        timeout=command_timeout,
+                        runtime_check=True,
+                    ),
+                )
             report.passed = True
         except (RuntimeError, subprocess.TimeoutExpired) as error:
             report.error = str(error)
