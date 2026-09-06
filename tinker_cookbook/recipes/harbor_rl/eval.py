@@ -74,6 +74,8 @@ class EvalConfig:
     max_infra_retries: int = 2
     sandbox_backend: str = "modal"
     allow_network: bool = True
+    # Kokkos-only opt-in: preserve exact sampled tokens and the pre-grading patch.
+    export_kokkos_rollouts: bool = False
 
 
 @dataclass
@@ -119,6 +121,11 @@ async def evaluate_task(
             grader_timeout=config.grader_timeout,
             raise_on_grading_error=True,
         )
+        recorder = None
+        if config.export_kokkos_rollouts:
+            from tinker_cookbook.recipes.kokkos_rl.rl.rollout_data import RolloutRecorder
+
+            recorder = RolloutRecorder(task, sandbox, results_dir, sample_index, reward_fn)
 
         base_rollout_config = agentic()
         rollout_config = RolloutConfig(
@@ -137,7 +144,7 @@ async def evaluate_task(
             renderer=renderer,
             tools=[bash_tool.bash],
             initial_messages=_initial_messages(task, renderer, bash_tool),
-            reward_fn=reward_fn,
+            reward_fn=recorder if recorder is not None else reward_fn,
             max_turns=config.max_turns,
             rollout_config=rollout_config,
             generation_prompt_kwargs=(
@@ -146,6 +153,8 @@ async def evaluate_task(
         )
 
         trajectory = await do_single_rollout(policy, env)
+        if recorder is not None:
+            recorder.save(trajectory)
         reward = sum(t.reward for t in trajectory.transitions)
         reward_details = trajectory.transitions[-1].metrics if trajectory.transitions else {}
         turns_used = len(trajectory.transitions)

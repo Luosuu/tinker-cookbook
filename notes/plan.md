@@ -1,5 +1,59 @@
 # Kokkos Coding-RL Dataset: Phase 0 Plan
 
+## Fixed 40-turn successful-trajectory self-training (2026-09-06)
+
+Question: can self-training improve Inkling-Small's Kokkos repair success and reduce
+the turns and sampled tokens needed per delivered repair, under a hard 40-turn cap?
+The cap stays fixed for collection, the base model, and both trained checkpoints.
+
+Compare three conditions: the unchanged base model, one randomly selected qualified
+success per training task, and the shortest qualified success per same training task
+(fewest turns, then sampled tokens). The two training arms use identical task coverage,
+one demonstration per task, equal total loss weight per trajectory, and the same optimizer
+settings. This tests demonstration selection; it does not establish a general optimal RL
+algorithm. Short demonstrations are the explicit efficiency training intervention.
+
+Use the current prepared 100-task payload snapshot, sorted then shuffled with seed 7,
+with 80 training tasks and 20 disjoint evaluation tasks. Do not use historical trajectories
+or heldout outcomes to select demonstrations. Save task digests and the committed code
+revision before starting remote work. A small fixed validation subset precedes the full run.
+
+Required gates, in order:
+
+1. In fresh network-disabled sandboxes, verify that the baseline is the only reachable
+   commit, the merge commit is absent, and hidden test/solution directories are absent.
+   Require NOP=0 and packaged Oracle=1 for every current task snapshot.
+2. Evaluate the unchanged Small model on the 20 heldout tasks with four samples per task.
+   Resolve infrastructure errors before collection or training; retain failed attempts
+   separately and never retry an incorrect solution as an infrastructure failure.
+3. Collect four new Small trajectories on each of the 80 training tasks. Candidate donors
+   must pass, terminate naturally within 40 turns, have a nonempty source patch, and have
+   no parse-error, answer-lookup, or hidden-material-access audit flag. Cap-terminated
+   successes count in evaluation but are excluded from both training arms.
+4. Reapply each candidate patch in a fresh sandbox and require a second reward of one.
+   Require at least 16 distinct qualified training tasks; otherwise stop for diagnosis.
+   Preserve exact sampled tokens, including thinking-effort conditioning, and supervise
+   only action tokens. Validate every token/target/mask and inspect decoded examples.
+5. Start each SFT arm independently from `thinkingmachines/Inkling-Small:peft:262144`,
+   LoRA rank 32, constant LR 1e-5, one epoch, four tasks per batch (at most 20 updates).
+   Evaluate both final checkpoints on the identical heldout task/sample slots.
+
+Shared rollout settings: automatically recommended renderer, explicit thinking effort 0.9,
+temperature 1.0, 40 turns, 80 tool calls, 16,384 tokens per response, 65,536 sampled tokens,
+114,688 trajectory tokens, and a 900-second command/grader timeout. Sandbox concurrency
+is four; no sampling timeouts or sampling retry wrappers are added. The initial budget
+is 200 verifier checks, 80 baseline rollouts, 320 collection rollouts, fresh regrades only
+for qualified candidates, and 160 checkpoint-evaluation rollouts. No automatic sweep or
+budget expansion is permitted by this recipe.
+
+Report pass@1, infrastructure failures, mean turns on all trials and on successes,
+sampled tokens, and total turns/tokens per delivered success (including incorrect trials).
+Also report observed successes that ended by turns 20/30/40; these are not independent
+lower-cap evaluations. Use task-clustered paired uncertainty for comparisons. A promising
+efficiency result requires lower cost per delivered success without a material observed
+success-rate drop; report uncertainty explicitly rather than claiming noninferiority from
+only 20 tasks. Before broader training, inspect failures and both arms' learning curves.
+
 ## SWE-kokkos-bench v2.3 paired 20-task model evaluation (2026-09-01)
 
 Research question: on the same 20 Kokkos tasks used for the prior Terra comparison, do the
