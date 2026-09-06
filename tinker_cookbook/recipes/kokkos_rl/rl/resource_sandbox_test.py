@@ -19,7 +19,7 @@ async def test_static_resource_routing_preserves_primary_backend(monkeypatch):
     assert await factory(normal_path, 3600) is primary.return_value
     assert await factory(large_path, 3600) is modal.return_value
     primary.assert_awaited_once_with(normal_path, 3600)
-    modal.assert_awaited_once_with(large_path, 3600, memory_mb=16384, cpu=4.0)
+    modal.assert_awaited_once_with(large_path, 3600, memory_mb=16384, cpu=4.0, build_parallelism=1)
 
 
 @pytest.mark.parametrize("names", [("a", "a"), ("../a",), ("",)])
@@ -35,7 +35,8 @@ def test_invalid_resources_rejected(memory, cpu):
 
 
 @pytest.mark.asyncio
-async def test_modal_receives_memory_cpu_and_network_policy(monkeypatch):
+@pytest.mark.parametrize("parallelism", [1, 4])
+async def test_modal_receives_memory_cpu_and_network_policy(monkeypatch, parallelism):
     from unittest.mock import Mock
 
     image = Mock()
@@ -44,9 +45,13 @@ async def test_modal_receives_memory_cpu_and_network_policy(monkeypatch):
     monkeypatch.setattr("modal.Image.from_dockerfile", builder)
     monkeypatch.setattr("tinker_cookbook.sandbox.modal_sandbox.ModalSandbox.create", create)
     await resource_sandbox._create_modal_sandbox(
-        Path("/snapshot/large/environment"), 3600, memory_mb=16384, cpu=4.0
+        Path("/snapshot/large/environment"),
+        3600,
+        memory_mb=16384,
+        cpu=4.0,
+        build_parallelism=parallelism,
     )
-    image.env.assert_called_once_with({"CMAKE_BUILD_PARALLEL_LEVEL": "1"})
+    image.env.assert_called_once_with({"CMAKE_BUILD_PARALLEL_LEVEL": str(parallelism)})
     create.assert_awaited_once_with(
         image=image.env.return_value, timeout=3600, memory=16384, cpu=4.0, allow_network=False
     )

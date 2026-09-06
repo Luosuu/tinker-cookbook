@@ -376,3 +376,15 @@ mapping is part of every model's resumable experiment identity. Before either
 exception task is sampled, its unchanged verifier must pass independent NOP/Oracle
 checks on that backend. Keep these checks in the sweep's validation_overrides
 folder and preserve the running self-training experiment's original evidence.
+
+## Resource validation follow-up (2026-09-06)
+
+The fixed 16 GiB Modal gate passed task 7244. Task 8164 still timed out during
+single-thread compilation (129/141 units), before CTest. Independently validate
+its unchanged task snapshot with Modal 16 GiB/four CPUs and explicit build
+parallelism four, retaining the 900-second verifier timeout. No model sampling
+is part of this diagnostic. Preserve the previous failed evidence; write only
+to resource_validation_v2, not the running controller's validation_overrides.
+The current processes keep their existing policies. A later evaluation on the
+repaired task requires a separate identity or a documented drained-controller
+transition, with the same policy applied to all four models.
