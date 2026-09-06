@@ -12,9 +12,8 @@ import chz
 from tinker_cookbook.recipes.harbor_rl.eval import EvalConfig, TaskResult, run_eval
 from tinker_cookbook.recipes.harbor_rl.harbor_env import (
     default_sandbox_factory,
-    load_harbor_tasks_from_dir,
 )
-
+from tinker_cookbook.recipes.kokkos_rl.rl.tasks import prepared_kokkos_tasks
 
 DEFAULT_CONTREE_CACHE_PATH = "/tmp/tinker-examples/kokkos_rl/contree_images.json"
 
@@ -100,57 +99,59 @@ def select_tasks(tasks: list, task_names: str | None) -> list:
 
 async def main(cli_config: CLIConfig) -> None:
     load_env_file(Path(cli_config.env_file))
-    tasks = select_tasks(
-        load_harbor_tasks_from_dir(Path(cli_config.tasks_dir)), cli_config.task_names
-    )
-    eval_config = EvalConfig(
-        model_name=cli_config.model_name,
-        checkpoint_url=cli_config.checkpoint_url,
-        output_path=str(Path(cli_config.output_path) / cli_config.model_name.replace("/", "-")),
-        max_turns=cli_config.max_turns,
-        max_tokens=cli_config.max_tokens,
-        temperature=cli_config.temperature,
-        sandbox_timeout=cli_config.sandbox_timeout,
-        command_timeout=cli_config.command_timeout,
-        grader_timeout=cli_config.grader_timeout,
-        sandbox_build_parallelism=cli_config.sandbox_build_parallelism,
-        max_tasks=cli_config.max_tasks,
-        max_concurrency=cli_config.max_concurrency,
-        base_url=cli_config.base_url,
-        renderer_name=cli_config.renderer_name,
-        thinking_effort=cli_config.thinking_effort,
-        max_trajectory_tokens=cli_config.max_trajectory_tokens,
-        max_sampled_tokens=cli_config.max_sampled_tokens,
-        max_tool_calls=cli_config.max_tool_calls,
-        num_samples=cli_config.num_samples,
-        pass_at_k=cli_config.pass_at_k,
-        resume_dir=cli_config.resume_dir,
-        max_infra_retries=cli_config.max_infra_retries,
-    )
-    print(
-        f"Running {len(tasks)} Kokkos tasks with model={eval_config.model_name}, "
-        f"temperature={eval_config.temperature}, max_tokens={eval_config.max_tokens}, "
-        f"thinking_effort={eval_config.thinking_effort}"
-    )
-    if cli_config.sandbox_backend == "modal":
-        sandbox_factory = functools.partial(
-            default_sandbox_factory,
+    tasks_dir = Path(cli_config.tasks_dir)
+    with prepared_kokkos_tasks(tasks_dir) as prepared:
+        tasks = select_tasks(prepared, cli_config.task_names)
+        eval_config = EvalConfig(
+            model_name=cli_config.model_name,
+            checkpoint_url=cli_config.checkpoint_url,
+            output_path=str(Path(cli_config.output_path) / cli_config.model_name.replace("/", "-")),
+            max_turns=cli_config.max_turns,
+            max_tokens=cli_config.max_tokens,
+            temperature=cli_config.temperature,
+            sandbox_timeout=cli_config.sandbox_timeout,
+            command_timeout=cli_config.command_timeout,
+            grader_timeout=cli_config.grader_timeout,
+            sandbox_build_parallelism=cli_config.sandbox_build_parallelism,
+            max_tasks=cli_config.max_tasks,
+            max_concurrency=cli_config.max_concurrency,
+            base_url=cli_config.base_url,
+            renderer_name=cli_config.renderer_name,
+            thinking_effort=cli_config.thinking_effort,
+            max_trajectory_tokens=cli_config.max_trajectory_tokens,
+            max_sampled_tokens=cli_config.max_sampled_tokens,
+            max_tool_calls=cli_config.max_tool_calls,
+            num_samples=cli_config.num_samples,
+            pass_at_k=cli_config.pass_at_k,
+            resume_dir=cli_config.resume_dir,
+            max_infra_retries=cli_config.max_infra_retries,
+            sandbox_backend=cli_config.sandbox_backend,
             allow_network=cli_config.allow_network,
         )
-    elif cli_config.sandbox_backend == "contree":
-        from tinker_cookbook.sandbox.contree_sandbox import ContreeDockerfileSandboxFactory
+        print(
+            f"Running {len(tasks)} Kokkos tasks with model={eval_config.model_name}, "
+            f"temperature={eval_config.temperature}, max_tokens={eval_config.max_tokens}, "
+            f"thinking_effort={eval_config.thinking_effort}"
+        )
+        if cli_config.sandbox_backend == "modal":
+            sandbox_factory = functools.partial(
+                default_sandbox_factory,
+                allow_network=cli_config.allow_network,
+            )
+        elif cli_config.sandbox_backend == "contree":
+            from tinker_cookbook.sandbox.contree_sandbox import ContreeDockerfileSandboxFactory
 
-        cache_path = Path(cli_config.contree_cache_path or DEFAULT_CONTREE_CACHE_PATH)
-        sandbox_factory = ContreeDockerfileSandboxFactory(
-            cache_path=cache_path,
-            timeout=cli_config.sandbox_timeout,
-            runtime_build_parallelism=cli_config.sandbox_build_parallelism,
-            allow_network=cli_config.allow_network,
-        )
-    else:
-        raise ValueError(f"unknown sandbox_backend: {cli_config.sandbox_backend!r}")
-    results = await run_eval(eval_config, tasks, sandbox_factory=sandbox_factory)
-    print_summary(results)
+            cache_path = Path(cli_config.contree_cache_path or DEFAULT_CONTREE_CACHE_PATH)
+            sandbox_factory = ContreeDockerfileSandboxFactory(
+                cache_path=cache_path,
+                timeout=cli_config.sandbox_timeout,
+                runtime_build_parallelism=cli_config.sandbox_build_parallelism,
+                allow_network=cli_config.allow_network,
+            )
+        else:
+            raise ValueError(f"unknown sandbox_backend: {cli_config.sandbox_backend!r}")
+        results = await run_eval(eval_config, tasks, sandbox_factory=sandbox_factory)
+        print_summary(results)
 
 
 if __name__ == "__main__":

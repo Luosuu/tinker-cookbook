@@ -15,7 +15,7 @@ Mirrors the structure of recipes/nemotron_mcqa/env.py.
 from __future__ import annotations
 
 import asyncio
-import contextlib
+import inspect
 import json
 import random
 from collections.abc import Sequence
@@ -80,8 +80,7 @@ def _history_to_turns(history: list[Message]) -> list[dict[str, Any]]:
         tool_calls = msg.get("tool_calls")
         if tool_calls:
             turn["tool_calls"] = [
-                {"name": tc.function.name, "arguments": tc.function.arguments}
-                for tc in tool_calls
+                {"name": tc.function.name, "arguments": tc.function.arguments} for tc in tool_calls
             ]
         turns.append(turn)
     return turns
@@ -217,7 +216,7 @@ def _bind_effort(renderer: Renderer, effort: float) -> Renderer:
     accept an ``effort`` kwarg.
     """
     orig = renderer.build_generation_prompt
-    with contextlib.suppress(TypeError, AttributeError):
+    if "effort" in inspect.signature(orig).parameters:
         renderer.build_generation_prompt = partial(orig, effort=effort)  # type: ignore[method-assign]
     return renderer
 
@@ -295,7 +294,7 @@ def build_science_env(
             question=datum.question,
             reference=datum.reference,
             output_regex=datum.output_regex,
-            judge=_make_judge(judge_model, renderer_name, judge_effort),
+            judge=_make_judge(judge_model, None, judge_effort),
             format_coef=format_coef,
             trace_weave=trace_weave,
             split=split,
@@ -393,9 +392,7 @@ class ScienceDatasetBuilder(RLDatasetBuilder):
     judge_effort: float = 0.5
 
     async def __call__(self) -> tuple[RLDataset, RLDataset | None]:
-        data = load_science(
-            limit=self.n_examples, dataset_name=self.dataset_name, split=self.split
-        )
+        data = load_science(limit=self.n_examples, dataset_name=self.dataset_name, split=self.split)
         rng = random.Random(self.seed)
         rng.shuffle(data)
         builders = [
@@ -515,9 +512,7 @@ class ScienceValEvaluatorBuilder:
     judge_effort: float = 0.5
 
     def __call__(self) -> ScienceValEvaluator:
-        val_set = load_science(
-            limit=self.n_val, dataset_name=self.dataset_name, split=self.split
-        )
+        val_set = load_science(limit=self.n_val, dataset_name=self.dataset_name, split=self.split)
         return ScienceValEvaluator(
             val_set=val_set,
             model_name=self.model_name,

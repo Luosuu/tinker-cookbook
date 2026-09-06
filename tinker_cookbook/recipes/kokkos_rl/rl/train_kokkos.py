@@ -17,7 +17,6 @@ from tinker_cookbook import cli_utils
 from tinker_cookbook.recipes.harbor_rl.harbor_env import (
     SandboxFactory,
     default_sandbox_factory,
-    load_harbor_tasks_from_dir,
 )
 from tinker_cookbook.recipes.harbor_rl.train import CLIConfig as HarborCLIConfig
 from tinker_cookbook.recipes.harbor_rl.train import cli_main
@@ -26,6 +25,7 @@ from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos import (
     load_env_file,
     select_tasks,
 )
+from tinker_cookbook.recipes.kokkos_rl.rl.tasks import prepared_kokkos_tasks
 from tinker_cookbook.rl.rollout_strategy import RolloutStrategy
 
 
@@ -177,22 +177,23 @@ def _build_sandbox_factory(cli_config: CLIConfig) -> SandboxFactory:
 async def main(cli_config: CLIConfig) -> None:
     load_env_file(Path(cli_config.env_file))
     tasks_dir = Path(cli_config.tasks_dir)
-    tasks = select_tasks(load_harbor_tasks_from_dir(tasks_dir), cli_config.task_names)
-    if not tasks:
-        raise ValueError(f"No Harbor tasks found under {tasks_dir}")
-    sandbox_factory = _build_sandbox_factory(cli_config)
-    print(
-        f"Training {cli_config.model_name} on {len(tasks)} Kokkos tasks from "
-        f"{tasks_dir} (group_size={cli_config.group_size}, "
-        f"groups_per_batch={cli_config.groups_per_batch}, "
-        f"sandbox_backend={cli_config.sandbox_backend}, "
-        f"eval_size={cli_config.eval_size})"
-    )
-    await cli_main(
-        _to_harbor_config(cli_config),
-        tasks,
-        sandbox_factory=sandbox_factory,
-    )
+    with prepared_kokkos_tasks(tasks_dir) as prepared:
+        tasks = select_tasks(prepared, cli_config.task_names)
+        if not tasks:
+            raise ValueError(f"No Harbor tasks found under {tasks_dir}")
+        sandbox_factory = _build_sandbox_factory(cli_config)
+        print(
+            f"Training {cli_config.model_name} on {len(tasks)} Kokkos tasks from "
+            f"{tasks_dir} (group_size={cli_config.group_size}, "
+            f"groups_per_batch={cli_config.groups_per_batch}, "
+            f"sandbox_backend={cli_config.sandbox_backend}, "
+            f"eval_size={cli_config.eval_size})"
+        )
+        await cli_main(
+            _to_harbor_config(cli_config),
+            tasks,
+            sandbox_factory=sandbox_factory,
+        )
 
 
 if __name__ == "__main__":

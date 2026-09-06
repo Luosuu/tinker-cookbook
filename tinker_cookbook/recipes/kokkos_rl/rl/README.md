@@ -27,6 +27,13 @@ at `/tmp/tinker-examples/kokkos_rl/contree_images.json` by default, shared with 
 `resume_dir` to an interrupted timestamped result directory to skip successful rollouts and
 retry only infrastructure errors.
 
+Resuming validates the model, checkpoint, generation and sandbox settings, and hashes of
+the selected tasks' instructions, configuration, environment, and tests. Task subsets and
+sample counts may change; summaries include only the requested tasks and sample indices.
+Legacy result directories without `eval_identity.json` require a new output directory,
+because their task contents cannot be verified. Operational changes such as concurrency do
+not invalidate a run; changing its model, task payloads, or rollout budgets does.
+
 ConTree is the default backend for Kokkos evaluation, training, and task auto-annotation because
 its prepared images can be reused at lower cost. Keep a run on one backend for interpretable
 results. If retries confirm a ConTree infrastructure failure, rerun only the affected task IDs
@@ -49,6 +56,10 @@ tokens, 12,000 characters returned to the model per tool result, and a $0.75 est
 cost cap. Adjust the four per-million-token price fields when provider pricing changes. Treat
 the cost cap as an estimate and provider billing as authoritative; a request already in flight
 can cross the cap before the evaluator stops the next turn.
+
+The per-task cost budget is shared across failed attempts, retries, and resumed invocations.
+Usage and cost totals include all attempts for the selected tasks, including failed grading;
+pass rates use the final task outcomes. `num_attempts` records the total number of attempts.
 
 ## Reinforcement learning
 
@@ -76,9 +87,17 @@ shared path rather than the run's log directory; point it at the cache an evalua
 wrote to reuse those images instead of rebuilding them.
 
 For both backends, agent rollout sandboxes have no network access by default. The exported
-task image also flattens the repository to a single root commit and removes remotes, refs,
-reflogs, and unreachable objects, preventing agents from mining the merged fix from Git
-history. Re-export and republish the Harbor dataset whenever this clean-room setup changes.
+task image retains the original base commit as a shallow boundary and removes remotes,
+refs, reflogs, and unreachable history. The verifier pins that commit's SHA and ignores Git
+replacement refs, so committing changes cannot bypass protected-file checks.
+
+The Kokkos training and evaluation entrypoints prepare temporary task copies with the current
+environment and verifier generated from task metadata. Published payloads and historical
+Oracle/NOP evidence remain unchanged; the effective task hashes are recorded for evaluation
+resume checks. The new Dockerfile invalidates old sandbox image cache entries. These runtime
+copies require fresh cloud validation before publishing a new dataset release; historical
+release validation does not certify them. Direct Harbor users should re-export their tasks
+with the current exporter to obtain the same fixed verifier.
 
 ### Held-out evaluation
 

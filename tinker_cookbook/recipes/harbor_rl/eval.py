@@ -9,6 +9,7 @@ Download harbor datasets:
 from __future__ import annotations
 
 import asyncio
+import functools
 import json
 import logging
 import math
@@ -25,6 +26,7 @@ import tinker
 from tinker_cookbook import model_info, tokenizer_utils
 from tinker_cookbook.completers import TinkerTokenCompleter
 from tinker_cookbook.display import format_trajectory
+from tinker_cookbook.recipes.harbor_rl.eval_state import prepare_eval_state
 from tinker_cookbook.recipes.harbor_rl.harbor_env import (
     HarborTask,
     SandboxFactory,
@@ -70,6 +72,8 @@ class EvalConfig:
     pass_at_k: str = "1"
     resume_dir: str | None = None
     max_infra_retries: int = 2
+    sandbox_backend: str = "modal"
+    allow_network: bool = True
 
 
 @dataclass
@@ -280,19 +284,21 @@ async def _retry_infrastructure_errors(
     sample_index: int,
 ) -> TaskResult:
     """Retry failed eval attempts while retaining every attempt on disk."""
-    for attempt in range(max_retries + 1):
-        result = await operation()
+    if max_retries < 0:
+        raise ValueError("max_retries must be non-negative")
+    result = await operation()
+    for attempt in range(max_retries):
         if result.error is None:
             return result
-        if attempt < max_retries:
-            logger.warning(
-                "Retrying task %s sample %d after infrastructure error (%d/%d): %s",
-                task_name,
-                sample_index + 1,
-                attempt + 1,
-                max_retries,
-                result.error,
-            )
+        logger.warning(
+            "Retrying task %s sample %d after infrastructure error (%d/%d): %s",
+            task_name,
+            sample_index + 1,
+            attempt + 1,
+            max_retries,
+            result.error,
+        )
+        result = await operation()
     return result
 
 
@@ -317,6 +323,14 @@ async def run_eval(
         raise ValueError("num_samples must be at least 1")
     if config.max_infra_retries < 0:
         raise ValueError("max_infra_retries must be non-negative")
+    if config.max_concurrency < 1:
+        raise ValueError("max_concurrency must be positive")
+    if sandbox_factory is default_sandbox_factory:
+        if config.sandbox_backend != "modal":
+            raise ValueError("Non-Modal evaluation requires an explicit sandbox_factory")
+        sandbox_factory = functools.partial(
+            default_sandbox_factory, allow_network=config.allow_network
+        )
     k_values = sorted({int(value.strip()) for value in config.pass_at_k.split(",")})
     if not k_values or k_values[0] < 1 or k_values[-1] > config.num_samples:
         raise ValueError("pass_at_k values must be between 1 and num_samples")
@@ -330,6 +344,9 @@ async def run_eval(
     print(f"Results dir: {results_dir}")
 
     config_dict = dump_config(config)
+    if config.max_tasks is not None:
+        tasks = random.Random(0).sample(tasks, min(config.max_tasks, len(tasks)))
+    prepare_eval_state(results_dir, config_dict, tasks, evaluator="tinker-harbor")
     config_path = results_dir / "config.json"
     if not config_path.exists():
         config_path.write_text(json.dumps(config_dict, indent=2))
@@ -366,10 +383,12 @@ async def run_eval(
         temperature=config.temperature,
     )
 
-    if config.max_tasks is not None:
-        tasks = random.sample(tasks, min(config.max_tasks, len(tasks)))
-
-    completed = _load_completed_results(results_dir)
+    task_names = {task.task_name for task in tasks}
+    completed = {
+        key: result
+        for key, result in _load_completed_results(results_dir).items()
+        if key[0] in task_names and 0 <= key[1] < config.num_samples
+    }
     work_items = [
         (task, sample_index)
         for sample_index in range(config.num_samples)

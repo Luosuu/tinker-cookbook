@@ -25,6 +25,18 @@ SYCL_IMAGE = "intel/oneapi-basekit:2025.3.2-0-devel-ubuntu24.04"
 KOKKOS_DEPENDENCY_REF = "5.2.0"
 
 
+def _clean_room_command(base_commit: str) -> str:
+    return (
+        "cd /workspace/repo"
+        f" && git checkout -q --detach {shlex.quote(base_commit)}"
+        f" && printf '%s\\n' {shlex.quote(base_commit)} > .git/shallow"
+        " && git for-each-ref --format='%(refname)' | xargs -r -n1 git update-ref -d"
+        " && git remote remove origin"
+        " && git reflog expire --expire=now --all"
+        " && git gc --prune=now -q"
+    )
+
+
 def _dockerfile(instance: KokkosInstance) -> str:
     profile = get_repository_profile(instance.repo)
     toolchain = str(instance.metadata.get("toolchain", instance.metadata.get("accelerator", "cpu")))
@@ -38,24 +50,10 @@ def _dockerfile(instance: KokkosInstance) -> str:
         f"git clone https://github.com/{instance.repo}.git /workspace/repo",
         f"git -C /workspace/repo checkout {shlex.quote(instance.base_commit)}",
         "git -C /workspace/repo submodule update --init --recursive",
-        # Flatten history to a single root commit at base_commit. A full clone
-        # carries every branch and tag, including the merge commit that fixes
-        # this very task -- agents were observed mining it with
-        # `git log --all --grep` and applying it with `git cherry-pick`. Deleting
-        # every ref but the new orphan branch, then expiring the reflog and
-        # pruning, removes the answer from the object store while leaving
-        # `git diff` / `git status` working for legitimate use.
-        (
-            "cd /workspace/repo"
-            " && git checkout -q --orphan __base"
-            " && git -c user.email=bench@example.com -c user.name=bench"
-            " commit -q -m 'base revision'"
-            " && git for-each-ref --format='%(refname)'"
-            " | grep -v '^refs/heads/__base$' | xargs -r -n1 git update-ref -d"
-            " && git remote remove origin"
-            " && git reflog expire --expire=now --all"
-            " && git gc --prune=now -q"
-        ),
+        # Retain the original base object as a shallow boundary. The verifier
+        # pins this immutable SHA in its trusted script, independent of agent
+        # commits, refs, or replacement objects. Prune all other history.
+        _clean_room_command(instance.base_commit),
     ]
     if instance.repo != "kokkos/kokkos" and profile.build_system == "cmake":
         dependency_configure = (
@@ -141,9 +139,13 @@ repo=/workspace/repo
 reward=/logs/verifier/reward.txt
 mkdir -p /logs/verifier
 echo 0 > "$reward"
-cd "$repo"
+cd "$repo" || exit 0
+baseline={shlex.quote(instance.base_commit)}
 
-illegal=$(\n  git diff --name-only HEAD --\n  git ls-files --others --exclude-standard | sed '\\#^build/#d'\n)
+# Never trust HEAD: the agent may have committed its edits.
+# Fail closed if the original object was deleted; ignore replacement refs.
+git --no-replace-objects cat-file -e "$baseline^{{commit}}" || exit 0
+illegal=$(\n  set -e\n  git --no-replace-objects diff --no-ext-diff --name-only "$baseline" -- || exit 1\n  git ls-files --others --exclude-standard | sed '\\#^build/#d'\n) || exit 0
 if printf '%s\n' "$illegal" | grep -E '(^|/)(tests?|unit_tests?)(/|$)|(^|/)(test_.*|.*_test\\.py)$|(^|/)CMakeLists\\.txt$|^\\.github/|^cmake/'; then
   echo "candidate patch changes protected test/build/CI files" >&2
   exit 0
@@ -151,8 +153,8 @@ fi
 
 protected_paths=({protected_values})
 for path in "${{protected_paths[@]}}"; do
-  if git cat-file -e HEAD:"$path" 2>/dev/null; then
-    git checkout HEAD -- "$path"
+  if git --no-replace-objects cat-file -e "$baseline:$path" 2>/dev/null; then
+    git --no-replace-objects checkout "$baseline" -- "$path" || exit 0
   else
     rm -f -- "$path"
   fi

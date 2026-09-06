@@ -14,13 +14,14 @@ from typing import Any
 
 import chz
 
+from tinker_cookbook.recipes.harbor_rl.eval_state import prepare_eval_state
 from tinker_cookbook.recipes.harbor_rl.harbor_env import (
     HARBOR_SYSTEM_PROMPT,
     HarborTask,
     SandboxFactory,
-    load_harbor_tasks_from_dir,
 )
 from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborBashTool, HarborReward
+from tinker_cookbook.recipes.kokkos_rl.rl.tasks import prepared_kokkos_tasks
 from tinker_cookbook.sandbox.contree_sandbox import ContreeDockerfileSandboxFactory
 from tinker_cookbook.tool_use import ToolInput
 from tinker_cookbook.utils.ml_log import dump_config
@@ -68,9 +69,7 @@ class CLIConfig:
     max_infra_retries: int = 2
     task_names: str | None = None
     resume_dir: str | None = None
-    contree_cache_path: str = (
-        "notes/experiments/SWE-kokkos-bench/v2-pass-at-k/contree_images.json"
-    )
+    contree_cache_path: str = "notes/experiments/SWE-kokkos-bench/v2-pass-at-k/contree_images.json"
     allow_network: bool = False
 
 
@@ -167,6 +166,7 @@ async def evaluate_task(
     config: CLIConfig,
     results_dir: Path,
     lock: asyncio.Lock,
+    prior_cost_usd: float = 0.0,
 ) -> OpenAITaskResult:
     start = time.monotonic()
     sandbox = None
@@ -187,7 +187,7 @@ async def evaluate_task(
             and input_tokens < config.max_input_tokens
             and (
                 config.max_cost_usd_per_task is None
-                or estimated_cost_usd < config.max_cost_usd_per_task
+                or prior_cost_usd + estimated_cost_usd < config.max_cost_usd_per_task
             )
         ):
             remaining = max(16, min(config.max_tokens, config.max_sampled_tokens - output_tokens))
@@ -288,7 +288,7 @@ async def evaluate_task(
                 stop_reason = "max_input_tokens"
             elif (
                 config.max_cost_usd_per_task is not None
-                and estimated_cost_usd >= config.max_cost_usd_per_task
+                and prior_cost_usd + estimated_cost_usd >= config.max_cost_usd_per_task
             ):
                 stop_reason = "max_cost_usd"
             else:
@@ -355,13 +355,20 @@ async def evaluate_task(
     return result
 
 
-def _load_completed(results_dir: Path) -> dict[str, OpenAITaskResult]:
+def _load_attempts(results_dir: Path) -> list[OpenAITaskResult]:
     path = results_dir / "results.jsonl"
     if not path.is_file():
-        return {}
+        return []
+    return [
+        OpenAITaskResult(**json.loads(line))
+        for line in path.read_text().splitlines()
+        if line.strip()
+    ]
+
+
+def _load_completed(results_dir: Path) -> dict[str, OpenAITaskResult]:
     completed: dict[str, OpenAITaskResult] = {}
-    for line in path.read_text().splitlines():
-        result = OpenAITaskResult(**json.loads(line))
+    for result in _load_attempts(results_dir):
         if result.error is None:
             completed[result.task_name] = result
         else:
@@ -374,6 +381,10 @@ async def run_eval(
 ) -> list[OpenAITaskResult]:
     from openai import AsyncOpenAI
 
+    if config.max_concurrency < 1 or config.max_infra_retries < 0:
+        raise ValueError("max_concurrency must be positive and max_infra_retries non-negative")
+    if config.max_cost_usd_per_task is not None and config.max_cost_usd_per_task <= 0:
+        raise ValueError("max_cost_usd_per_task must be positive or None")
     results_dir = (
         Path(config.resume_dir)
         if config.resume_dir
@@ -382,22 +393,53 @@ async def run_eval(
     results_dir.mkdir(parents=True, exist_ok=True)
     print(f"Results dir: {results_dir}", flush=True)
     config_dict = dump_config(config)
+    prepare_eval_state(results_dir, config_dict, tasks, evaluator="openai-kokkos")
     if not (results_dir / "config.json").exists():
         (results_dir / "config.json").write_text(json.dumps(config_dict, indent=2))
 
     client = AsyncOpenAI()
     lock = asyncio.Lock()
-    completed = _load_completed(results_dir)
+    task_names = {task.task_name for task in tasks}
+    attempts = [r for r in _load_attempts(results_dir) if r.task_name in task_names]
+    completed = {
+        name: result for name, result in _load_completed(results_dir).items() if name in task_names
+    }
     semaphore = asyncio.Semaphore(config.max_concurrency)
 
     async def run_one(task: HarborTask) -> OpenAITaskResult:
         async with semaphore:
-            result: OpenAITaskResult | None = None
+            previous = [r for r in attempts if r.task_name == task.task_name]
+            spent = sum(r.estimated_cost_usd for r in previous)
+            result: OpenAITaskResult | None = previous[-1] if previous else None
             for attempt in range(config.max_infra_retries + 1):
-                result = await evaluate_task(task, client, sandbox_factory, config, results_dir, lock)
+                if (
+                    config.max_cost_usd_per_task is not None
+                    and spent >= config.max_cost_usd_per_task
+                ):
+                    if result is None:
+                        raise ValueError("max_cost_usd_per_task must be positive or None")
+                    logger.warning("Task %s exhausted its cumulative cost budget", task.task_name)
+                    return result
+                result = await evaluate_task(
+                    task,
+                    client,
+                    sandbox_factory,
+                    config,
+                    results_dir,
+                    lock,
+                    prior_cost_usd=spent,
+                )
+                attempts.append(result)
+                spent += result.estimated_cost_usd
                 if result.error is None:
                     return result
-                logger.warning("Retry %s (%d/%d): %s", task.task_name, attempt + 1, config.max_infra_retries, result.error)
+                logger.warning(
+                    "Retry %s (%d/%d): %s",
+                    task.task_name,
+                    attempt + 1,
+                    config.max_infra_retries,
+                    result.error,
+                )
             assert result is not None
             return result
 
@@ -412,18 +454,15 @@ async def run_eval(
         "num_tasks": len(results),
         "num_valid": len(valid),
         "num_errors": len(results) - len(valid),
+        "num_attempts": len(attempts),
         "num_passed": passed,
         "pass_at_1": passed / len(valid) if valid else None,
-        "input_tokens": sum(result.input_tokens for result in valid),
-        "cached_input_tokens": sum(result.cached_input_tokens for result in valid),
-        "cache_write_input_tokens": sum(
-            result.cache_write_input_tokens for result in valid
-        ),
-        "output_tokens": sum(result.output_tokens for result in valid),
-        "reasoning_tokens": sum(result.reasoning_tokens for result in valid),
-        "estimated_cost_usd": round(
-            sum(result.estimated_cost_usd for result in valid), 6
-        ),
+        "input_tokens": sum(result.input_tokens for result in attempts),
+        "cached_input_tokens": sum(result.cached_input_tokens for result in attempts),
+        "cache_write_input_tokens": sum(result.cache_write_input_tokens for result in attempts),
+        "output_tokens": sum(result.output_tokens for result in attempts),
+        "reasoning_tokens": sum(result.reasoning_tokens for result in attempts),
+        "estimated_cost_usd": round(sum(result.estimated_cost_usd for result in attempts), 6),
     }
     (results_dir / "result.json").write_text(json.dumps(summary, indent=2))
     print(json.dumps(summary, indent=2), flush=True)
@@ -432,17 +471,19 @@ async def run_eval(
 
 async def main(config: CLIConfig) -> None:
     load_env_file(Path(config.env_file))
-    tasks = select_tasks(load_harbor_tasks_from_dir(Path(config.tasks_dir)), config.task_names)
-    sandbox_factory = ContreeDockerfileSandboxFactory(
-        cache_path=Path(config.contree_cache_path),
-        timeout=config.sandbox_timeout,
-        allow_network=config.allow_network,
-    )
-    print(
-        f"Running {len(tasks)} tasks with {config.model_name}, reasoning={config.reasoning_effort}",
-        flush=True,
-    )
-    await run_eval(config, tasks, sandbox_factory)
+    tasks_dir = Path(config.tasks_dir)
+    with prepared_kokkos_tasks(tasks_dir) as prepared:
+        tasks = select_tasks(prepared, config.task_names)
+        sandbox_factory = ContreeDockerfileSandboxFactory(
+            cache_path=Path(config.contree_cache_path),
+            timeout=config.sandbox_timeout,
+            allow_network=config.allow_network,
+        )
+        print(
+            f"Running {len(tasks)} tasks with {config.model_name}, reasoning={config.reasoning_effort}",
+            flush=True,
+        )
+        await run_eval(config, tasks, sandbox_factory)
 
 
 if __name__ == "__main__":

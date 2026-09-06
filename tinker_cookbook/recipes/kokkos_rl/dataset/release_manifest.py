@@ -81,6 +81,7 @@ def build_manifest(
             digest
             for candidate_id, agent, digest in evidence
             if candidate_id == instance_id
+            and digest == registry_digest
             and agent == "oracle"
             and evidence[(candidate_id, agent, digest)].reward == 1.0
             and (nop := evidence.get((instance_id, "nop", digest))) is not None
@@ -128,10 +129,7 @@ def main() -> None:
     args = _parse_args()
     manifest = build_manifest(args.dataset_dir, args.old_instances, args.evidence_root)
     args.output.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
-    print(
-        f"wrote {manifest['instance_count']} digest-bound validation records "
-        f"to {args.output}"
-    )
+    print(f"wrote {manifest['instance_count']} digest-bound validation records to {args.output}")
 
 
 if __name__ == "__main__":

@@ -1,14 +1,14 @@
 import json
 
+import pytest
+
 from tinker_cookbook.recipes.kokkos_rl.dataset.release_manifest import build_manifest
 
 
 def _write_trial(root, instance_id: str, agent: str, digest: str, reward: float) -> None:
     trial = root / f"{instance_id}__trial"
     trial.mkdir(parents=True)
-    (trial / "lock.json").write_text(
-        json.dumps({"task": {"name": instance_id, "digest": digest}})
-    )
+    (trial / "lock.json").write_text(json.dumps({"task": {"name": instance_id, "digest": digest}}))
     (trial / "result.json").write_text(
         json.dumps(
             {
@@ -65,3 +65,15 @@ digest = "sha256:new"
         "v2-addition",
         "v1-unchanged",
     ]
+
+    # Only old evidence remains after a task payload changes: do not certify it.
+    config = dataset / "dataset.toml"
+    config.write_text(config.read_text().replace("sha256:new", "sha256:changed"))
+    with pytest.raises(ValueError, match="new"):
+        build_manifest(dataset, old_instances, [evidence])
+    # A new matching validation can coexist with historical results.
+    _write_trial(evidence / "new-oracle", "new", "oracle", "sha256:changed", 1.0)
+    _write_trial(evidence / "new-nop", "new", "nop", "sha256:changed", 0.0)
+    updated = build_manifest(dataset, old_instances, [evidence])
+    assert updated["oracle_passed"] == 2
+    assert all(i["registry_digest"] == i["validation_digest"] for i in updated["instances"])
