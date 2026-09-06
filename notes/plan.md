@@ -409,3 +409,31 @@ and experiment snapshot, recording the new hashes, and rerunning its gate;
 never edit the active manifest or borrow a validation record with another hash.
 The original validation process may finish collecting its remaining evidence,
 but its existing resource failures already prevent it advancing to sampling.
+
+## Bounded provider-outage recovery (2026-09-06)
+
+The exact DeepSeek-V4-Flash-0731 endpoint temporarily disappeared from the
+authenticated catalog and rejected two requests with HTTP 404. The catalog and
+normal inference subsequently recovered. Preserve those original error records;
+never substitute another model or resample an already generated prefix.
+
+After the original controller releases its shared scheduling lock, permit one
+separate recovery per affected task. Task 7074 produced no output and may make
+its first valid sample. Task 7043 has exactly one complete turn containing two
+reviewed read-only shell commands. Return that original response from a local
+transport, repeat only those commands on the identical task snapshot, and require
+byte-for-byte identical observations before sending the next live model request.
+Any command, request, task-hash or observation mismatch blocks continuation.
+The recorded first turn still consumes the original trajectory's turn/token
+budget; no fresh first-turn sampling is allowed. Keep the contradictory 7043
+instruction and raw grading policy unchanged for this frozen evaluation.
+
+Bind the recovery to the original model/config identity and full task manifest,
+keep an exclusive attempt marker and source-response provenance, and retain
+partial responses if interrupted. Record logical trajectory usage separately
+from newly billable usage: subtract cached-prefix usage only when it was actually
+replayed. Aggregate spend as original usage plus incremental recovery usage,
+never as the sum of both full trajectory totals. Offline transport/harness tests
+must prove no first-response resampling, no live requests after differing tool
+observations, no negative accounting before replay, and exclusion while the
+original controller owns the shared slots. Commit before starting recovery.
