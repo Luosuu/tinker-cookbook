@@ -13,6 +13,7 @@ import json
 import os
 import subprocess
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 from typing import cast
 
@@ -25,6 +26,7 @@ from tinker_cookbook.recipes.harbor_rl.harbor_env import (
     HARBOR_SYSTEM_PROMPT,
     load_harbor_tasks_from_dir,
 )
+from tinker_cookbook.recipes.kokkos_rl.rl.candidate_artifact import capture_candidate
 from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos_nebius import (
     ImportedCacheFactory,
     validated,
@@ -163,7 +165,15 @@ async def recover(config: RecoveryConfig) -> None:
             DefaultAsyncHttpxClient, httpx.AsyncClient(transport=transport, timeout=None)
         ),
     ) as client:
-        result = await evaluate_task(task, client, factory, evaluation, destination, asyncio.Lock())
+        result = await evaluate_task(
+            task,
+            client,
+            factory,
+            evaluation,
+            destination,
+            asyncio.Lock(),
+            before_grading=partial(capture_candidate, task=task, results_dir=destination),
+        )
     write_json(
         destination / "recovery.json",
         {

@@ -9,6 +9,7 @@ import json
 import os
 import subprocess
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 
 import chz
@@ -16,6 +17,7 @@ from openai import AsyncOpenAI
 
 from tinker_cookbook.recipes.harbor_rl.eval_state import _task_digest, prepare_eval_state
 from tinker_cookbook.recipes.harbor_rl.harbor_env import HarborTask, load_harbor_tasks_from_dir
+from tinker_cookbook.recipes.kokkos_rl.rl.candidate_artifact import capture_candidate
 from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos_nebius import MODELS, summarize, write_json
 from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos_openai import (
     CLIConfig,
@@ -191,7 +193,15 @@ async def run_phase(config: ResourcePhaseConfig) -> None:
                         "commit": launch_record["commit"],
                     },
                 )
-                result = await evaluate_task(task, client, factory, configs[model], trial, lock)
+                result = await evaluate_task(
+                    task,
+                    client,
+                    factory,
+                    configs[model],
+                    trial,
+                    lock,
+                    before_grading=partial(capture_candidate, task=task, results_dir=trial),
+                )
                 completed[model].append(result)
                 write_json(
                     phase / "status.json",

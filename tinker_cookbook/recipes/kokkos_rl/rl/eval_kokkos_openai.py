@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
@@ -27,6 +28,7 @@ from tinker_cookbook.recipes.kokkos_rl.chat_inference import (
     create_chat_client,
 )
 from tinker_cookbook.recipes.kokkos_rl.rl.tasks import prepared_kokkos_tasks
+from tinker_cookbook.sandbox import SandboxInterface
 from tinker_cookbook.sandbox.contree_sandbox import ContreeDockerfileSandboxFactory
 from tinker_cookbook.tool_use import ToolInput
 from tinker_cookbook.utils.ml_log import dump_config
@@ -193,6 +195,7 @@ async def evaluate_task(
     results_dir: Path,
     lock: asyncio.Lock,
     prior_cost_usd: float = 0.0,
+    before_grading: Callable[[SandboxInterface], Awaitable[None]] | None = None,
 ) -> OpenAITaskResult:
     start = time.monotonic()
     sandbox = None
@@ -374,6 +377,13 @@ async def evaluate_task(
             else:
                 stop_reason = "max_turns"
 
+        if before_grading is not None:
+            try:
+                await before_grading(sandbox)
+            except Exception:
+                logger.warning(
+                    "Candidate artifact capture failed for %s", task.task_name, exc_info=True
+                )
         reward, reward_details = await HarborReward(
             tests_dir=task.task_dir / "tests",
             sandbox=sandbox,

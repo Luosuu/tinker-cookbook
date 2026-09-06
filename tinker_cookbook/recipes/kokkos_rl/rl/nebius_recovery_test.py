@@ -64,9 +64,11 @@ def original_result():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("observations_match", [True, False])
+@pytest.mark.parametrize(
+    "observations_match,capture_fails", [(True, False), (True, True), (False, False)]
+)
 async def test_recovery_uses_original_harness_and_never_resamples_prefix(
-    tmp_path, monkeypatch, observations_match
+    tmp_path, monkeypatch, observations_match, capture_fails
 ):
     task = make_task(tmp_path, "task")
     config = evaluation.CLIConfig(
@@ -137,6 +139,7 @@ async def test_recovery_uses_original_harness_and_never_resamples_prefix(
     monkeypatch.setattr(evaluation, "HarborReward", lambda **kw: AsyncMock(return_value=(1, {})))
     destination = tmp_path / "recovery"
     destination.mkdir()
+    capture = AsyncMock(side_effect=RuntimeError("artifact unavailable") if capture_fails else None)
     async with AsyncOpenAI(
         api_key="test",
         base_url="https://test.invalid/v1",
@@ -145,12 +148,19 @@ async def test_recovery_uses_original_harness_and_never_resamples_prefix(
         http_client=cast(DefaultAsyncHttpxClient, httpx.AsyncClient(transport=transport)),
     ) as client:
         result = await evaluation.evaluate_task(
-            task, client, AsyncMock(return_value=sandbox), config, destination, asyncio.Lock()
+            task,
+            client,
+            AsyncMock(return_value=sandbox),
+            config,
+            destination,
+            asyncio.Lock(),
+            before_grading=capture,
         )
     assert transport.replayed
     if observations_match:
         assert result.error is None
         assert result.reward == 1
+        capture.assert_awaited_once_with(sandbox)
         assert result.turns_used == 2
         assert result.input_tokens == 40 and result.output_tokens == 6
         assert len(requests) == 1
@@ -167,6 +177,7 @@ async def test_recovery_uses_original_harness_and_never_resamples_prefix(
         }
     else:
         assert result.error is not None
+        capture.assert_not_awaited()
         assert requests == []
         assert not transport.observations_verified
         usage = recovery_accounting(original, result, prefix_replayed=True)["new_billable_usage"]

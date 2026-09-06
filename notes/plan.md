@@ -448,3 +448,13 @@ attempt marker or result, cap aggregate concurrency at four, and never resample
 completed, errored or interrupted phase attempts. Preserve phase-level metrics
 separately; the final full-dataset report joins unique model-task results across
 phases and continues to use the original 100-task denominator.
+
+The future recovery/resource phases also retain a candidate patch before hidden
+tests are injected. Export against the verifier's immutable baseline, including
+agent-committed changes and untracked source files; save the original sandbox ID,
+baseline and HEAD commits, byte count and SHA-256. This is a read-only audit hook,
+does not consume another model turn, and records failure explicitly without
+changing the grade. Keep it optional and outside CLI configuration so the running
+controller and its existing resume identities are unaffected. Previously
+completed attempts lack this artifact; do not claim they can all be regraded
+without reconstructing their source changes from the retained evidence.
