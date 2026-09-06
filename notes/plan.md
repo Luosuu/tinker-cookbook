@@ -437,3 +437,14 @@ never as the sum of both full trajectory totals. Offline transport/harness tests
 must prove no first-response resampling, no live requests after differing tool
 observations, no negative accounting before replay, and exclusion while the
 original controller owns the shared slots. Commit before starting recovery.
+
+The remaining previously unsampled resource-exception tasks use a separate
+Modal resource phase after the same controller lock becomes available. Admit
+only explicit task names with exact matching NOP/Oracle evidence for 16 GiB,
+four CPUs, build parallelism four and the unchanged 900-second deadline. Reuse
+each original model's other settings and prices, but record the new resource
+policy in a distinct evaluation identity. Refuse any task with an original
+attempt marker or result, cap aggregate concurrency at four, and never resample
+completed, errored or interrupted phase attempts. Preserve phase-level metrics
+separately; the final full-dataset report joins unique model-task results across
+phases and continues to use the original 100-task denominator.
