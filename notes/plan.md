@@ -458,3 +458,27 @@ changing the grade. Keep it optional and outside CLI configuration so the runnin
 controller and its existing resume identities are unaffected. Previously
 completed attempts lack this artifact; do not claim they can all be regraded
 without reconstructing their source changes from the retained evidence.
+
+## Runtime coverage audit (2026-09-06)
+
+Oracle logs exposed zero-test GoogleTest invocations on 18 tasks, including
+14 whose visible invocations all ran zero tests. Several added runtime
+assertions were therefore not exercised despite NOP/Oracle separation.
+Literal TEST_CATEGORY filters and renamed test cases are confirmed causes.
+Quarantine their original validation records, preserving bytes and hashes,
+to remove eligibility for further sampling without stopping active rollouts
+or changing either frozen task snapshot. Watch subsequent Oracle records for
+the same symptom. Review compile-only tasks separately before deciding whether
+an empty runtime selection is intentional; do not equate every zero-test log
+with a missing compile-time check.
+
+Fix selection and add explicit runtime coverage checks in a fresh dataset
+version before resuming affected tasks. Preserve existing raw scores with a
+coverage flag, and regrade recoverable candidate patches without new sampling.
+The resource and provider-error recovery phases remain unstarted until this
+review establishes their valid grading policy. The original 100-task evaluation
+is incomplete while any task lacks trustworthy coverage.
+
+Task 9147's Oracle also fails because CudaInterOpGraph cannot load libcuda.so.1.
+Treat this as a missing GPU runtime gate, not a model failure; additional CPU
+memory alone does not repair it.
