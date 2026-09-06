@@ -1,5 +1,15 @@
 # Kokkos Coding-RL Dataset: Phase 0 Plan
 
+## Hosted OpenAI-compatible endpoint connectivity (2026-09-06)
+
+Test the hosted Tinker Chat Completions endpoint with the existing Tinker API key.
+Use short, synthetic prompts to verify text completion, a function-call/result roundtrip,
+streaming, usage reporting, and explicit Inkling effort 0.9. Preserve request configuration
+and response evidence locally. The smoke script makes at most four short generations per
+model and does not start a benchmark or change weights. Check base-model and existing
+sampler-checkpoint identifiers separately where available. Keep this connectivity test
+independent of the fixed 40-turn research experiment and its native-token collection path.
+
 ## Fixed 40-turn successful-trajectory self-training (2026-09-06)
 
 Question: can self-training improve Inkling-Small's Kokkos repair success and reduce
