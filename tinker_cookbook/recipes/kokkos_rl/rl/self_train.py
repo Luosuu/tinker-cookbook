@@ -46,6 +46,7 @@ class Config:
     sandbox_backend: str = "contree"
     cache_path: str = "notes/experiments/SWE-kokkos-bench/v2-pass-at-k/contree_images.json"
     concurrency: int = 4
+    sandbox_build_parallelism: int = 1
     train_samples: int = 4
     eval_samples: int = 4
     eval_size: int = 20
@@ -162,7 +163,12 @@ def choose_donors(rows: list[tuple[Path, RecordedRollout]]) -> dict[str, list[st
     return arms
 
 
-async def grade_patch(task: HarborTask, factory: SandboxFactory, patch: str | None) -> float:
+async def grade_patch(
+    task: HarborTask,
+    factory: SandboxFactory,
+    patch: str | None,
+    log_path: Path | None = None,
+) -> float:
     sandbox = await factory(task.task_dir / "environment", 3600)
     try:
         metadata = json.loads((task.task_dir / "metadata.json").read_text())
@@ -186,7 +192,9 @@ async def grade_patch(task: HarborTask, factory: SandboxFactory, patch: str | No
             )
             if applied.exit_code != 0:
                 raise RuntimeError("Candidate patch failed to apply: " + applied.stderr[-500:])
-        reward, _ = await HarborReward(task.task_dir / "tests", sandbox, 900, True)([])
+        reward, _ = await HarborReward(
+            task.task_dir / "tests", sandbox, 900, True, grading_log_path=log_path
+        )([])
         return reward
     finally:
         await sandbox.cleanup()
@@ -277,6 +285,7 @@ async def main(config: Config) -> None:
             factory: SandboxFactory = ContreeDockerfileSandboxFactory(
                 Path(config.cache_path),
                 timeout=3600,
+                runtime_build_parallelism=config.sandbox_build_parallelism,
                 allow_network=False,
             )
         elif config.sandbox_backend == "modal":
@@ -290,9 +299,10 @@ async def main(config: Config) -> None:
             if path.exists() and json.loads(path.read_text()).get("passed"):
                 return
             async with semaphore:
-                nop = await grade_patch(task, factory, None)
+                log_dir = root / "validation_logs" / task.task_name
+                nop = await grade_patch(task, factory, None, log_dir / "nop.json")
                 gold = (task.task_dir / "solution/gold.patch").read_text()
-                oracle = await grade_patch(task, factory, gold)
+                oracle = await grade_patch(task, factory, gold, log_dir / "oracle.json")
                 record = {
                     "task": task.task_name,
                     "nop": nop,
@@ -337,6 +347,7 @@ async def main(config: Config) -> None:
                 num_samples=samples,
                 pass_at_k="1",
                 sandbox_backend=config.sandbox_backend,
+                sandbox_build_parallelism=config.sandbox_build_parallelism,
                 allow_network=False,
                 checkpoint_url=checkpoint,
                 export_kokkos_rollouts=True,
@@ -370,7 +381,12 @@ async def main(config: Config) -> None:
                 reward = json.loads(evidence.read_text())["reward"]
             else:
                 async with semaphore:
-                    reward = await grade_patch(by_name[row["task_name"]], factory, patch)
+                    reward = await grade_patch(
+                        by_name[row["task_name"]],
+                        factory,
+                        patch,
+                        path.with_name("regrade_log.json"),
+                    )
                 write_json(evidence, {"reward": reward, "patch_sha256": digest})
             if reward == 1:
                 candidates.append((path, row))

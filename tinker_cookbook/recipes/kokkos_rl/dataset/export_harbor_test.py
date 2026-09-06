@@ -2,6 +2,8 @@ import json
 import tomllib
 from dataclasses import replace
 
+import pytest
+
 from tinker_cookbook.recipes.kokkos_rl.dataset.export_harbor import (
     _agent_allowed_code_patch,
     export_instance,
@@ -128,6 +130,34 @@ def test_committed_production_fix_still_passes(tmp_path):
     (repo / "src.txt").write_text("fixed")
     _git(repo, "commit", "-qam", "fix")
     assert _run_verifier(tmp_path, repo, instance) == "1"
+
+
+@pytest.mark.parametrize("parallelism", [None, "3"])
+def test_verifier_passes_explicit_compiler_job_limit(tmp_path, monkeypatch, parallelism):
+    import os
+
+    repo, instance = _local_instance(tmp_path)
+    (repo / "src.txt").write_text("fixed")
+    instance = replace(instance, build_command="cmake --build build --parallel")
+    binary_dir = tmp_path / "bin"
+    binary_dir.mkdir()
+    cmake = binary_dir / "cmake"
+    cmake.write_text('#!/bin/sh\nprintf \'%s\\n\' "$@" > "$CAPTURE_CMAKE"\n')
+    cmake.chmod(0o755)
+    capture = tmp_path / "cmake-arguments"
+    monkeypatch.setenv("PATH", str(binary_dir) + os.pathsep + os.environ["PATH"])
+    monkeypatch.setenv("CAPTURE_CMAKE", str(capture))
+    if parallelism is None:
+        monkeypatch.delenv("CMAKE_BUILD_PARALLEL_LEVEL", raising=False)
+    else:
+        monkeypatch.setenv("CMAKE_BUILD_PARALLEL_LEVEL", parallelism)
+    assert _run_verifier(tmp_path, repo, instance) == "1"
+    assert capture.read_text().splitlines() == [
+        "--build",
+        "build",
+        "--parallel",
+        parallelism or "1",
+    ]
 
 
 def test_committed_build_changes_are_rejected_even_with_replace_ref(tmp_path):

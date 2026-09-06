@@ -96,6 +96,8 @@ class HarborReward:
     raise_on_grading_error: bool = False
     # Identifies the episode in Weave traces; tracing is skipped when unset.
     task_name: str | None = None
+    # Optional host-side evidence, retained even when the verifier awards zero.
+    grading_log_path: Path | None = None
 
     async def __call__(self, history: list[Message]) -> tuple[float, dict[str, float]]:
         """Grade the completed episode by running test.sh in the sandbox."""
@@ -110,7 +112,20 @@ class HarborReward:
                 "bash /tests/test.sh",
                 workdir="/root",
                 timeout=self.grader_timeout,
+                max_output_bytes=200_000 if self.grading_log_path is not None else None,
             )
+            if self.grading_log_path is not None:
+                self.grading_log_path.parent.mkdir(parents=True, exist_ok=True)
+                self.grading_log_path.write_text(
+                    json.dumps(
+                        {
+                            "exit_code": result.exit_code,
+                            "stdout": result.stdout,
+                            "stderr": result.stderr,
+                        },
+                        indent=2,
+                    )
+                )
             if result.exit_code < 0:
                 raise RuntimeError(
                     "verifier command failed before producing a result: "

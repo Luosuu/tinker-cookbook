@@ -106,9 +106,7 @@ class TestHarborReward:
         assert info == {"reward": 0.0, "test_passed": 0.0, "grading_error": 1.0}
 
     def test_no_reward_file_raises_in_strict_mode(self, tmp_path: Path) -> None:
-        reward_fn = self._make_reward(
-            tmp_path, FakeSandbox(), raise_on_grading_error=True
-        )
+        reward_fn = self._make_reward(tmp_path, FakeSandbox(), raise_on_grading_error=True)
 
         with pytest.raises(RuntimeError, match="no reward file"):
             asyncio.run(reward_fn([]))
@@ -121,6 +119,23 @@ class TestHarborReward:
         reward, info = asyncio.run(reward_fn([]))
         assert reward == 0.0
         assert info["test_passed"] == 0.0
+
+    def test_zero_reward_retains_verifier_evidence(self, tmp_path: Path) -> None:
+        sandbox = FakeSandbox()
+        sandbox.files["/logs/verifier/reward.txt"] = "0"
+        sandbox.set_command_result(
+            "bash /tests/test.sh",
+            SandboxResult(stdout="compilation failed", stderr="cc1plus killed", exit_code=0),
+        )
+        log_path = tmp_path / "host-logs" / "verifier.json"
+        reward_fn = self._make_reward(tmp_path / "tests", sandbox, grading_log_path=log_path)
+        reward, _ = asyncio.run(reward_fn([]))
+        assert reward == 0
+        assert json.loads(log_path.read_text()) == {
+            "exit_code": 0,
+            "stdout": "compilation failed",
+            "stderr": "cc1plus killed",
+        }
 
     def test_grading_error(self, tmp_path: Path) -> None:
         """Sandbox exception during grading returns 0 reward with error flag."""

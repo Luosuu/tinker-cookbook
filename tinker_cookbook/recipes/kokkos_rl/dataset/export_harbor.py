@@ -130,6 +130,11 @@ def _shell_array(name: str, commands: tuple[str, ...]) -> str:
 
 def _test_script(instance: KokkosInstance) -> str:
     build_command = _build_command(instance)
+    # Bare --parallel overrides CMAKE_BUILD_PARALLEL_LEVEL with the native
+    # default. Pass the intended job count explicitly to avoid verifier OOMs.
+    # Keep custom commands with explicit parallelism unchanged.
+    if build_command.endswith(" --parallel"):
+        build_command += ' "${CMAKE_BUILD_PARALLEL_LEVEL:-1}"'
     protected_paths = tuple(path for path, _block in split_unified_diff(instance.test_patch))
     protected_values = " ".join(shlex.quote(path) for path in protected_paths)
     return f"""#!/usr/bin/env bash

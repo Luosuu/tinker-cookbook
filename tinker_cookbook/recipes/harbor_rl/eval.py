@@ -120,6 +120,11 @@ async def evaluate_task(
             sandbox=sandbox,
             grader_timeout=config.grader_timeout,
             raise_on_grading_error=True,
+            grading_log_path=(
+                results_dir / "rollouts" / f"{task.task_name}__{sample_index:02d}" / "verifier.json"
+                if config.export_kokkos_rollouts
+                else None
+            ),
         )
         recorder = None
         if config.export_kokkos_rollouts:

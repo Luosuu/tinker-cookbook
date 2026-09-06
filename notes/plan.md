@@ -41,7 +41,9 @@ Required gates, in order:
 Shared rollout settings: automatically recommended renderer, explicit thinking effort 0.9,
 temperature 1.0, 40 turns, 80 tool calls, 16,384 tokens per response, 65,536 sampled tokens,
 114,688 trajectory tokens, and a 900-second command/grader timeout. Sandbox concurrency
-is four; no sampling timeouts or sampling retry wrappers are added. The initial budget
+is four, with ConTree runtime CMake builds limited to one compiler process per sandbox;
+no sampling timeouts or sampling retry wrappers are added. Retain verifier stdout/stderr
+for every validation, candidate regrade, and evaluated rollout. The initial budget
 is 200 verifier checks, 80 baseline rollouts, 320 collection rollouts, fresh regrades only
 for qualified candidates, and 160 checkpoint-evaluation rollouts. No automatic sweep or
 budget expansion is permitted by this recipe.
