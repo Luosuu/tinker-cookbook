@@ -1039,3 +1039,17 @@ only one shared model slot. A fixture with 100 tasks, three unknown original
 requests and one unstarted reserved pair confirms that dry-run preparation
 creates zero claims or remote clients. Partial requests stop dispatch and
 require explicit review; completed wrong answers are never sampled again.
+
+After all 100 final verifier pairs and positive scope decisions are complete,
+freeze qualification, review, allowlist and mutable review sources with file
+hashes. Then permanently retire all current legacy normal/Modal passed gates
+into a new holding directory. Write the complete recovery manifest before any
+move, preserve exact bytes, journal each move, and support safe resumption of
+an interrupted link/unlink boundary. Never restore permissions or change an
+old attempt. Confirm the actual gate is empty and observe two distinct updated
+controller statuses with gate zero; wait for its healthy fourth task to finish
+naturally and count every unknown marker before borrowing one model slot.
+Prepare the new phase with an empty reserved queue and only never-attempted
+pairs. Its first launch stops after one completed pair for inspection of raw
+request/response, usage, candidate capture and identity. Resume the same
+identity only after that audit; no completed pair is drawn again.
