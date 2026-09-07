@@ -990,3 +990,18 @@ hash. Keep the original DynamicView exclusion and configured CPU/mdspan scope
 explicit. Freeze this change in a later snapshot without editing any running
 validation payload, then run one independent NOP/Oracle pair and review actual
 compile and runtime witnesses before accepting the task.
+
+Freeze v13 from v12 with only 9185's reviewed companion coverage repair, using
+its original v9 annotation to apply the exact role/target changes. Preserve the
+other 99 directories byte-for-byte, along with 9185's task configuration,
+instruction, production gold and hidden patch. The first local export draft's
+default task namespace is retained separately as preparation evidence; the final
+candidate preserves the original task.toml and has no such namespace change.
+Launch a waiting single-task validator with zero remote work until the existing
+three-task v12 runner exits. Then attempt NOP/Oracle once using ConTree build-one
+and the unchanged 900-second limit, runtime_v12 resource mapping and read-only
+status transport. Retain all errors and do not retry or expand resources
+implicitly. Require both compile-only object witnesses and the ten requested
+incremental runtime cases plus the new ViewSupport case before positive scope
+acceptance. This replaces a released validation slot, keeping reserved capacity
+at most six alongside the original four model slots and one v10 validator.
