@@ -205,7 +205,7 @@ async def grade_patch(
         )
         if check.exit_code != 0:
             raise RuntimeError("Clean-room Git or hidden-material check failed")
-        if patch is not None:
+        if patch:
             uploaded = await sandbox.write_file("/tmp/candidate.patch", patch)
             if uploaded.exit_code != 0:
                 raise RuntimeError(

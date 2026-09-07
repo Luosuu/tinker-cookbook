@@ -5,14 +5,16 @@ import hashlib
 import json
 import subprocess
 from pathlib import Path
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import pytest
 import tinker
 
 from tinker_cookbook.completers import TokensWithLogprobs
 from tinker_cookbook.recipes.harbor_rl.harbor_env import HarborTask
+from tinker_cookbook.recipes.kokkos_rl.rl import self_train
 from tinker_cookbook.recipes.kokkos_rl.rl.rollout_data import (
+    RecordedRollout,
     RolloutRecorder,
     command_audit,
     eligible,
@@ -24,9 +26,62 @@ from tinker_cookbook.recipes.kokkos_rl.rl.self_train import (
     grade_patch,
     validate_instruction_quality,
 )
-from tinker_cookbook.renderers.base import ToolCall
+from tinker_cookbook.renderers.base import Message, ToolCall
 from tinker_cookbook.rl.types import Trajectory, Transition
 from tinker_cookbook.sandbox import SandboxResult
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("patch", [None, ""])
+@pytest.mark.parametrize("reward", [0.0, 1.0])
+async def test_no_patch_runs_verifier_without_upload_or_apply(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, patch: str | None, reward: float
+) -> None:
+    (tmp_path / "metadata.json").write_text(
+        json.dumps({"base_commit": "a" * 40, "merge_commit": "b" * 40})
+    )
+    sandbox = AsyncMock()
+    sandbox.run_command.return_value = SandboxResult(stdout="", stderr="", exit_code=0)
+    factory = AsyncMock(return_value=sandbox)
+    verifier = AsyncMock(return_value=(reward, {}))
+    verifier_factory = Mock(return_value=verifier)
+    monkeypatch.setattr(self_train, "HarborReward", verifier_factory)
+    task = HarborTask("empty-patch", "Fix the production code", tmp_path)
+    log_path = tmp_path / "verifier.json"
+
+    assert await grade_patch(task, factory, patch, log_path) == reward
+
+    factory.assert_awaited_once_with(tmp_path / "environment", 3600)
+    sandbox.write_file.assert_not_awaited()
+    sandbox.run_command.assert_awaited_once()
+    assert "git rev-parse HEAD" in sandbox.run_command.call_args.args[0]
+    verifier_factory.assert_called_once_with(
+        tmp_path / "tests", sandbox, 900, True, grading_log_path=log_path
+    )
+    verifier.assert_awaited_once_with([])
+    sandbox.cleanup.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("patch", [None, ""])
+async def test_no_patch_verifier_failure_remains_an_error_and_cleans_up(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, patch: str | None
+) -> None:
+    (tmp_path / "metadata.json").write_text(
+        json.dumps({"base_commit": "a" * 40, "merge_commit": "b" * 40})
+    )
+    sandbox = AsyncMock()
+    sandbox.run_command.return_value = SandboxResult(stdout="", stderr="", exit_code=0)
+    verifier = AsyncMock(side_effect=RuntimeError("verifier unavailable"))
+    monkeypatch.setattr(self_train, "HarborReward", Mock(return_value=verifier))
+    task = HarborTask("empty-patch", "Fix the production code", tmp_path)
+
+    with pytest.raises(RuntimeError, match="verifier unavailable"):
+        await grade_patch(task, AsyncMock(return_value=sandbox), patch)
+
+    sandbox.write_file.assert_not_awaited()
+    verifier.assert_awaited_once_with([])
+    sandbox.cleanup.assert_awaited_once()
 
 
 @pytest.mark.asyncio
@@ -72,7 +127,7 @@ def test_reviewed_instruction_is_accepted(tmp_path: Path) -> None:
     validate_instruction_quality([HarborTask("kokkos__kokkos-7043", instruction, tmp_path)])
 
 
-def donor(task="train", sample=0, turns=10):
+def donor(task: str = "train", sample: int = 0, turns: int = 10) -> RecordedRollout:
     return {
         "task_name": task,
         "sample_index": sample,
@@ -108,7 +163,9 @@ def test_selection_has_identical_task_support_and_shortest_success():
     ],
 )
 def test_ineligible_donors_are_rejected(changes):
-    assert not eligible({**donor(), **changes})
+    row = donor()
+    row.update(changes)
+    assert not eligible(row)
 
 
 def test_masks_shift_and_heldout_exclusion(tmp_path):
@@ -129,7 +186,7 @@ def test_masks_shift_and_heldout_exclusion(tmp_path):
 
 
 def test_audit_reads_structured_calls():
-    def message(command):
+    def message(command: str) -> Message:
         return {
             "role": "assistant",
             "content": "",
@@ -181,7 +238,11 @@ async def test_recorder_preserves_action_mask_and_captures_before_grading(tmp_pa
         return 1.0, {"test_passed": 1.0}
 
     recorder = RolloutRecorder(
-        HarborTask("task", "instruction", taskdir), sandbox, tmp_path, 0, grade
+        HarborTask("task", "instruction", taskdir),
+        sandbox,
+        tmp_path,
+        0,
+        AsyncMock(side_effect=grade),
     )
     await recorder([])
     trajectory = Trajectory(
@@ -248,7 +309,11 @@ async def test_recorder_leaves_untracked_build_outputs_out_of_verifier_diff(tmp_
         return 1.0, {"test_passed": 1.0}
 
     recorder = RolloutRecorder(
-        HarborTask("task", "instruction", taskdir), sandbox, tmp_path / "results", 0, grade
+        HarborTask("task", "instruction", taskdir),
+        sandbox,
+        tmp_path / "results",
+        0,
+        AsyncMock(side_effect=grade),
     )
     reward, _ = await recorder([])
     assert reward == 1
