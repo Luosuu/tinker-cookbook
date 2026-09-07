@@ -483,5 +483,27 @@
         "sha256": "10865140a386f4e24b1d4e0eab65eb7926b6396a56b4f949fd18e6497f1db30b"
       }
     ]
+  },
+  "kokkos__kokkos-8039": {
+    "base_commit": "c0a3d7e4a417c02bd4c45bd6f8b9bdd51499f014",
+    "test_patch_sha256": "f5a5b92667316cee362567450fb187886776c0266e8030c8300645e37631cbaa",
+    "instance_fields": {
+      "p2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_UnitTest_Random && ./build/algorithms/unit_tests/Kokkos_UnitTest_Random --gtest_filter='TEST(TEST_CATEGORY,Multi_streams):TEST(TEST_CATEGORY,Random_XorShift64)'"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_UnitTest_Random && ./build/algorithms/unit_tests/Kokkos_UnitTest_Random --gtest_filter='*.Multi_streams:*.Random_XorShift64'"
+        ]
+      }
+    },
+    "reason": "Use the two actual GoogleTest case names instead of C++ TEST declarations. The hidden patch extends Multi_streams with the new asynchronous pool-initialization regression; preserve it, Random_XorShift64, the executable, and the F2P build stage.",
+    "evidence": [
+      {
+        "path": "algorithms/unit_tests/TestRandom.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/c0a3d7e4a417c02bd4c45bd6f8b9bdd51499f014/algorithms/unit_tests/TestRandom.hpp",
+        "sha256": "c917e76554972620f89244e058485ea6c502a848a7fbd4dc2f832e2b6726cab0"
+      }
+    ]
   }
 }

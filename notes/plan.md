@@ -699,3 +699,13 @@ one sandbox and zero inference calls. The original four model slots and three
 v7 validator slots leave one slot within the shared limit of eight. Keep all
 other v8 tasks waiting; reuse same-hash v7 evidence later. Any failure of this
 new gate remains terminal for diagnosis rather than triggering a retry.
+
+The bulk Oracle for 8039 compiles successfully but its filter contains literal
+C++ TEST declarations and selects zero cases. Source confirms Multi_streams
+and Random_XorShift64 in the requested Random executable; the hidden patch
+extends Multi_streams with the new asynchronous initialization regression.
+Replace only those malformed selectors, pinning base, hidden patch, and original
+commands. Keep the executable, both cases, and F2P build stage. Preserve v7/v8
+and freeze v9 with this single additional repair. Validate only the new 8039
+hash once with one ConTree sandbox, 900 seconds per grader, zero inference,
+and total shared concurrency at most eight. A failed gate remains blocked.
