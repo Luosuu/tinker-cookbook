@@ -192,3 +192,49 @@ def test_duplicate_pair_review_is_rejected(tmp_path: Path) -> None:
     proofs = fixture.freeze()
     with pytest.raises(ValueError, match="Ambiguous"):
         fixture.check(proofs + proofs)
+
+
+def test_html_gateway_error_requires_explicit_exact_message_review(tmp_path: Path) -> None:
+    fixture = Fixture(tmp_path)
+    error = "InternalServerError: <html>504 Gateway Time-out</html>"
+    result = fixture.trial / "results.jsonl"
+    write(result, {"task_name": TASK, "turns_used": 1, "error": error})
+    original = result.read_bytes()
+    with pytest.raises(ValueError, match="terminal server-error"):
+        fixture.check(fixture.freeze())
+    with pytest.raises(ValueError, match="terminal server-error"):
+        fixture.check(fixture.freeze(terminal_error=error + "changed"))
+    assert fixture.check(fixture.freeze(terminal_error=error)) == {(MODEL, TASK)}
+    assert result.read_bytes() == original
+
+
+@pytest.mark.parametrize(
+    "error", [None, "", "InternalServerError: ", "APIConnectionError: connection lost"]
+)
+def test_explicit_review_cannot_accept_another_error_class(
+    tmp_path: Path, error: str | None
+) -> None:
+    fixture = Fixture(tmp_path)
+    write(
+        fixture.trial / "results.jsonl",
+        {"task_name": TASK, "turns_used": 1, "error": error},
+    )
+    with pytest.raises(ValueError, match="terminal server-error"):
+        fixture.check(fixture.freeze(terminal_error=error))
+
+
+def test_reviewed_html_message_still_requires_server_error_request_provenance(
+    tmp_path: Path,
+) -> None:
+    fixture = Fixture(tmp_path)
+    error = "InternalServerError: <html>504 Gateway Time-out</html>"
+    write(
+        fixture.trial / "results.jsonl",
+        {"task_name": TASK, "turns_used": 1, "error": error},
+    )
+    failure_path = fixture.trial / "requests/002/unreceived_or_unpersisted_response.json"
+    failure = json.loads(failure_path.read_text())
+    failure["error_type"] = "APIConnectionError"
+    write(failure_path, failure)
+    with pytest.raises(ValueError, match="unretried server error"):
+        fixture.check(fixture.freeze(terminal_error=error))

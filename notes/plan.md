@@ -1156,3 +1156,27 @@ separate launch. Test rejection of altered evidence, received final responses,
 missing responses, changed identities, absent or stale health checks, and
 retry authorization. Run the actual dry-run before dispatch. Do not change
 code pinned by the still-running saved-candidate grading phase.
+
+### Continue untouched pairs after a reviewed gateway timeout
+
+A later GLM request for task 8039 returned a gateway-timeout HTML error after
+600 seconds. Preserve its twenty received responses and known usage, the
+unreceived twenty-first response's unknown usage, and the original terminal
+error. The controller has exited without dispatching a replacement sample.
+
+Allow a terminal-error receipt to name the exact reviewed server-error text,
+while retaining the existing default text for older receipts. The recorded
+SDK error class must still be InternalServerError, every request and result
+byte must remain pinned, and a received final response, another error class,
+changed error text, or any retry permission must continue to block admission.
+This is scheduling review of other pairs, not recovery of the failed request.
+
+Freeze new review receipts for both existing provider failures and two fresh,
+separated read-only catalog/operation health checks. Preserve previous review
+receipts and launch evidence. After negative tests, exact usage/provenance
+checks, and a real CLI dry-run establish that only the 211 never-attempted
+pairs remain, continue the unchanged phase identity in the single available
+model slot. The three unresolved original requests retain their reservations;
+neither failed claimed pair may be dispatched again. A new uncertain request
+must again stop scheduling for review. Record the new code, receipt hashes,
+exact command, process identity, and first new request audit independently.

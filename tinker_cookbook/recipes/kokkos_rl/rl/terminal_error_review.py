@@ -50,10 +50,14 @@ def reviewed_terminal_errors(
         if expected != actual:
             raise ValueError("Reviewed trial evidence changed")
         rows = [json.loads(line) for line in (trial / "results.jsonl").read_text().splitlines()]
+        expected_error = receipt.get("terminal_error", "InternalServerError: Internal Server Error")
         if (
-            len(rows) != 1
+            not isinstance(expected_error, str)
+            or not expected_error.startswith("InternalServerError: ")
+            or not expected_error.removeprefix("InternalServerError: ").strip()
+            or len(rows) != 1
             or rows[0].get("task_name") != task
-            or rows[0].get("error") != ("InternalServerError: Internal Server Error")
+            or rows[0].get("error") != expected_error
         ):
             raise ValueError("Review must name one terminal server-error result")
         marker = read_json(trial / "attempt_started.json")
