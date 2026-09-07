@@ -378,6 +378,18 @@ def _dockerfile_instructions(path: Path) -> list[tuple[str, str]]:
     return instructions
 
 
+RUNTIME_ENVIRONMENT_POLICY_VERSION = "dockerfile_env_v1"
+
+
+def _dockerfile_env_assignment(value: str, path: Path) -> tuple[str, str]:
+    key, separator, env_value = value.partition("=")
+    if not separator:
+        key, _, env_value = value.partition(" ")
+    if not key or not env_value:
+        raise ValueError(f"unsupported ENV instruction {value!r} in {path}")
+    return key, env_value
+
+
 class ContreeDockerfileSandboxFactory:
     """Prepare each Harbor Dockerfile once, then branch isolated ConTree sessions.
 
@@ -461,13 +473,7 @@ class ContreeDockerfileSandboxFactory:
                 chain = hashlib.sha256(f"FROM {base_images[0]}".encode())
                 for instruction, value in instructions:
                     if instruction == "ENV":
-                        key, separator, env_value = value.partition("=")
-                        if not separator:
-                            key, _, env_value = value.partition(" ")
-                        if not key or not env_value:
-                            raise ValueError(
-                                f"unsupported ENV instruction {value!r} in {dockerfile_path}"
-                            )
+                        key, env_value = _dockerfile_env_assignment(value, dockerfile_path)
                         environment[key] = env_value
                         chain.update(f"\nENV {value}".encode())
                     elif instruction == "RUN":
@@ -531,11 +537,16 @@ class ContreeDockerfileSandboxFactory:
 
     async def __call__(self, env_dir: Path, timeout: int) -> ContreeSandbox:
         image_id, workdir = await self._prepare(env_dir / "Dockerfile", timeout)
-        runtime_environment = (
-            {"CMAKE_BUILD_PARALLEL_LEVEL": str(self._runtime_build_parallelism)}
-            if self._runtime_build_parallelism is not None
-            else {}
-        )
+        # ConTree images contain files, not Docker's runtime ENV configuration.
+        # Reconstruct it even when _prepare returns a cached image immediately.
+        runtime_environment = {
+            key: value
+            for instruction, assignment in _dockerfile_instructions(env_dir / "Dockerfile")
+            if instruction == "ENV"
+            for key, value in [_dockerfile_env_assignment(assignment, env_dir / "Dockerfile")]
+        }
+        if self._runtime_build_parallelism is not None:
+            runtime_environment["CMAKE_BUILD_PARALLEL_LEVEL"] = str(self._runtime_build_parallelism)
         return await ContreeSandbox.create(
             image=image_id,
             timeout=min(timeout, self._timeout),

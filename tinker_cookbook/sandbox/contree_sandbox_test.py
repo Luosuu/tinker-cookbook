@@ -138,3 +138,92 @@ def test_failed_recovery_terminates_sandbox() -> None:
         assert "restore failed" in str(error)
     else:
         raise AssertionError("expected a SandboxTerminatedError")
+
+
+def test_dockerfile_env_reaches_fresh_and_cached_runtime_sessions(tmp_path, monkeypatch) -> None:
+    import hashlib
+    from unittest.mock import AsyncMock
+
+    from tinker_cookbook.sandbox import contree_sandbox as module
+
+    dockerfile = tmp_path / "Dockerfile"
+    dockerfile.write_text(
+        "FROM base\nENV PK_KOKKOS_LIB_PATH=/wrong\n"
+        "ENV PK_KOKKOS_LIB_PATH=/usr/local/lib\nENV LEGACY value\n"
+        "ENV CMAKE_BUILD_PARALLEL_LEVEL=9\nRUN true\nWORKDIR /workspace/repo\n"
+    )
+    created = []
+    calls = []
+
+    async def create(**kwargs):
+        calls.append({**kwargs, "default_env": dict(kwargs.get("default_env", {}))})
+        sandbox = SimpleNamespace(
+            sandbox_id=f"image-{len(created)}",
+            run_command=AsyncMock(return_value=SimpleNamespace(exit_code=0)),
+            cleanup=AsyncMock(),
+        )
+        created.append(sandbox)
+        return sandbox
+
+    monkeypatch.setattr(module, "create_contree_client", lambda timeout: object())
+    monkeypatch.setattr(module.ContreeSandbox, "create", create)
+    factory = module.ContreeDockerfileSandboxFactory(
+        tmp_path / "cache.json", runtime_build_parallelism=4, allow_network=False
+    )
+
+    async def exercise():
+        await factory(tmp_path, 100)
+        await factory(tmp_path, 100)
+
+    asyncio.run(exercise())
+    assert len(calls) == 3  # One preparation, then two runtime sessions.
+    for call in calls[1:]:
+        assert call["default_env"] == {
+            "PK_KOKKOS_LIB_PATH": "/usr/local/lib",
+            "LEGACY": "value",
+            "CMAKE_BUILD_PARALLEL_LEVEL": "4",
+        }
+        assert call["default_workdir"] == "/workspace/repo"
+        assert call["allow_network"] is False
+    created[0].run_command.assert_awaited_once()
+    digest = hashlib.sha256(dockerfile.read_bytes()).hexdigest()
+    assert factory._prepared_images[f"dockerfile:{digest}"] == "image-0"
+
+
+def test_runtime_keeps_dockerfile_parallelism_without_explicit_override(
+    tmp_path, monkeypatch
+) -> None:
+    import hashlib
+    from unittest.mock import AsyncMock
+
+    from tinker_cookbook.sandbox import contree_sandbox as module
+
+    path = tmp_path / "Dockerfile"
+    path.write_text("FROM base\nENV CMAKE_BUILD_PARALLEL_LEVEL=3\n")
+    monkeypatch.setattr(module, "create_contree_client", lambda timeout: object())
+    create = AsyncMock()
+    monkeypatch.setattr(module.ContreeSandbox, "create", create)
+    factory = module.ContreeDockerfileSandboxFactory(tmp_path / "cache.json")
+    factory._prepared_images[hashlib.sha256(path.read_bytes()).hexdigest()] = "cached"
+    asyncio.run(factory(tmp_path, 100))
+    assert create.await_args.kwargs["default_env"] == {"CMAKE_BUILD_PARALLEL_LEVEL": "3"}
+
+
+def test_cached_image_does_not_skip_env_validation(tmp_path, monkeypatch) -> None:
+    import hashlib
+    from unittest.mock import AsyncMock
+
+    import pytest
+
+    from tinker_cookbook.sandbox import contree_sandbox as module
+
+    path = tmp_path / "Dockerfile"
+    path.write_text("FROM base\nENV INVALID\n")
+    monkeypatch.setattr(module, "create_contree_client", lambda timeout: object())
+    create = AsyncMock()
+    monkeypatch.setattr(module.ContreeSandbox, "create", create)
+    factory = module.ContreeDockerfileSandboxFactory(tmp_path / "cache.json")
+    factory._prepared_images[hashlib.sha256(path.read_bytes()).hexdigest()] = "cached"
+    with pytest.raises(ValueError, match="unsupported ENV"):
+        asyncio.run(factory(tmp_path, 100))
+    create.assert_not_awaited()

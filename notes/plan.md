@@ -858,3 +858,25 @@ sandbox slot and zero inference; combined reserved capacity is at most eight
 recovery slot, and one independent environment-validation slot). Offline tests
 must cover proof validation, JSON identity round trips, interrupted and completed
 resume, failed NOP stopping Oracle, and source mutation before dispatch.
+
+The first PyKokkos 422 v11 pair failed (NOP=0, Oracle=0): ConTree applied Dockerfile
+ENV values while building, then discarded them when creating runtime sessions.
+The new valid-input P2P tests correctly exposed the missing Kokkos library path.
+Propagate the parsed Dockerfile environment into both fresh and cached runtime
+sessions, with explicit runtime build parallelism taking precedence. Preserve
+all running clients and the failed v11 pair. Offline tests cover fresh/cache
+paths, repeated and legacy ENV assignments, explicit parallelism precedence,
+and invalid ENV rejection even on a cache hit.
+
+After those checks, launch one separate PyKokkos 422 pair under the explicit
+runtime environment policy dockerfile_env_v1. Use the same frozen v11 payload
+and unchanged ConTree build-one/900-second resources, but a distinct output and
+identity that pin the prior failed evidence, environment policy, harness source,
+and loaded commit. Reuse the prepared v11 image, not an earlier verifier result;
+execute NOP and Oracle once, with zero model requests and no task retries.
+Require NOP to fail for the intended regression and Oracle to execute both valid
+JIT inputs before accepting coverage. Keep old evidence immutable. The other 99
+frozen Dockerfiles specify only DEBIAN_FRONTEND; 422 alone adds the runtime JIT
+library path. This adds one reserved slot after both the previous PyKokkos and
+three-task resource runners exit, keeping total reserved sandbox capacity below
+eight. Record the environment policy in future model-evaluation identity too.
