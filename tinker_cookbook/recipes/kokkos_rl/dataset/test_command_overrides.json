@@ -1681,5 +1681,38 @@
         "sha256": "2a7e45efe4df0c05e5da662aa6ba8736b29be5ddcf518bce94c724f7aeb07a07"
       }
     ]
+  },
+  "kokkos__pykokkos-422": {
+    "base_commit": "933cbcb26b6b56bf1c027ce137afc1c54ba73dcd",
+    "test_patch_sha256": "de22c9673b70fc1a27ceb813cc8e2a15fd20057a30e27b6896e54025af46fafd",
+    "instance_fields": {
+      "p2p_commands": {
+        "original": [
+          "python -m compileall -q pykokkos/interface/views.py tests/test_typeinference.py"
+        ],
+        "replacement": [
+          "python -m compileall -q pykokkos/interface/views.py tests/test_typeinference.py",
+          "python -m pytest -q tests/test_typeinference.py -k test_numpy_doubles",
+          "python -m pytest -q tests/test_typeinference.py -k test_numpy_floats"
+        ]
+      }
+    },
+    "reason": "Retain compilation and execute existing valid-input JIT cases so an early invalid-input ValueError cannot hide a broken Kokkos library path or incompatible pybind11 ABI. The reviewed image pins pybind11 to the base extension version and exposes its Kokkos install prefix.",
+    "required_runtime_cases": [
+      {
+        "framework": "pytest",
+        "case": "test_numpy_doubles"
+      },
+      {
+        "framework": "pytest",
+        "case": "test_numpy_floats"
+      }
+    ],
+    "evidence": [
+      {
+        "path": "tests/test_typeinference.py",
+        "sha256": "781fa8d23f108ec1091267193862cb06259d5ad0468edb426c680ba6972653cf"
+      }
+    ]
   }
 }

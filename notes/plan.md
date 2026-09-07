@@ -794,6 +794,16 @@ they authorize further samples. Preserve each original byte sequence, hash,
 reason, and existing results. Keep conservative review holds for 7247/9309
 distinct from confirmed coverage defects; active attempts are not cancelled.
 
+PyKokkos 422 requires an environment repair before its paired gate can count as
+a clean baseline. Its base extension was built with pybind11 3.0.0 (internals
+version 11), while JIT used 3.1.0 (internals version 12); valid-input execution
+failed even after locating Kokkos in /usr/local/lib. Pin the reviewed base and
+hidden-test hash to pybind11 3.0.0 and set PK_KOKKOS_LIB_PATH=/usr/local/lib.
+Two existing valid-input JIT tests pass in an isolated base image after this
+change. Add those tests as P2P checks, retaining the noncontiguous-input F2P
+and compilation checks. Preserve the other 99 frozen tasks byte-for-byte and
+validate the new task hash separately; the diagnostic is not a paired gate.
+
 The ConTree SDK cancels an operation when a status GET raises a transport error.
 A read-only follow-up confirmed five cancelled operations and recovered the
 original completed NOP=0 for 8789 from its immutable result image; no verifier

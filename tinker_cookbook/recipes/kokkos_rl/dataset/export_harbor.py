@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import shlex
 from pathlib import Path
@@ -44,6 +45,21 @@ def _clean_room_command(base_commit: str) -> str:
 
 def _dockerfile(instance: KokkosInstance) -> str:
     instance = apply_reviewed_test_overrides(instance)
+    python_binding = "pybind11"
+    python_environment = ""
+    if (
+        instance.instance_id == "kokkos__pykokkos-422"
+        and instance.repo == "kokkos/pykokkos"
+        and instance.base_commit == "933cbcb26b6b56bf1c027ce137afc1c54ba73dcd"
+    ):
+        if hashlib.sha256(instance.test_patch.encode()).hexdigest() != (
+            "de22c9673b70fc1a27ceb813cc8e2a15fd20057a30e27b6896e54025af46fafd"
+        ):
+            raise ValueError("Reviewed PyKokkos environment has a different hidden test patch")
+        # This base fetches pybind11 3.0.0 when configuring its extension.
+        # JIT modules must share that ABI and locate the installed Kokkos prefix.
+        python_binding = "pybind11==3.0.0"
+        python_environment = "ENV PK_KOKKOS_LIB_PATH=/usr/local/lib\n"
     profile = get_repository_profile(instance.repo)
     toolchain = str(instance.metadata.get("toolchain", instance.metadata.get("accelerator", "cpu")))
     image = {
@@ -95,7 +111,7 @@ def _dockerfile(instance: KokkosInstance) -> str:
         commands.extend(
             [
                 "python -m pip install --break-system-packages "
-                "numpy patchelf pybind11 pytest setuptools wheel",
+                f"numpy patchelf {python_binding} pytest setuptools wheel",
                 "cd /workspace/repo && PIP_BREAK_SYSTEM_PACKAGES=1 "
                 "python install_base.py install -- "
                 "-DENABLE_LAYOUTS=ON -DENABLE_MEMORY_TRAITS=OFF "
@@ -113,6 +129,7 @@ def _dockerfile(instance: KokkosInstance) -> str:
     return f"""FROM {image}
 
 ENV DEBIAN_FRONTEND=noninteractive
+{python_environment}\
 RUN apt-get update && apt-get install -y --no-install-recommends \\
     build-essential ca-certificates ccache cmake git libboost-all-dev libhdf5-dev libopenmpi-dev \\
     ninja-build openmpi-bin python-is-python3 python3-pip \\
