@@ -637,3 +637,22 @@ the original base, hidden-test hash, and P2P command. Preserve the new nexttowar
 hidden regression, F2P build stage, production patch, and CPU resources. Prepare
 v7 without changing v6; independently validate the corrected case before use.
 Task 9147 retains its originally requested L4 GPU under a separate resource gate.
+
+## Validate the corrected full snapshot (2026-09-07)
+
+Use the frozen v7 snapshot with a resumable, zero-inference verifier runner.
+Reuse only successful NOP/Oracle evidence with exactly the same task hash,
+backend, GPU, CPU, memory, build parallelism, and grader timeout. Preserve and
+block prior failures and interrupted attempts rather than silently trying again.
+Record immutable identity, launch history, task attempt markers, raw grading
+logs, and provenance for reused evidence.
+
+The static resource mapping is ConTree/build1 by default; Modal16GiB/4CPU/build1
+for 7244; Modal16GiB/4CPU/build4 for 8164, 8399, and 8827; and Modal L4/16GiB/4CPU/
+build4 for 8989 and 9147, matching their declared GPU requirements. All graders
+retain 900 seconds. Undeclared GPU routing is rejected before any sandbox call.
+Wait until all four control gates pass and the control, patch-only recovery,
+and independent GPU-validation processes exit before launching the bulk sweep.
+At most three new validation sandboxes run together, alongside the existing
+four model slots. Do not repeat same-hash control or GPU gates already proven
+under that exact resource policy.
