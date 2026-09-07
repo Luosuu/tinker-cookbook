@@ -939,3 +939,18 @@ existing one-slot v10 queue totals six; prior resource/recovery runners exited.
 Only accept actual OpenMP nexttoward and floating-point-manipulation runtime
 witnesses after the exact pair succeeds. Four models must eventually use the
 same accepted task policy; no old controller or frozen payload is changed.
+
+Prepare a narrowly scoped repair for vacuous upstream stride assertions in
+8370 and 8838. Their conditional expressions compare stride to the boolean
+layout flag before choosing a nonzero integer, making six checks always true.
+Require exact instance/base/original-or-repaired hidden-patch hashes; add only
+the missing parentheses around the conditional expected value. Preserve all
+original expected values, allowed INVALID values, test registration, assertions,
+and hunk line counts. Keep role/target repairs compatible with the original
+annotation digest and repeated exporter calls idempotent. Compile and execute
+an offline C++ truth-table test proving the old expressions accept bad strides
+and the repaired ones reject them while retaining their intended valid values.
+Test exact scope, unknown payload rejection, idempotence and role compatibility.
+This prepares a reviewable exporter change only: do not modify frozen snapshots
+or start a new verifier/model phase for these tasks yet. Keep their scope holds
+until the stronger checks receive independent paired validation.

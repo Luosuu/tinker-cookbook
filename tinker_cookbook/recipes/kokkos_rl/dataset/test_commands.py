@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 import shlex
@@ -11,6 +10,7 @@ from pathlib import Path
 
 from tinker_cookbook.recipes.kokkos_rl.dataset import runtime_coverage
 from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
+from tinker_cookbook.recipes.kokkos_rl.dataset.test_assertions import repair_assertions
 
 FILTER = re.compile(r"(--gtest_filter(?:=|\s+))(\"[^\"]*\"|'[^']*'|[^\s;&|]+)")
 
@@ -21,11 +21,12 @@ def _reviewed_overrides():
 
 def apply_reviewed_test_overrides(instance: KokkosInstance) -> KokkosInstance:
     """Apply reviewed target/role repairs only to the exact original annotation."""
+    instance, original_patch_digest = repair_assertions(instance)
     entries = _reviewed_overrides()
     entry = entries.get(instance.instance_id)
     if not entry or entry["base_commit"] != instance.base_commit or "instance_fields" not in entry:
         return instance
-    if hashlib.sha256(instance.test_patch.encode()).hexdigest() != entry["test_patch_sha256"]:
+    if original_patch_digest != entry["test_patch_sha256"]:
         raise ValueError("Reviewed test annotation has a different hidden test patch")
     updates: dict[str, str | tuple[str, ...]] = {}
     for field, change in entry["instance_fields"].items():
