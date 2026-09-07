@@ -793,3 +793,23 @@ Withdraw old validation records for source-confirmed coverage omissions before
 they authorize further samples. Preserve each original byte sequence, hash,
 reason, and existing results. Keep conservative review holds for 7247/9309
 distinct from confirmed coverage defects; active attempts are not cancelled.
+
+The ConTree SDK cancels an operation when a status GET raises a transport error.
+A read-only follow-up confirmed five cancelled operations and recovered the
+original completed NOP=0 for 8789 from its immutable result image; no verifier
+was rerun. Subsequent validation may explicitly opt into
+operation_poll_policy_version=readonly_status_retry_v1: at most three GET
+attempts for the same operation UUID, with 0.5-second delays. Retry only
+transport failures, never POST/spawn, DELETE, authentication errors, unrelated
+GET endpoints, or cancellation. Preserve the existing HTTP and server-side
+execution timeouts, including the 900-second grader limit. Persist the resolved
+polling policy in launch identity; do not attach it to a running client.
+
+After offline tests and a read-only status-endpoint health probe pass, launch a
+separate v10 validation phase at concurrency one alongside the original four
+model and three v7 validation slots (at most eight reserved sandboxes). Validate
+only the 32 corrected hashes using runtime_v10 resources and the explicit
+polling policy, with no model requests. Reuse matching prior evidence and retain
+same-hash failures/partials as blocked. Load the staging fail-closed correction.
+Any new terminal infrastructure or verifier failure remains available for
+specific diagnosis, without automatic task re-execution.

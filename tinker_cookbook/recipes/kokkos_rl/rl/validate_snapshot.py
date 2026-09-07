@@ -24,6 +24,7 @@ from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos_nebius import ImportedCach
 from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos_openai import load_env_file
 from tinker_cookbook.recipes.kokkos_rl.rl.resource_sandbox import create_resource_sandbox_factory
 from tinker_cookbook.recipes.kokkos_rl.rl.self_train import grade_patch
+from tinker_cookbook.sandbox.contree_polling import OperationPollPolicy, create_polling_client
 from tinker_cookbook.utils.ml_log import dump_config
 
 
@@ -48,6 +49,7 @@ class Config:
     cache_path: str = "notes/experiments/SWE-kokkos-bench/v2-pass-at-k/contree_images.json"
     env_file: str = ".env"
     resource_policy_version: str = "v7"
+    operation_poll_policy_version: str = "sdk_default"
 
 
 def policy_for_task(task: HarborTask, version: str = "v7") -> Policy:
@@ -148,6 +150,13 @@ async def validate_one(
 async def run(config: Config) -> None:
     if not 1 <= config.max_concurrency <= 3:
         raise ValueError("Snapshot validation permits 1–3 shared concurrent sandboxes")
+    if config.operation_poll_policy_version not in {"sdk_default", "readonly_status_retry_v1"}:
+        raise ValueError("Unknown operation status transport policy")
+    poll_policy = (
+        OperationPollPolicy()
+        if config.operation_poll_policy_version == "readonly_status_retry_v1"
+        else None
+    )
     root, snapshot = Path(config.output_path), Path(config.snapshot_dir)
     manifest = json.loads((snapshot / "manifest.json").read_text())
     all_tasks = load_harbor_tasks_from_dir(snapshot / "tasks")
@@ -165,6 +174,7 @@ async def run(config: Config) -> None:
     identity = {
         "task_hashes": hashes,
         "resource_policy": {n: asdict(p) for n, p in policies.items()},
+        "operation_poll_policy": asdict(poll_policy) if poll_policy is not None else None,
         "config": dump_config(config),
         "model_requests": 0,
     }
@@ -237,6 +247,9 @@ async def run(config: Config) -> None:
     primary = ImportedCacheFactory(
         root / "contree_images.json", timeout=3600, runtime_build_parallelism=1, allow_network=False
     )
+    if poll_policy is not None:
+        # This factory has not dispatched work. Never replace a live client.
+        primary._client = create_polling_client(primary._client.config, poll_policy)
     semaphore = asyncio.Semaphore(config.max_concurrency)
 
     async def one(task: HarborTask) -> None:
