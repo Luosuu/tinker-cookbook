@@ -888,3 +888,18 @@ or different environment version, and retain it as rejected provenance. Keep
 this requirement empty for existing reports. The v11/env1 report requires
 422=dockerfile_env_v1 and includes the independently recorded env1 gate; only a
 fully reviewed pair with the required environment can unblock future sampling.
+
+Prepare an offline claim ledger for a possible complementary evaluation phase;
+this preparation does not start that phase. Reserve the original controller's
+entire current schedulable task set, including its valid Modal overrides and
+unattempted tasks. Require the original gate to only shrink; expansion stops new
+dispatch. Block any original or new-phase marker, transcript, request directory,
+result, or candidate artifact. Before an exclusive cross-phase claim, verify the
+frozen instruction/configuration and task digest, exact verifier/resource/ENV
+proof, source evidence hashes, and absence of a task-specific coverage blocker.
+Use create-exclusive and fsync for claim ownership; crashes or another phase's
+claim never authorize another attempt. Test gate changes, partial artifacts,
+resource/environment mismatches, task/evidence mutation, and competing claims.
+Record a read-only complement preflight, keeping previous attempts, the three
+unknown requests, and all old scores unchanged. No baseline, SFT, or new model
+request is part of this preparatory change.
