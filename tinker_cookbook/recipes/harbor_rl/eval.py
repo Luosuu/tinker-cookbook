@@ -114,6 +114,7 @@ async def evaluate_task(
     # raises (image build OOM, fishbowl timeout, etc.) the exception would
     # otherwise escape to asyncio.gather and cancel every in-flight task.
     sandbox = None
+    recorder = None
     try:
         sandbox = await sandbox_factory(env_dir, config.sandbox_timeout)
         bash_tool = HarborBashTool(sandbox, command_timeout=config.command_timeout)
@@ -128,7 +129,6 @@ async def evaluate_task(
                 else None
             ),
         )
-        recorder = None
         if config.export_kokkos_rollouts:
             from tinker_cookbook.recipes.kokkos_rl.rl.rollout_data import RolloutRecorder
 
@@ -159,7 +159,8 @@ async def evaluate_task(
             ),
         )
 
-        trajectory = await do_single_rollout(policy, env)
+        recorded_policy = recorder.recording_policy(policy) if recorder is not None else policy
+        trajectory = await do_single_rollout(recorded_policy, env)
         if recorder is not None:
             recorder.save(trajectory)
         reward = sum(t.reward for t in trajectory.transitions)
@@ -185,12 +186,25 @@ async def evaluate_task(
     except Exception as e:
         elapsed = time.monotonic() - start
         logger.error("Task %s failed: %s", task.task_name, e)
+        failure_details = {}
+        known_turns = 0
+        if recorder is not None:
+            if recorder.sampling is not None:
+                known_turns = recorder.sampling.responses_received
+                failure_details = {
+                    "sampling/policy_calls_started": float(recorder.sampling.calls_started),
+                    "sampling/responses_received": float(known_turns),
+                }
+            try:
+                recorder.save_failure(e)
+            except Exception as capture_error:
+                logger.error("Could not persist failure evidence: %s", capture_error)
         result = TaskResult(
             task_name=task.task_name,
             sample_index=sample_index,
             reward=0.0,
-            reward_details={},
-            turns_used=0,
+            reward_details=failure_details,
+            turns_used=known_turns,
             time_seconds=round(elapsed, 1),
             error=str(e),
         )

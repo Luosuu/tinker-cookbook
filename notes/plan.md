@@ -1100,3 +1100,10 @@ Distinguish absolute hidden-test paths from ordinary repository test paths in
 command auditing. Existing affected evaluations retain their original results
 and require an explicit provenance and scoring review before collection; do
 not resume them by changing pinned source hashes or resampling failed slots.
+
+Persist each raw sampling input before calling the policy and each returned
+action before stepping the environment. Save messages and candidate integrity
+evidence before grading. A grading exception must retain known response counts
+and a separate incomplete-trajectory failure record, rather than reporting zero
+turns and discarding the sampled actions. An unmatched sampling request remains
+uncertain; this recording path adds no timeout, retry, or replacement sample.

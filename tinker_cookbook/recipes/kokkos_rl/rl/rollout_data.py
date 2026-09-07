@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import TypedDict
 
+import tinker
+
+from tinker_cookbook.completers import StopCondition, TokenCompleter, TokensWithLogprobs
 from tinker_cookbook.recipes.harbor_rl.harbor_env import HarborTask
 from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborReward
 from tinker_cookbook.recipes.kokkos_rl.rl.candidate_artifact import capture_candidate
@@ -31,6 +35,53 @@ class RecordedRollout(TypedDict):
     stop_reason: str | None
     audit_flags: list[str]
     datums: list[ExportedDatum]
+
+
+def _write_new_record(path: Path, payload: object) -> None:
+    """Persist evidence before the next external action; never replace a turn."""
+    encoded = json.dumps(payload)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("x") as stream:
+        stream.write(encoded + "\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+
+
+class RecordedTokenCompleter(TokenCompleter):
+    """Keep raw sampling evidence even when the subsequent environment step fails."""
+
+    def __init__(self, policy: TokenCompleter, directory: Path) -> None:
+        self.policy = policy
+        self.directory = directory
+        self.calls_started = 0
+        self.responses_received = 0
+
+    async def __call__(
+        self,
+        model_input: tinker.ModelInput,
+        stop: StopCondition,
+        *,
+        max_tokens: int | None = None,
+    ) -> TokensWithLogprobs:
+        prefix = f"{self.calls_started:03d}"
+        _write_new_record(
+            self.directory / f"{prefix}.request.json",
+            {"input_tokens": model_input.to_ints(), "stop": stop, "max_tokens": max_tokens},
+        )
+        self.calls_started += 1
+        # Delegate unchanged, without adding a timeout or retry. A request
+        # without a response remains an uncertain call, never a zero-cost slot.
+        response = await self.policy(model_input, stop, max_tokens=max_tokens)
+        self.responses_received += 1
+        _write_new_record(
+            self.directory / f"{prefix}.response.json",
+            {
+                "tokens": response.tokens,
+                "logprobs": response.maybe_logprobs,
+                "stop_reason": response.stop_reason,
+            },
+        )
+        return response
 
 
 def command_audit(history: list[Message]) -> list[str]:
@@ -73,9 +124,32 @@ class RolloutRecorder:
         self.history: list[Message] = []
         self.patch = ""
         self.capture_error: str | None = None
+        self.stage = "sampling"
+        self.sampling: RecordedTokenCompleter | None = None
+
+    def recording_policy(self, policy: TokenCompleter) -> RecordedTokenCompleter:
+        self.sampling = RecordedTokenCompleter(policy, self.directory / "sampling")
+        return self.sampling
+
+    def save_failure(self, error: Exception) -> None:
+        _write_new_record(
+            self.directory / "failure.json",
+            {
+                "stage": self.stage,
+                "error": f"{type(error).__name__}: {error}",
+                "policy_calls_started": self.sampling.calls_started if self.sampling else 0,
+                "responses_received": self.sampling.responses_received if self.sampling else 0,
+                "trajectory_complete": False,
+                "eligible_for_training": False,
+            },
+        )
 
     async def __call__(self, history: list[Message]) -> tuple[float, dict[str, float]]:
         self.history = history
+        self.stage = "candidate_capture"
+        _write_new_record(
+            self.directory / "messages.json", [message_to_jsonable(m) for m in history]
+        )
         # Do not stage files: intent-to-add turns ignored-by-the-verifier
         # untracked build outputs into tracked changes and can change rewards.
         self.directory.mkdir(parents=True, exist_ok=True)
@@ -85,7 +159,10 @@ class RolloutRecorder:
             self.capture_error = "patch_capture_failed_or_truncated"
         else:
             self.patch = (self.directory / "candidate.patch").read_text()
-        return await self.reward_fn(history)
+        self.stage = "grading"
+        result = await self.reward_fn(history)
+        self.stage = "graded"
+        return result
 
     def save(self, trajectory: Trajectory) -> None:
         self.directory.mkdir(parents=True, exist_ok=True)
@@ -118,8 +195,7 @@ class RolloutRecorder:
             ],
         }
         (self.directory / "patch.diff").write_text(self.patch)
-        messages = [message_to_jsonable(m) for m in self.history]
-        (self.directory / "messages.json").write_text(json.dumps(messages))
+        self.stage = "complete"
         (self.directory / "trajectory.json").write_text(json.dumps(payload))
 
 
