@@ -709,3 +709,25 @@ commands. Keep the executable, both cases, and F2P build stage. Preserve v7/v8
 and freeze v9 with this single additional repair. Validate only the new 8039
 hash once with one ConTree sandbox, 900 seconds per grader, zero inference,
 and total shared concurrency at most eight. A failed gate remains blocked.
+
+## Require coverage of the changed behavior (2026-09-07)
+
+NOP0/Oracle1 and nonzero P2P coverage do not establish that a new runtime
+regression actually ran. A static audit found 21 candidate tasks whose added
+TEST cases are not selected, including legitimate compile-only candidates and
+partially covered test families. Review each candidate against its hidden patch,
+registered executable, backend guards, and runtime assertions before deciding
+the correction. Do not classify all candidates as failures automatically.
+
+Examples requiring investigation include isnormal checked only by an existing
+isnan case, fpclassify checked only by isinf, and nexttoward compiled but never
+executed. Nexttoward additionally skips outside the default host execution
+space, so its test must use the appropriate enabled host backend.
+
+Keep the running snapshots and their NOP/Oracle evidence immutable. Prepare
+explicit command/target corrections in a new snapshot and validate changed
+hashes independently, reusing only unchanged matching evidence. Qualification
+must require a completed behavior-coverage review tied to every final task
+hash, with no unresolved blockers, before setting ready_for_sampling. Missing,
+incomplete, or stale reviews leave sampling blocked even if all verifier pairs
+pass. Keep the pair-pass count visible separately for progress monitoring.

@@ -27,6 +27,7 @@ class Config:
     snapshot_dir: str
     evidence_dirs: tuple[str, ...]
     output_path: str
+    coverage_review_path: str | None = None
 
 
 def write_report(path: Path, report: dict[str, object]) -> None:
@@ -94,6 +95,21 @@ def qualify(config: Config) -> dict[str, object]:
             "rejected_evidence": rejected,
         }
     qualified = sum(result["qualified"] is True for result in results.values())
+    coverage_review: dict[str, object] = {"status": "missing", "complete": False}
+    if config.coverage_review_path is not None:
+        review_path = Path(config.coverage_review_path)
+        data = review_path.read_bytes()
+        review = json.loads(data)
+        same_snapshot = review.get("task_hashes") == hashes
+        coverage_review = {
+            "path": str(review_path.resolve()),
+            "sha256": hashlib.sha256(data).hexdigest(),
+            "status": review.get("status") if same_snapshot else "stale_snapshot",
+            "blockers": review.get("blockers"),
+            "complete": same_snapshot
+            and review.get("status") == "complete"
+            and review.get("blockers") == [],
+        }
     report: dict[str, object] = {
         "created_at": datetime.now(UTC).isoformat(),
         "snapshot_dir": str(snapshot.resolve()),
@@ -101,7 +117,9 @@ def qualify(config: Config) -> dict[str, object]:
         "task_hashes": hashes,
         "total": len(tasks),
         "qualified": qualified,
-        "ready_for_sampling": qualified == len(tasks),
+        "verifier_pairs_passed": qualified,
+        "regression_coverage_review": coverage_review,
+        "ready_for_sampling": qualified == len(tasks) and coverage_review["complete"] is True,
         "model_requests": 0,
         "tasks": results,
         "unrelated_evidence": {

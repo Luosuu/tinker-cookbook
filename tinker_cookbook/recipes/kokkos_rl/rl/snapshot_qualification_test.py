@@ -35,7 +35,16 @@ def save_record(folder, task, digest, **overrides):
     return path
 
 
-def test_qualification_rejects_wrong_payload_and_resources_preserves_failures(tmp_path, monkeypatch):
+def save_review(path, hashes, **overrides):
+    path.write_text(
+        json.dumps({"task_hashes": hashes, "status": "complete", "blockers": [], **overrides})
+    )
+    return str(path)
+
+
+def test_qualification_rejects_wrong_payload_and_resources_preserves_failures(
+    tmp_path, monkeypatch
+):
     snapshot = tmp_path / "snapshot"
     tasks, hashes = make_snapshot(snapshot, monkeypatch)
     old, new = tmp_path / "old", tmp_path / "new"
@@ -69,6 +78,7 @@ def test_qualification_rejects_wrong_payload_and_resources_preserves_failures(tm
             snapshot_dir=str(snapshot),
             evidence_dirs=(str(old), str(new), str(resolved)),
             output_path=str(tmp_path / "resolved.json"),
+            coverage_review_path=save_review(tmp_path / "review.json", hashes),
         )
     )
     assert complete["ready_for_sampling"] is True
@@ -102,10 +112,41 @@ def test_independent_monitors_can_refresh_the_same_report(tmp_path, monkeypatch)
         save_record(evidence, task, hashes[task.task_name])
     output = tmp_path / "report.json"
     config = qualification.Config(
-        snapshot_dir=str(snapshot), evidence_dirs=(str(evidence),), output_path=str(output)
+        snapshot_dir=str(snapshot),
+        evidence_dirs=(str(evidence),),
+        output_path=str(output),
+        coverage_review_path=save_review(tmp_path / "review.json", hashes),
     )
     with ThreadPoolExecutor(max_workers=4) as pool:
         reports = list(pool.map(lambda _: qualification.qualify(config), range(20)))
     assert all(report["ready_for_sampling"] is True for report in reports)
     assert json.loads(output.read_text())["qualified"] == 3
     assert not list(tmp_path.glob(".report.json.*.tmp"))
+
+
+@pytest.mark.parametrize("review_status", ["missing", "pending", "blockers", "wrong_hash"])
+def test_oracle_pairs_cannot_bypass_behavior_coverage_review(tmp_path, monkeypatch, review_status):
+    snapshot = tmp_path / "snapshot"
+    tasks, hashes = make_snapshot(snapshot, monkeypatch)
+    evidence = tmp_path / "evidence"
+    evidence.mkdir()
+    for task in tasks:
+        save_record(evidence, task, hashes[task.task_name])
+    review = None
+    if review_status != "missing":
+        review = save_review(
+            tmp_path / "review.json",
+            {} if review_status == "wrong_hash" else hashes,
+            status="pending" if review_status == "pending" else "complete",
+            blockers=["new behavior not executed"] if review_status == "blockers" else [],
+        )
+    report = qualification.qualify(
+        qualification.Config(
+            snapshot_dir=str(snapshot),
+            evidence_dirs=(str(evidence),),
+            output_path=str(tmp_path / "report.json"),
+            coverage_review_path=review,
+        )
+    )
+    assert report["verifier_pairs_passed"] == 3
+    assert report["ready_for_sampling"] is False
