@@ -55,6 +55,27 @@
         "path": "core/unit_test/category_files/TestSerial_Category.hpp",
         "url": "https://github.com/kokkos/kokkos/blob/f58d70314ce28b4ccff5b078e2187226e48f09b2/core/unit_test/category_files/TestSerial_Category.hpp",
         "sha256": "3e0e8bca51fbddafbe51f90faf0b1ac01c8f3718bc0ad00f8d0b7c9050654ed6"
+      },
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/f58d70314ce28b4ccff5b078e2187226e48f09b2/core/unit_test/CMakeLists.txt",
+        "sha256": "b1df1369b61522a23691c471e2213d8ad9f0303ba9279b1f7e7cd738782cb97f"
+      }
+    ],
+    "test_patch_sha256": "643d11d2c9678427571a81d8874803c89f212afc3cdeb7135a4c1a938d65237d",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [],
+        "replacement": [
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter='*.view_create_unmanaged_subview_from_managed'"
+        ]
+      }
+    },
+    "reason": " Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial2",
+        "case": "view_create_unmanaged_subview_from_managed"
       }
     ]
   },
@@ -111,9 +132,19 @@
           "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.view_mdspan_conversion*'",
           "./build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter='*.view_api_b'"
         ]
+      },
+      "f2p_commands": {
+        "original": [
+          "\"$(find build -type f -name Kokkos_CoreUnitTest_Serial1 -perm -111 -print -quit)\" --gtest_filter='*view_mdspan_conversion_with_stride*'"
+        ],
+        "replacement": [
+          "\"$(find build -type f -name Kokkos_CoreUnitTest_Serial1 -perm -111 -print -quit)\" --gtest_filter='*view_mdspan_conversion_with_stride*'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter='*.view_layout_left_with_stride'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter='*.view_layout_right_with_stride'"
+        ]
       }
     },
-    "reason": "ViewAPI_b is compiled into Serial2, while MDSpanConversion belongs to Serial1.",
+    "reason": "ViewAPI_b is compiled into Serial2, while MDSpanConversion belongs to Serial1. Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
     "evidence": [
       {
         "path": "core/unit_test/TestViewAPI_b.hpp",
@@ -124,6 +155,16 @@
         "path": "core/unit_test/CMakeLists.txt",
         "url": "https://github.com/kokkos/kokkos/blob/ee53b3f73c7e81b0414cfa7e44d70a361987a727/core/unit_test/CMakeLists.txt",
         "sha256": "e4d50c549fdce60cf12fa7bc120891f77417fc709b36c11460e9e5487ce4720b"
+      }
+    ],
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial2",
+        "case": "view_layout_left_with_stride"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial2",
+        "case": "view_layout_right_with_stride"
       }
     ]
   },
@@ -265,9 +306,17 @@
         "replacement": [
           "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter=serial.graph_then_tag"
         ]
+      },
+      "f2p_commands": {
+        "original": [],
+        "replacement": [
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.lvalue_policies'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.lvalue_policies_reduce'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.team_launch_bounds_in_graph'"
+        ]
       }
     },
-    "reason": "graph_then_tag uses TEST(TEST_CATEGORY, ...), not the graph fixture; it exists only in Serial1, so remove the duplicate lookup in Serial2.",
+    "reason": "graph_then_tag uses TEST(TEST_CATEGORY, ...), not the graph fixture; it exists only in Serial1, so remove the duplicate lookup in Serial2. Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
     "evidence": [
       {
         "path": "core/unit_test/TestGraph.hpp",
@@ -283,6 +332,20 @@
         "path": "core/unit_test/category_files/TestSerial_Category.hpp",
         "url": "https://github.com/kokkos/kokkos/blob/5836b7c2df57227d26777912dd1a5f4b82b18fbd/core/unit_test/category_files/TestSerial_Category.hpp",
         "sha256": "3e0e8bca51fbddafbe51f90faf0b1ac01c8f3718bc0ad00f8d0b7c9050654ed6"
+      }
+    ],
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "lvalue_policies"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "lvalue_policies_reduce"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "team_launch_bounds_in_graph"
       }
     ]
   },
@@ -374,9 +437,31 @@
       "configure_command": {
         "original": "cmake -S . -B build -G Ninja -DKokkosKernels_ENABLE_TESTS=ON -DKokkos_ROOT=/opt/kokkos -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
         "replacement": "cmake -S . -B build -G Ninja -DKokkosKernels_ENABLE_TESTS=ON -DKokkos_ROOT=/opt/kokkos -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DKokkosKernels_INST_COMPLEX_FLOAT=ON"
+      },
+      "f2p_commands": {
+        "original": [],
+        "replacement": [
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_serial_nrm_genuinel1_double'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_serial_nrm_genuinel1_fcomplex'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_serial_nrm_genuinelinf_double'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_serial_nrm_genuinelinf_fcomplex'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_serial_nrm_linf_double'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_team_nrm_genuinel1_double'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_team_nrm_genuinel1_fcomplex'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_team_nrm_genuinelinf_double'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_team_nrm_genuinelinf_fcomplex'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_team_nrm_linf_double'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_team_nrm_linf_fcomplex'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_teamvector_nrm_genuinel1_double'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_teamvector_nrm_genuinel1_fcomplex'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_teamvector_nrm_genuinelinf_double'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_teamvector_nrm_genuinelinf_fcomplex'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_teamvector_nrm_linf_double'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_teamvector_nrm_linf_fcomplex'"
+        ]
       }
     },
-    "reason": "The requested complex<float> norm test is compiled only with INST_COMPLEX_FLOAT; the original generated CMake cache has that option OFF.",
+    "reason": "The requested complex<float> norm test is compiled only with INST_COMPLEX_FLOAT; the original generated CMake cache has that option OFF. Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
     "original_cmake_cache_sha256": "9e1238b5c51c1eca18b0574f3badf2104bd24543a5f9f21c5eaa1ba4bf4602af",
     "evidence": [
       {
@@ -389,7 +474,78 @@
         "url": "https://github.com/kokkos/kokkos-kernels/blob/6380905f3f938bffa33777adef2f3435bf590b09/cmake/kokkoskernels_eti_floats.cmake",
         "sha256": "148842b130993e5449df1092287233bae9e892ba12af56d0518c253012b4c745"
       }
-    ]
+    ],
+    "required_runtime_cases": [
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_serial_nrm_genuinel1_double"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_serial_nrm_genuinel1_fcomplex"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_serial_nrm_genuinelinf_double"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_serial_nrm_genuinelinf_fcomplex"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_serial_nrm_linf_double"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_team_nrm_genuinel1_double"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_team_nrm_genuinel1_fcomplex"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_team_nrm_genuinelinf_double"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_team_nrm_genuinelinf_fcomplex"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_team_nrm_linf_double"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_team_nrm_linf_fcomplex"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_teamvector_nrm_genuinel1_double"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_teamvector_nrm_genuinel1_fcomplex"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_teamvector_nrm_genuinelinf_double"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_teamvector_nrm_genuinelinf_fcomplex"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_teamvector_nrm_linf_double"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_teamvector_nrm_linf_fcomplex"
+      }
+    ],
+    "coverage_scope": "Cover all serial/team/teamvector and genuinel1/genuinelinf/linf families for configured double and complex<float>. Keep the existing serial_linf_fcomplex invocation. Float and complex<double> are not enabled by this task configuration."
   },
   "kokkos__kokkos-9260": {
     "base_commit": "e266805395e06adf0b072c0658b10ae7b3c55e27",
@@ -429,12 +585,30 @@
     "commands": {
       "ctest --test-dir build -R mathematical_functions_isinf -V": "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.mathematical_functions_isinf'"
     },
-    "reason": "The requested existing isinf test is a GoogleTest case within Serial1, not a CTest registration.",
+    "reason": "The requested existing isinf test is a GoogleTest case within Serial1, not a CTest registration. Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
     "evidence": [
       {
         "path": "core/unit_test/TestMathematicalFunctions.hpp",
         "url": "https://github.com/kokkos/kokkos/blob/e2d872a422bed5d2375934f403897d0282896e54/core/unit_test/TestMathematicalFunctions.hpp",
         "sha256": "61046ac5afbd009fb37b450ad22e4e89fae5ac195610f5e421217ee095ca7440"
+      }
+    ],
+    "test_patch_sha256": "7df4535da9e96ede0f2109ebb0b4fc0f6b7e9ccebe8e67fa4cd0b8ae3593dd8c",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial1 --parallel"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial1 --parallel",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.mathematical_functions_fpclassify'"
+        ]
+      }
+    },
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "mathematical_functions_fpclassify"
       }
     ]
   },
@@ -450,16 +624,56 @@
         "replacement": [
           "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.mathematical_functions_floating_point_manipulation_functions'"
         ]
+      },
+      "f2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial1"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial1",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_OpenMP --gtest_filter='*.mathematical_functions_nexttoward'"
+        ]
+      },
+      "build_targets": {
+        "original": [
+          "Kokkos_CoreUnitTest_Serial1"
+        ],
+        "replacement": [
+          "Kokkos_CoreUnitTest_Serial1",
+          "Kokkos_CoreUnitTest_OpenMP"
+        ]
       }
     },
-    "reason": "The CPU task cannot execute the FP16-only P2P case. The existing floating_point_manipulation_functions test covers nextafter for ordinary scalar types; preserve the new nexttoward regression and original F2P build stage.",
+    "reason": "The CPU task cannot execute the FP16-only P2P case. The existing floating_point_manipulation_functions test covers nextafter for ordinary scalar types; preserve the new nexttoward regression and original F2P build stage. Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
     "evidence": [
       {
         "path": "core/unit_test/TestMathematicalFunctions.hpp",
         "url": "https://github.com/kokkos/kokkos/blob/f89b514015c862e2fc13ca3e7c971428a246fbfa/core/unit_test/TestMathematicalFunctions.hpp",
         "sha256": "c3104ca0828f767259229bed202f2bf98838e27e9445b9a227724a2a03ae2abd"
+      },
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/f89b514015c862e2fc13ca3e7c971428a246fbfa/core/unit_test/CMakeLists.txt",
+        "sha256": "8aa74fcf728e44ffa777fa63b9d2d709bf18a050a7d354bf17f2cac188a15d42"
+      },
+      {
+        "path": "core/src/Kokkos_Core_fwd.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/f89b514015c862e2fc13ca3e7c971428a246fbfa/core/src/Kokkos_Core_fwd.hpp",
+        "sha256": "0fdcac9c21be3e287bc8f99eb2576631ddc6ae9dfc85d6c6c853561ee5a00e61"
+      },
+      {
+        "path": "core/src/impl/Kokkos_Half_FloatingPointWrapper.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/f89b514015c862e2fc13ca3e7c971428a246fbfa/core/src/impl/Kokkos_Half_FloatingPointWrapper.hpp",
+        "sha256": "93e112d08e458bde6a26ca8eaef7755d8c0fe796a009a1c5e7b91c5e83ca14ec"
       }
-    ]
+    ],
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_OpenMP",
+        "case": "mathematical_functions_nexttoward"
+      }
+    ],
+    "coverage_scope": "Use the already configured OpenMP default execution/host space because the required case skips the Serial non-default space. Preserve the original Serial checks."
   },
   "kokkos__kokkos-7089": {
     "base_commit": "ba2075b3d4ea1eaef66703564439e31547d4a2f3",
@@ -503,6 +717,526 @@
         "path": "algorithms/unit_tests/TestRandom.hpp",
         "url": "https://github.com/kokkos/kokkos/blob/c0a3d7e4a417c02bd4c45bd6f8b9bdd51499f014/algorithms/unit_tests/TestRandom.hpp",
         "sha256": "c917e76554972620f89244e058485ea6c502a848a7fbd4dc2f832e2b6726cab0"
+      }
+    ]
+  },
+  "kokkos__kokkos-7242": {
+    "base_commit": "5f2c243458c0effb35f2f67e83fab5bc0c5db711",
+    "test_patch_sha256": "8f03f2dcb8ea6c5becb56641e77b4968e6996351e01dd70105eebd25e50aac16",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_ContainersUnitTest_Serial --parallel"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_ContainersUnitTest_Serial --parallel",
+          "./build/containers/unit_tests/Kokkos_ContainersUnitTest_Serial --gtest_filter='*.dualview_template_views_return_correct_views_from_const_dual_view'"
+        ]
+      }
+    },
+    "reason": " Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
+    "required_runtime_cases": [
+      {
+        "executable": "containers/unit_tests/Kokkos_ContainersUnitTest_Serial",
+        "case": "dualview_template_views_return_correct_views_from_const_dual_view"
+      }
+    ],
+    "evidence": []
+  },
+  "kokkos__kokkos-7248": {
+    "base_commit": "a16239199ee3fb90d5d3a35ab881f1936528ced9",
+    "test_patch_sha256": "068de9c7d096d4241991ac321fe42dad37cc1fa3b1d067e3b7434be6c5717d40",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial1 --parallel"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial1 --parallel",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_OpenMP --gtest_filter='*.create_graph_no_arg'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_OpenMP --gtest_filter='*.create_graph_no_closure_with_exec'"
+        ]
+      },
+      "build_targets": {
+        "original": [
+          "Kokkos_CoreUnitTest_Serial1"
+        ],
+        "replacement": [
+          "Kokkos_CoreUnitTest_Serial1",
+          "Kokkos_CoreUnitTest_OpenMP"
+        ]
+      }
+    },
+    "reason": " Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_OpenMP",
+        "case": "create_graph_no_arg"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_OpenMP",
+        "case": "create_graph_no_closure_with_exec"
+      }
+    ],
+    "evidence": [
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/a16239199ee3fb90d5d3a35ab881f1936528ced9/core/unit_test/CMakeLists.txt",
+        "sha256": "e4d50c549fdce60cf12fa7bc120891f77417fc709b36c11460e9e5487ce4720b"
+      },
+      {
+        "path": "core/src/Kokkos_Core_fwd.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/a16239199ee3fb90d5d3a35ab881f1936528ced9/core/src/Kokkos_Core_fwd.hpp",
+        "sha256": "64eea0cc0ed3c45afd19e1d077149f998f0b223907013563a4487dc45641da22"
+      }
+    ],
+    "coverage_scope": "Use the already configured OpenMP default execution/host space because the required case skips the Serial non-default space. Preserve the original Serial checks."
+  },
+  "kokkos__kokkos-7629": {
+    "base_commit": "c79c7b36fb776809f80685020b1b857c38d24077",
+    "test_patch_sha256": "a0bf280cf6e887a812b3b59a1c7ceb4ca84efdf50f93d57a49bcf661a0e5b5f7",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial1"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial1",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.graph_then'"
+        ]
+      }
+    },
+    "reason": " Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "graph_then"
+      }
+    ],
+    "evidence": []
+  },
+  "kokkos__kokkos-8131": {
+    "base_commit": "864a1632baffd6b26cc18961802659c2d13f9827",
+    "test_patch_sha256": "a5b558fe0856445c92ceb73c82b76a0db2acb8d2f23c40a4532927dad93558b3",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial_ViewSupport"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial_ViewSupport",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial_ViewSupport --gtest_filter='*.view_customization_accessor_from_mapping'"
+        ]
+      }
+    },
+    "reason": " Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial_ViewSupport",
+        "case": "view_customization_accessor_from_mapping"
+      }
+    ],
+    "evidence": []
+  },
+  "kokkos__kokkos-8182": {
+    "base_commit": "4d2f2e03f7ea37235ed3fccaf39b0b8b28fbf318",
+    "test_patch_sha256": "0858bf3d6ba8541b05534a1125ea7eb2db5fb3c2f4b6b1ba6dcb22519766288f",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_ContainersUnitTest_Serial"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_ContainersUnitTest_Serial",
+          "./build/containers/unit_tests/Kokkos_ContainersUnitTest_Serial --gtest_filter='*.UnorderedMap_View_as_value'"
+        ]
+      }
+    },
+    "reason": " Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
+    "required_runtime_cases": [
+      {
+        "executable": "containers/unit_tests/Kokkos_ContainersUnitTest_Serial",
+        "case": "UnorderedMap_View_as_value"
+      }
+    ],
+    "evidence": []
+  },
+  "kokkos__kokkos-8221": {
+    "base_commit": "b33c89a21247ec0011a219571114cb33fbd1de55",
+    "test_patch_sha256": "332e15a1cf8b90b071ff26c6fea3da4d0be3b746855a728254df4d19f732697f",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_ContainersUnitTest_Serial --parallel"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_ContainersUnitTest_Serial --parallel",
+          "./build/containers/unit_tests/Kokkos_ContainersUnitTest_Serial --gtest_filter='*.view_customization_extra_int_arg'"
+        ]
+      }
+    },
+    "reason": " Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
+    "required_runtime_cases": [
+      {
+        "executable": "containers/unit_tests/Kokkos_ContainersUnitTest_Serial",
+        "case": "view_customization_extra_int_arg"
+      }
+    ],
+    "evidence": []
+  },
+  "kokkos__kokkos-8486": {
+    "base_commit": "9b80f55628eb3b80581fad1202cb938b4a9f8e45",
+    "test_patch_sha256": "7e0bf585218f9923cb5b796159a2e944a530e37378aeb90e9af8de55a09b4cc1",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_ContainersUnitTest_Serial --parallel"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_ContainersUnitTest_Serial --parallel",
+          "./build/containers/unit_tests/Kokkos_ContainersUnitTest_Serial --gtest_filter='*.ErrorReporter_label_ctor'",
+          "./build/containers/unit_tests/Kokkos_ContainersUnitTest_Serial --gtest_filter='*.ErrorReporter_resize'"
+        ]
+      }
+    },
+    "reason": " Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
+    "required_runtime_cases": [
+      {
+        "executable": "containers/unit_tests/Kokkos_ContainersUnitTest_Serial",
+        "case": "ErrorReporter_label_ctor"
+      },
+      {
+        "executable": "containers/unit_tests/Kokkos_ContainersUnitTest_Serial",
+        "case": "ErrorReporter_resize"
+      }
+    ],
+    "evidence": []
+  },
+  "kokkos__kokkos-8712": {
+    "base_commit": "26f3f6701495aba79200ce32a6ddc2a0e39006f9",
+    "test_patch_sha256": "56ff459ad04b8de27df8db29e9e8d614ed5980b9bd631d66f0aaabb85efd7190",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [
+          "ninja -C build Kokkos_CoreUnitTest_Serial1"
+        ],
+        "replacement": [
+          "ninja -C build Kokkos_CoreUnitTest_Serial1",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.mathematical_functions_isnormal'"
+        ]
+      }
+    },
+    "reason": " Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "mathematical_functions_isnormal"
+      }
+    ],
+    "evidence": []
+  },
+  "kokkos__kokkos-9128": {
+    "base_commit": "4c3a26023d2a57cdf390c2bb033bdeb13f167934",
+    "test_patch_sha256": "4bd221054b047d508432fafd721a955bfd68753a5c602c6a3bee1a50f71313b0",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [],
+        "replacement": [
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Default --gtest_filter='*.view_ctor_prop'"
+        ]
+      }
+    },
+    "reason": " Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Default",
+        "case": "view_ctor_prop"
+      }
+    ],
+    "evidence": []
+  },
+  "kokkos__kokkos-9185": {
+    "base_commit": "9918f68e0ba8f551793b0f6b5ea694363649a530",
+    "test_patch_sha256": "a3ce499c3817fa73dcac7dbae49bd51bdb284b7a1ea59e5ed451260574db3931",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [],
+        "replacement": [
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial_ViewSupport --gtest_filter='*.view_create_mirror_view_and_copy'"
+        ]
+      }
+    },
+    "reason": " Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial_ViewSupport",
+        "case": "view_create_mirror_view_and_copy"
+      }
+    ],
+    "evidence": []
+  },
+  "kokkos__kokkos-8927": {
+    "base_commit": "34922d92da262e3b9da9b97de327c9c63c6e9a50",
+    "test_patch_sha256": "1a92914c3788c2429ff2d3e2fe7f7a40920247e36ef1a744f9f380292bbaa186",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [
+          "ninja -C build Kokkos_CoreUnitTest_Serial1"
+        ],
+        "replacement": [
+          "ninja -C build Kokkos_CoreUnitTest_Serial1",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.complex_special_funtions'"
+        ]
+      }
+    },
+    "reason": " Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "complex_special_funtions"
+      }
+    ],
+    "evidence": [
+      {
+        "path": "core/unit_test/TestComplex.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/34922d92da262e3b9da9b97de327c9c63c6e9a50/core/unit_test/TestComplex.hpp",
+        "sha256": "de7c5df30e507d9bdf5f00f11457b765879748f0f4328956b76e18ea125ea10c"
+      },
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/34922d92da262e3b9da9b97de327c9c63c6e9a50/core/unit_test/CMakeLists.txt",
+        "sha256": "8aa74fcf728e44ffa777fa63b9d2d709bf18a050a7d354bf17f2cac188a15d42"
+      }
+    ]
+  },
+  "kokkos__kokkos-7074": {
+    "base_commit": "1e14d047ce0d8b65dba3d95a546def86015a0fce",
+    "test_patch_sha256": "ec30c16cd7e414bf10f1cfff98f51590fbe0eebfdf1eb16d5c83902112fe3189",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial1"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial1",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.space_aware_accessor'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.view_mdspan_conversion'"
+        ]
+      }
+    },
+    "reason": " Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "space_aware_accessor"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "view_mdspan_conversion"
+      }
+    ],
+    "evidence": [
+      {
+        "path": "core/unit_test/TestMDSpanConversion.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/1e14d047ce0d8b65dba3d95a546def86015a0fce/core/unit_test/TestMDSpanConversion.hpp",
+        "sha256": "02f9eefab83d9885fe10ad0834541c000c6e530d88434058be9b2eea79dcdcbd"
+      }
+    ],
+    "coverage_scope": "Execute the new accessor value checks on the declared CPU backend. Inaccessible host/device memory death cases explicitly skip when CPU memory is accessible; they do not establish GPU coverage."
+  },
+  "kokkos__kokkos-kernels-3088": {
+    "base_commit": "e0a706f8f6abcd3a7c3dcb84bc72a7843a50b34c",
+    "test_patch_sha256": "7af8b8ec667a861ad894177937610af53abd27e83e8df1ec1cb12516e57777df",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [],
+        "replacement": [
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_rotmg_double'"
+        ]
+      }
+    },
+    "reason": " Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
+    "required_runtime_cases": [
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_rotmg_double"
+      }
+    ],
+    "evidence": [],
+    "coverage_scope": "The original CMake configuration instantiates double only. Execute new rotmg_double; float remains outside the configured scalar scope."
+  },
+  "kokkos__kokkos-8399": {
+    "base_commit": "08f79ebe085bc6f03d222f069f9034b55e59465d",
+    "test_patch_sha256": "3720ff0fce32fe35660f1b974223e647659bb8ffce1ea59e7e32b0e4b893642d",
+    "instance_fields": {
+      "p2p_commands": {
+        "original": [
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter=TEST_CATEGORY.timer"
+        ],
+        "replacement": [
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter='*.timer'"
+        ]
+      }
+    },
+    "reason": "The hidden patch registers Timer in TESTNAMES2. Run its runtime checks in Serial2 and retain both original build targets. Serial1 selected zero tests.",
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial2",
+        "case": "timer"
+      }
+    ],
+    "evidence": [
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/08f79ebe085bc6f03d222f069f9034b55e59465d/core/unit_test/CMakeLists.txt",
+        "sha256": "8d72fe1b3c07e67ebb0e83053388c7da6cf8839318090eacd8bb7c19b5e9abae"
+      }
+    ]
+  },
+  "kokkos__kokkos-8761": {
+    "base_commit": "cafe438519c9bf0b32eb571692aa65fb9a6ac2a5",
+    "test_patch_sha256": "014263cc8b398fd96920eaa3edad44d43056e9d2cd209e39b25ab96242e7b4c0",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_ContainersUnitTest_Serial --parallel"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_ContainersUnitTest_Serial --parallel",
+          "./build/containers/unit_tests/Kokkos_ContainersUnitTest_Serial --gtest_filter='*.scatterview'",
+          "./build/containers/unit_tests/Kokkos_ContainersUnitTest_Serial --gtest_filter='*.scatterview_devicetype'"
+        ]
+      }
+    },
+    "required_runtime_cases": [
+      {
+        "executable": "containers/unit_tests/Kokkos_ContainersUnitTest_Serial",
+        "case": "scatterview"
+      },
+      {
+        "executable": "containers/unit_tests/Kokkos_ContainersUnitTest_Serial",
+        "case": "scatterview_devicetype"
+      }
+    ],
+    "reason": "Execute the modified runtime operations and their existing numerical assertions; the original build-only commands cannot check their values. Keep the original build and P2P commands.",
+    "evidence": [
+      {
+        "path": "containers/unit_tests/TestScatterView.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/cafe438519c9bf0b32eb571692aa65fb9a6ac2a5/containers/unit_tests/TestScatterView.hpp",
+        "sha256": "89fd1d780bc5a21f915de5e889294d4968525f0182d4e20efad4f6afc7c914ae"
+      },
+      {
+        "path": "containers/unit_tests/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/cafe438519c9bf0b32eb571692aa65fb9a6ac2a5/containers/unit_tests/CMakeLists.txt",
+        "sha256": "4989172b1b4b7f366c824a7dc16edd5b3c0a6489ae7d1429832c4b28957118d1"
+      }
+    ]
+  },
+  "kokkos__kokkos-kernels-3089": {
+    "base_commit": "0157768f227d1463fad891aa7c60bddcf5211a70",
+    "test_patch_sha256": "7cb8fdffcf2cf41dfe673abaa0c0fd713f52ad2c6558ec20821ec33a754f9059",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [],
+        "replacement": [
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_serial_rotm_double'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_team_rotm_double'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_teamvector_rotm_double'"
+        ]
+      }
+    },
+    "required_runtime_cases": [
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_serial_rotm_double"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_team_rotm_double"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_teamvector_rotm_double"
+      }
+    ],
+    "reason": "Execute the modified runtime operations and their existing numerical assertions; the original build-only commands cannot check their values. Keep the original build and P2P commands.",
+    "evidence": [
+      {
+        "path": "batched/dense/unit_test/Test_Batched_Rotm.hpp",
+        "url": "https://github.com/kokkos/kokkos-kernels/blob/0157768f227d1463fad891aa7c60bddcf5211a70/batched/dense/unit_test/Test_Batched_Rotm.hpp",
+        "sha256": "ece28720da0e694afe11666ea0159a4bc3f3ec41c6af0faa6b6f91bebafb2cd2"
+      }
+    ],
+    "coverage_scope": "Run the three changed rotm modes for double, the only scalar type enabled in the original CMake configuration. Keep float disabled."
+  },
+  "kokkos__kokkos-8509": {
+    "base_commit": "096aa4b6b263ddada018cd11e284fafdda367148",
+    "test_patch_sha256": "bc6ac8848d0093be03bf3468397ca1cd315ee4e50473ec2467dbebb4c5641e9f",
+    "instance_fields": {
+      "build_targets": {
+        "original": [
+          "Kokkos_CoreTestCompileOnly"
+        ],
+        "replacement": [
+          "Kokkos_CoreTestCompileOnly",
+          "Kokkos_CoreUnitTest_Serial1"
+        ]
+      },
+      "f2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_CoreTestCompileOnly"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_CoreTestCompileOnly",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.bit_manip_bit_width'"
+        ]
+      }
+    },
+    "evidence": [
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/096aa4b6b263ddada018cd11e284fafdda367148/core/unit_test/CMakeLists.txt",
+        "sha256": "9ad43454c3022df8e4986dd84e01aadb9cb2665064718db38853adb2dcad97c6"
+      },
+      {
+        "path": "core/unit_test/TestBitManipulationBuiltins.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/096aa4b6b263ddada018cd11e284fafdda367148/core/unit_test/TestBitManipulationBuiltins.hpp",
+        "sha256": "0e6a229e81d99bf812b01ca375f00f66f743b8764f5cba44aa60ef383a291f5f"
+      }
+    ],
+    "reason": "The hidden patch changes both compile-only bit_width and per-backend bit_width_builtin return-type assertions. Build the existing Serial1 registration for BitManipulationBuiltins, and execute its corresponding case while preserving CompileOnly and original checks.",
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "bit_manip_bit_width"
+      }
+    ]
+  },
+  "kokkos__kokkos-8827": {
+    "base_commit": "a5d374ba179921b9805008dda06a4b690cfbdd1a",
+    "test_patch_sha256": "ac6f922d0192ac2f0f7071c854db3e6e3fa47f727699c101925d7380b8155392",
+    "instance_fields": {
+      "p2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial1 && ctest --test-dir build -R mathematical_functions_binary_predicates --output-on-failure"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial1 && ./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.mathematical_functions_binary_predicates'"
+        ]
+      }
+    },
+    "evidence": [
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/a5d374ba179921b9805008dda06a4b690cfbdd1a/core/unit_test/CMakeLists.txt",
+        "sha256": "8aa74fcf728e44ffa777fa63b9d2d709bf18a050a7d354bf17f2cac188a15d42"
+      }
+    ],
+    "reason": "The added mathematical_functions_binary_predicates is a GoogleTest case inside Serial1, not a CTest registration. Preserve the original build step and both targets; invoke the real regression through its executable.",
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "mathematical_functions_binary_predicates"
       }
     ]
   }

@@ -152,7 +152,7 @@ def test_exported_verifier_checks_runtime_p2p_even_for_compile_failure_tasks(
     assert _run_verifier(tmp_path, repo, instance) == str(int(selected > 0))
 
 
-def test_reviewed_selectors_are_instance_and_base_scoped_and_idempotent(tmp_path):
+def test_reviewed_selectors_are_instance_and_base_scoped_and_idempotent(tmp_path, monkeypatch):
     import json
     from pathlib import Path
 
@@ -160,6 +160,18 @@ def test_reviewed_selectors_are_instance_and_base_scoped_and_idempotent(tmp_path
 
     _, instance = _local_instance(tmp_path)
     overrides = json.loads(Path(__file__).with_name("test_command_overrides.json").read_text())
+    # This synthetic fixture exercises selector scoping. Payload-pinned field
+    # repairs are tested separately with matching hidden-patch evidence.
+    from tinker_cookbook.recipes.kokkos_rl.dataset import test_commands
+
+    monkeypatch.setattr(
+        test_commands,
+        "_reviewed_overrides",
+        lambda: {
+            task: {key: value for key, value in entry.items() if key != "instance_fields"}
+            for task, entry in overrides.items()
+        },
+    )
     expected = {
         "kokkos__kokkos-7428": "serial.task_*",
         "kokkos__kokkos-8594": "serial.scatterview:serial.scatterview_devicetype",
@@ -296,3 +308,30 @@ def test_reviewed_ctest_typo_and_gtest_case_keep_frameworks_distinct(tmp_path):
             assert "--gtest_filter='*.mathematical_functions_isinf'" in actual
             assert not actual.startswith("ctest")
             assert coverage_error(actual, "[==========] Running 0 tests from 0 test suites.", 0)
+
+
+@pytest.mark.parametrize("mandatory_state", ["pass", "skip", "zero", "fail"])
+def test_build_stage_cannot_hide_missing_new_behavior_behind_passing_old_tests(
+    tmp_path, mandatory_state
+):
+    repo, instance = _local_instance(tmp_path)
+    (repo / "src.txt").write_text("fixed")
+    fake = tmp_path / "regression.py"
+    fake.write_text(
+        "import sys\n"
+        "old = 'old_behavior' in sys.argv[1]\n"
+        f"state = 'pass' if old else {mandatory_state!r}\n"
+        "count = 0 if state == 'zero' else 1\n"
+        "print(f'[==========] Running {count} tests from 1 test suite.')\n"
+        "if state == 'skip': print('[  SKIPPED ] 1 test.')\n"
+        "elif state == 'fail': print('[  FAILED  ] 1 test.')\n"
+        "else: print(f'[  PASSED  ] {count} tests.')\n"
+    )
+    command = f"python3 {shlex.quote(str(fake))} --gtest_filter="
+    instance = replace(
+        instance,
+        metadata={"f2p_stage": "build"},
+        f2p_commands=("true", command + "Suite.new_behavior"),
+        p2p_commands=(command + "Suite.old_behavior",),
+    )
+    assert _run_verifier(tmp_path, repo, instance) == str(int(mandatory_state == "pass"))

@@ -731,3 +731,31 @@ must require a completed behavior-coverage review tied to every final task
 hash, with no unresolved blockers, before setting ready_for_sampling. Missing,
 incomplete, or stale reviews leave sampling blocked even if all verifier pairs
 pass. Keep the pair-pass count visible separately for progress monitoring.
+
+The broader review also checks modified existing cases and the actual executable
+behind CTest registrations. A build-only command can miss new numerical work
+without any newly added TEST declaration, as with ScatterValue updates and the
+batched rotm parameter layout. Preserve the original build/P2P checks and add
+separate guarded invocations for the reviewed changed cases. An unrelated old
+passing test must not hide a required case that selects zero tests, skips, or
+fails. Local shell tests cover all four outcomes in a build-stage task.
+
+Use the already enabled OpenMP executable for 7248 and 8891 because the required
+cases explicitly skip outside the default execution/host space. Keep their
+original Serial checks. Preserve the configured scalar scope in kernels: 3088
+and 3089 instantiate double only; 3217 additionally enables complex<float> as
+previously required. Execute every changed mode/norm family within that scope,
+and explicitly record the unconfigured scalar/backend branches as uncovered.
+For 7074 run the normal accessor and changed mdspan-conversion cases; its
+inaccessible host/device-memory death cases explicitly skip on the declared
+CPU backend and do not provide GPU coverage.
+
+Bulk validation revealed two more framework/target mistakes after successful
+full compilation: 8399 registers Timer in Serial2 but requested Serial1, and
+8827 requested a GoogleTest case as a CTest registration. Correct only the
+reviewed target/framework commands under pinned base, hidden-test, and original
+annotation hashes. Keep the failed old-hash evidence immutable. Freeze the
+combined corrected payload separately after source review; any new gate must
+use its exact hash and static resource policy. Do not launch new gates during
+the current ConTree transport-error burst, and do not retry old errors or begin
+additional model sampling as a side effect of preparing the corrected snapshot.
