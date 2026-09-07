@@ -180,6 +180,49 @@ class TestHarborReward:
         assert "/tests/helper.py" not in sandbox.executable_files
         assert "/tests/fixtures/expected.txt" not in sandbox.executable_files
 
+    @pytest.mark.parametrize(
+        "failed_operation", ["mkdir -p /tests", "upload", "mkdir -p /logs/verifier"]
+    )
+    @pytest.mark.parametrize("exit_code", [-1, 1])
+    @pytest.mark.parametrize("strict", [False, True])
+    def test_setup_failure_does_not_grade_or_accept_stale_reward(
+        self, tmp_path: Path, failed_operation: str, exit_code: int, strict: bool
+    ) -> None:
+        failure = SandboxResult(
+            stdout="partial setup", stderr="transport or file error", exit_code=exit_code
+        )
+
+        class FailedUploadSandbox(FakeSandbox):
+            async def write_file(
+                self, path: str, content: str | bytes, executable: bool = False, timeout: int = 60
+            ) -> SandboxResult:
+                if failed_operation == "upload":
+                    return failure
+                return await super().write_file(path, content, executable, timeout)
+
+        tests_dir = tmp_path / "tests"
+        tests_dir.mkdir()
+        (tests_dir / "test.sh").write_text("echo 1 > /logs/verifier/reward.txt")
+        sandbox = FailedUploadSandbox()
+        sandbox.files["/logs/verifier/reward.txt"] = "1"
+        sandbox.set_command_result(failed_operation, failure)
+        log_path = tmp_path / "grading.json"
+        reward_fn = self._make_reward(
+            tests_dir, sandbox, raise_on_grading_error=strict, grading_log_path=log_path
+        )
+        if strict:
+            with pytest.raises(RuntimeError, match="verifier setup failed"):
+                asyncio.run(reward_fn([]))
+        else:
+            reward, info = asyncio.run(reward_fn([]))
+            assert reward == 0
+            assert info["grading_error"] == 1
+        assert "bash /tests/test.sh" not in sandbox.commands_run
+        evidence = json.loads(log_path.read_text())
+        assert evidence["stage"] == "setup"
+        assert evidence["exit_code"] == exit_code
+        assert evidence["stderr"] == failure.stderr
+
 
 # ---------------------------------------------------------------------------
 # HarborBashTool tests

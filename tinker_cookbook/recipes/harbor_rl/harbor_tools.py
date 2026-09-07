@@ -10,6 +10,7 @@ from typing import Annotated
 
 from tinker_cookbook.renderers.base import Message
 from tinker_cookbook.sandbox import SandboxInterface
+from tinker_cookbook.sandbox.sandbox_interface import SandboxResult
 from tinker_cookbook.tool_use import ToolResult, simple_tool_result, tool
 
 try:
@@ -107,7 +108,8 @@ class HarborReward:
 
             # 2. Create log directory and run test.sh
             # Run from /root (not /) because test.sh checks if PWD=/ and exits early
-            await self.sandbox.run_command("mkdir -p /logs/verifier", workdir="/root")
+            setup = await self.sandbox.run_command("mkdir -p /logs/verifier", workdir="/root")
+            self._require_setup_success(setup, "create verifier log directory")
             result = await self.sandbox.run_command(
                 "bash /tests/test.sh",
                 workdir="/root",
@@ -163,13 +165,40 @@ class HarborReward:
         ``tests/repo_overlay/`` directory copied into the workspace by
         ``test.sh``) are preserved. ``Path.iterdir`` would silently drop them.
         """
-        await self.sandbox.run_command("mkdir -p /tests", workdir="/")
+        setup = await self.sandbox.run_command("mkdir -p /tests", workdir="/")
+        self._require_setup_success(setup, "create test directory")
         for file_path in self.tests_dir.rglob("*"):
             if not file_path.is_file():
                 continue
             content = file_path.read_text()
             target = f"/tests/{file_path.relative_to(self.tests_dir)}"
-            await self.sandbox.write_file(target, content, executable=(file_path.suffix == ".sh"))
+            uploaded = await self.sandbox.write_file(
+                target, content, executable=(file_path.suffix == ".sh")
+            )
+            self._require_setup_success(uploaded, f"upload {target}")
+
+    def _require_setup_success(self, result: SandboxResult, operation: str) -> None:
+        """Stop before grading when sandbox setup returns a failed tool result."""
+        if result.exit_code == 0:
+            return
+        if self.grading_log_path is not None:
+            self.grading_log_path.parent.mkdir(parents=True, exist_ok=True)
+            self.grading_log_path.write_text(
+                json.dumps(
+                    {
+                        "stage": "setup",
+                        "operation": operation,
+                        "exit_code": result.exit_code,
+                        "stdout": result.stdout,
+                        "stderr": result.stderr,
+                    },
+                    indent=2,
+                )
+            )
+        raise RuntimeError(
+            f"verifier setup failed ({operation}): "
+            f"exit={result.exit_code}, stderr={result.stderr[-1000:]}"
+        )
 
     async def _parse_reward(self) -> float | None:
         """Parse reward from /logs/verifier/reward.txt or reward.json."""

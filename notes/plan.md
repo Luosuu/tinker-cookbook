@@ -780,3 +780,16 @@ coverage. Old CPU evidence cannot qualify this GPU policy, even for an unchanged
 payload hash. Prepare the combined v10 snapshot after offline checks; perform
 no new validation calls until the transport-error burst is diagnosed and the
 shared resource ledger has an available slot.
+
+Verifier setup must check every sandbox result before executing tests. A failed
+directory creation or test upload can restore an earlier ConTree image and
+return a negative exit code instead of raising. Stop grading immediately in
+that case, retain setup-stage stdout/stderr on the host, and never read a stale
+reward as the outcome. Check verifier-log directory creation too. Cover both
+strict error propagation and non-strict grading_error reporting with failed
+uploads and directory commands; do not retry setup or alter running workers.
+
+Withdraw old validation records for source-confirmed coverage omissions before
+they authorize further samples. Preserve each original byte sequence, hash,
+reason, and existing results. Keep conservative review holds for 7247/9309
+distinct from confirmed coverage defects; active attempts are not cancelled.
