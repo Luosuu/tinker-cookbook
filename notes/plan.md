@@ -1053,3 +1053,24 @@ Prepare the new phase with an empty reserved queue and only never-attempted
 pairs. Its first launch stops after one completed pair for inspection of raw
 request/response, usage, candidate capture and identity. Resume the same
 identity only after that audit; no completed pair is drawn again.
+
+The first final-payload pair encountered a local audit serialization error
+before invoking the provider: the pinned traceback and exact source establish
+that JSON serialization of the SDK omission sentinel failed before the awaited
+completion call. Preserve the original claim, attempt, truncated audit file and
+terminal error unchanged. The corrected auditor records SDK omissions without
+altering request arguments and persists a separate dispatch marker; real
+ChatSession tool/reasoning roundtrip tests exercise this boundary.
+
+Execute one explicit first-effective-sample recovery for that same pair in a
+separate output directory and identity, binding the original zero-generation
+proof, source and artifact hashes, claim, frozen 100-task qualification and
+model/resource configuration. Append an exclusive recovery marker to the
+existing ledger; never delete or overwrite the old claim. Recheck the original
+three unknown requests still occupy three slots, retain the shared controller
+lock, verify verbose catalog IDs/prices, and permit exactly one new trajectory
+with no SDK/HTTP retry. Keep raw dispatch/response counts and incremental usage
+separate from the preserved zero-generation error. Stop after this first
+actual result for protocol, response, candidate and identity review. Any
+uncertain or post-dispatch failure remains blocked and cannot use this
+zero-generation exception.
