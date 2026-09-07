@@ -182,3 +182,21 @@ def test_reviewed_selectors_are_instance_and_base_scoped_and_idempotent(tmp_path
         assert selector in script
         assert old not in script
         assert all(item["url"].endswith(item["path"]) for item in entry["evidence"])
+
+
+def test_reviewed_directory_test_target_uses_ctest_with_identical_scope(tmp_path):
+    import json
+    from pathlib import Path
+
+    _, instance = _local_instance(tmp_path)
+    task = "kokkos__kokkos-kernels-2864"
+    entry = json.loads(Path(__file__).with_name("test_command_overrides.json").read_text())[task]
+    pinned = replace(instance, instance_id=task, base_commit=entry["base_commit"])
+    old = "cmake --build build --target sparse/unit_test/test --parallel"
+    new = "ctest --test-dir build/sparse/unit_test --verbose --output-on-failure"
+    assert normalize_test_command(old, instance=pinned) == new
+    assert normalize_test_command(new, instance=pinned) == new
+    assert normalize_test_command(old, instance=replace(pinned, base_commit="0" * 40)) == old
+    assert normalize_test_command(old.replace("sparse/", "dense/"), instance=pinned) != new
+    assert coverage_error(new, "No tests were found!!!", 0)
+    assert coverage_error(new, "100% tests passed, 0 tests failed out of 4", 0) is None

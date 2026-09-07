@@ -57,5 +57,36 @@
         "sha256": "3e0e8bca51fbddafbe51f90faf0b1ac01c8f3718bc0ad00f8d0b7c9050654ed6"
       }
     ]
+  },
+  "kokkos__kokkos-kernels-2864": {
+    "base_commit": "e278039064e645dc1c99ff43d22c4c36abb75fc3",
+    "commands": {
+      "cmake --build build --target sparse/unit_test/test --parallel": "ctest --test-dir build/sparse/unit_test --verbose --output-on-failure"
+    },
+    "reason": "Run the same sparse unit-test directory through CTest; a per-directory test build target is not available with the configured generator.",
+    "evidence": [
+      {
+        "path": "sparse/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos-kernels/blob/e278039064e645dc1c99ff43d22c4c36abb75fc3/sparse/unit_test/CMakeLists.txt",
+        "sha256": "515ee23a20bd69e3f44db4b01caaaf33c7dc3630ba9934f6420b96bf91f3c99a"
+      },
+      {
+        "path": "cmake/kokkoskernels_tribits.cmake",
+        "url": "https://github.com/kokkos/kokkos-kernels/blob/e278039064e645dc1c99ff43d22c4c36abb75fc3/cmake/kokkoskernels_tribits.cmake",
+        "sha256": "8389cc7a31f1fd06ce106d3c5bd5dbc8ed7916d9b3fce3582f098da0d202b896"
+      },
+      {
+        "path": "cmake/fake_tribits.cmake",
+        "url": "https://github.com/kokkos/kokkos-kernels/blob/e278039064e645dc1c99ff43d22c4c36abb75fc3/cmake/fake_tribits.cmake",
+        "sha256": "52d4fd309558f35d54622c26e86179b16bf4eaa04d356d42e0491ad381177af2"
+      }
+    ],
+    "generated_test_names": [
+      "sparse_serial",
+      "blocksparse_serial",
+      "sparse_openmp",
+      "blocksparse_openmp"
+    ],
+    "generated_testfile_sha256": "5793805662f76414e3b090da3e3c20f62157fc231397de41fad4b51a084a390c"
   }
 }

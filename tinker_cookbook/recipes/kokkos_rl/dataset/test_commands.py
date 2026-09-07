@@ -68,7 +68,8 @@ def normalize_test_command(
         overrides = json.loads(Path(__file__).with_name("test_command_overrides.json").read_text())
         entry = overrides.get(instance.instance_id)
         if entry is not None and entry["base_commit"] == instance.base_commit:
-            reviewed = entry["selectors"]
+            reviewed = entry.get("selectors", {})
+            command = entry.get("commands", {}).get(command, command)
     # Quoting the whole --flag=value argument is valid shell syntax too.
     command = re.sub(
         r"(['\"])(--gtest_filter=)([^'\"]*)\1",

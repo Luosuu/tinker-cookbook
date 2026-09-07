@@ -548,3 +548,12 @@ any sandbox. It validates the four initial cases serially and refuses to replay
 an existing attempt. Waiting consumes no model calls or sandbox slots; the
 ongoing Nebius worker retains its four-slot limit. Record the validator script
 hash, repository commit, fixed snapshot hashes, and NOP/Oracle evidence.
+
+Task kokkos-kernels-2864 has a second reviewed command correction: its configured
+build does not expose the sparse/unit_test/test build target. The cached base
+image's generated CTest file confirms four tests in that same directory. Use
+CTest directly for that directory, pinned to the exact original command and
+base commit, preserving the test scope and enforcing nonempty nested runtime
+coverage. Prepare this change as snapshot v3; v2's four control gates continue
+against their frozen hashes. Validate 2864 separately before making any model
+attempt eligible.
