@@ -264,3 +264,86 @@ def test_scope_proof_mutation_before_claim_blocks_dispatch(tmp_path, change):
             phase_identity_sha256="identity",
         )
     assert not (tmp_path / "claims").exists()
+
+
+def capacity_fixture(tmp_path):
+    task, _, kwargs = fixture(tmp_path)
+    old = kwargs["original_root"]
+    launch = json.loads((old / "launch.json").read_text())
+    launch["config"]["max_concurrency"] = 4
+    write(old / "launch.json", launch)
+    now = ledger.datetime.now(ledger.UTC)
+    write(old / "status.json", {"active": [], "updated_at": now.isoformat()})
+    for model in ledger.MODELS:
+        folder = old / model.split("/")[-1] / task.task_name
+        write(folder / "attempt_started.json", {})
+        if model == ledger.MODELS[-1]:
+            write(folder / "results.jsonl", {"task_name": task.task_name})
+    return (
+        old,
+        task,
+        {
+            "original_root": old,
+            "reserved_original_tasks": frozenset({"reserved", task.task_name}),
+            "launch_proof": ledger.pinned_file(old / "launch.json"),
+            "manifest_proof": ledger.pinned_file(old / "manifest.json"),
+            "now": now,
+        },
+    )
+
+
+def exhaust_reserved(old):
+    for model in ledger.MODELS:
+        folder = old / model.split("/")[-1] / "reserved"
+        write(folder / "attempt_started.json", {})
+        write(folder / "results.jsonl", {"task_name": "reserved"})
+
+
+def test_original_queue_must_be_exhausted_before_lending_model_slot(tmp_path):
+    old, _, kwargs = capacity_fixture(tmp_path)
+    result = ledger.original_model_capacity(**kwargs)
+    assert result["available_model_slots"] == 0
+    assert result["reserved_unstarted_pairs"] == 4
+    exhaust_reserved(old)
+    result = ledger.original_model_capacity(**kwargs)
+    assert result["available_model_slots"] == 1
+    outstanding = result["original_in_flight"]
+    assert isinstance(outstanding, list)
+    assert len(outstanding) == 3  # Unknowns omitted from status still count.
+
+
+def test_finished_result_still_active_keeps_fourth_slot_until_cleanup(tmp_path):
+    old, task, kwargs = capacity_fixture(tmp_path)
+    exhaust_reserved(old)
+    status = json.loads((old / "status.json").read_text())
+    status["active"] = [[ledger.MODELS[-1], task.task_name]]
+    write(old / "status.json", status)
+    assert ledger.original_model_capacity(**kwargs)["available_model_slots"] == 0
+
+
+@pytest.mark.parametrize(
+    "change", ["stale", "identity", "missing_marker", "partial_result", "expanded"]
+)
+def test_model_capacity_fails_closed_on_ambiguous_peer_state(tmp_path, change):
+    from datetime import timedelta
+
+    old, task, kwargs = capacity_fixture(tmp_path)
+    exhaust_reserved(old)
+    if change == "stale":
+        kwargs["now"] += timedelta(seconds=91)
+    elif change == "identity":
+        write(old / "launch.json", {})
+    elif change == "missing_marker":
+        write(
+            old / "status.json",
+            {
+                "active": [[ledger.MODELS[0], "unmarked"]],
+                "updated_at": kwargs["now"].isoformat(),
+            },
+        )
+    elif change == "partial_result":
+        (old / ledger.MODELS[-1].split("/")[-1] / task.task_name / "results.jsonl").write_text("{")
+    else:
+        kwargs["reserved_original_tasks"] = frozenset({task.task_name})
+    with pytest.raises(ValueError):
+        ledger.original_model_capacity(**kwargs)

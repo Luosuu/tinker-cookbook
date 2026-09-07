@@ -231,3 +231,74 @@ def claim_pair(
         stream.flush()
         os.fsync(stream.fileno())
     return path
+
+
+def original_model_capacity(
+    original_root: Path,
+    reserved_original_tasks: frozenset[str],
+    *,
+    launch_proof: dict[str, str],
+    manifest_proof: dict[str, str],
+    now: datetime,
+    max_status_age_seconds: float = 90,
+) -> dict[str, object]:
+    """Only lend slots once the entire reserved queue is terminal or in flight.
+
+    Markers without terminal results remain in flight even when absent from the
+    status list. A finished response still listed active remains reserved until
+    the original controller publishes that its task (including cleanup) ended.
+    """
+    if max_status_age_seconds <= 0 or max_status_age_seconds > 90:
+        raise ValueError("Status freshness must be within ninety seconds")
+    for proof in (launch_proof, manifest_proof):
+        if pinned_file(Path(proof["path"])) != proof:
+            raise ValueError("Original controller identity changed")
+    if Path(launch_proof["path"]).resolve() != (original_root / "launch.json").resolve():
+        raise ValueError("Wrong original launch proof")
+    launch = read_json(original_root / "launch.json")
+    config = mapping(launch["config"])
+    if Path(str(config["source_manifest"])).resolve() != Path(manifest_proof["path"]).resolve():
+        raise ValueError("Wrong original manifest proof")
+    if config.get("max_concurrency") != 4:
+        raise ValueError("Original shared model limit must remain four")
+    require_nonexpanding_original_gate(original_root, reserved_original_tasks)
+    status = read_json(original_root / "status.json")
+    age = (now - datetime.fromisoformat(str(status["updated_at"]))).total_seconds()
+    if not 0 <= age <= max_status_age_seconds:
+        raise ValueError("Original controller status is stale")
+    active = status.get("active")
+    if not isinstance(active, list):
+        raise ValueError("Missing original active request accounting")
+    outstanding: set[tuple[str, str]] = set()
+    for pair in active:
+        if not isinstance(pair, list) or len(pair) != 2 or pair[0] not in MODELS:
+            raise ValueError("Invalid original active pair")
+        outstanding.add((str(pair[0]), str(pair[1])))
+    started: set[tuple[str, str]] = set()
+    for model in MODELS:
+        directory = original_root / model.split("/")[-1]
+        for marker in directory.glob("*/attempt_started.json"):
+            name = marker.parent.name
+            pair = (model, name)
+            started.add(pair)
+            result_path = marker.parent / "results.jsonl"
+            if not result_path.exists():
+                outstanding.add(pair)
+                continue
+            rows = [
+                json.loads(line) for line in result_path.read_text().splitlines() if line.strip()
+            ]
+            if len(rows) != 1 or mapping(rows[0]).get("task_name") != name:
+                raise ValueError("Ambiguous original terminal result")
+    if any(pair not in started for pair in outstanding):
+        raise ValueError("Original active request is missing its attempt marker")
+    pending = {(model, name) for model in MODELS for name in reserved_original_tasks} - started
+    free = max(0, 4 - len(outstanding)) if not pending else 0
+    return {
+        "available_model_slots": free,
+        "original_in_flight": sorted(outstanding),
+        "reserved_unstarted_pairs": len(pending),
+        "status": pinned_file(original_root / "status.json"),
+        "status_age_seconds": age,
+        "unknown_responses_remain_in_flight": True,
+    }

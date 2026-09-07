@@ -914,3 +914,13 @@ remains offline preparation: no new model requests or claims. The shared model
 limit remains four including all three unknown original requests; a future
 complement runner must prove the original fourth slot is released before using
 it, independently of the eight-sandbox ceiling.
+
+Implement a read-only shared model capacity check for that future runner. Pin
+original launch and manifest identities and require a fresh controller status.
+The entire reserved original queue must already be attempted before lending a
+slot; every marker without a single unambiguous terminal result counts as in
+flight, including unknown responses omitted from a status list. A result still
+listed active reserves its cleanup slot. Queue expansion, identity mutation,
+stale status, missing markers, and partial results fail closed. Tests cover all
+these cases. The live preflight currently yields zero capacity and 59 original
+reserved pairs still unstarted; this check does not dispatch anything.
