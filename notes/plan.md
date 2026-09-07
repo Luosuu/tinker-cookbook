@@ -510,3 +510,16 @@ is incomplete while any task lacks trustworthy coverage.
 Task 9147's Oracle also fails because CudaInterOpGraph cannot load libcuda.so.1.
 Treat this as a missing GPU runtime gate, not a model failure; additional CPU
 memory alone does not repair it.
+
+## Preserve remaining candidate patches (2026-09-07)
+
+Temporarily hold all remaining eligible validation records, preserving their
+original bytes and locations in a transition ledger. Continue holding newly
+completed gates so the four active evaluations finish naturally with no new
+dispatch. Once the controller reports zero active tasks, preserve its launch
+and status evidence and stop only that idle controller. Resume the same frozen
+configuration with the existing read-only candidate artifact hook enabled for
+each remaining task. Restore eligible records only after rechecking the known
+zero-test quarantine rules; compromised gates stay quarantined. This adds
+patch retention without changing model sampling, task hashes, result identities
+or the fixed 40-turn budget, and never resamples completed attempts.

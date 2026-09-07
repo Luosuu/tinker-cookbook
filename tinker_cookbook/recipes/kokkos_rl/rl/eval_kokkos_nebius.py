@@ -8,6 +8,7 @@ import json
 import os
 import subprocess
 from datetime import UTC, datetime
+from functools import partial
 from pathlib import Path
 
 import chz
@@ -15,6 +16,7 @@ from openai import AsyncOpenAI
 
 from tinker_cookbook.recipes.harbor_rl.eval_state import _task_digest, prepare_eval_state
 from tinker_cookbook.recipes.harbor_rl.harbor_env import HarborTask, load_harbor_tasks_from_dir
+from tinker_cookbook.recipes.kokkos_rl.rl.candidate_artifact import capture_candidate
 from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos_openai import (
     CLIConfig,
     OpenAITaskResult,
@@ -280,6 +282,7 @@ async def run_sweep(config: SweepConfig) -> None:
                         configs[model],
                         directory,
                         lock,
+                        before_grading=partial(capture_candidate, task=task, results_dir=directory),
                     )
                 )
                 active[future] = (model, task.task_name)

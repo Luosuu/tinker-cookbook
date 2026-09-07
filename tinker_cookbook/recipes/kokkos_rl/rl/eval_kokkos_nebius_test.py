@@ -100,8 +100,10 @@ async def test_sweep_shared_limit_smoke_gate_and_no_resampling(tmp_path, monkeyp
     calls = []
     finished = set()
 
-    async def fake_evaluate(task, client, factory, config, directory, lock):
+    async def fake_evaluate(task, client, factory, config, directory, lock, *, before_grading):
         nonlocal active, peak
+        assert before_grading.func is sweep.capture_candidate
+        assert before_grading.keywords == {"task": task, "results_dir": directory}
         if task.task_name == "next":
             assert all((m, "smoke") in finished for m in sweep.MODELS)
         active += 1
