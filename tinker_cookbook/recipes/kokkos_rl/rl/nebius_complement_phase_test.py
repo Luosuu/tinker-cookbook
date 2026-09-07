@@ -252,3 +252,91 @@ async def test_full_dry_run_reserves_original_queue_without_clients_or_claims(
         pinned_file(output / "phase_identity.json")["sha256"]
         != pinned_file(second / "phase_identity.json")["sha256"]
     )
+
+    # Once the last original reserved pair is terminal, only one slot can be
+    # borrowed. Exercise real claim/resume logic with local fake remote edges.
+    from types import SimpleNamespace
+
+    from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos_openai import OpenAITaskResult
+
+    launch = json.loads((original / "launch.json").read_text())
+    launch["config"]["contree_cache_path"] = str(tmp_path / "unused_cache.json")
+    write(original / "launch.json", launch)
+    last = original / MODELS[-1].split("/")[-1] / "task-000"
+    write(last / "attempt_started.json", {})
+    (last / "results.jsonl").write_text(json.dumps({"task_name": "task-000"}) + "\n")
+    monkeypatch.setenv("OPENAI_API_KEY", "unit-test-not-a-real-key")
+    observed = []
+
+    async def unused_provider(**kwargs):
+        raise AssertionError("This controller test must not generate remotely")
+
+    async def catalog():
+        rows = [
+            {"id": m, "pricing": {"prompt": "0.000002", "completion": "0.000012"}} for m in MODELS
+        ]
+        return SimpleNamespace(model_dump=lambda **kwargs: {"data": rows})
+
+    class LocalClient:
+        max_retries = 0
+        models = SimpleNamespace(list=catalog)
+        chat = SimpleNamespace(completions=SimpleNamespace(create=unused_provider))
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+    class LocalFactory:
+        def __init__(self, *args, **kwargs):
+            self._client = SimpleNamespace(config={})
+
+        def import_cache(self, path):
+            pass
+
+    async def evaluated(task, client, factory, config, trial, lock, **kwargs):
+        observed.append((config.model_name, task.task_name))
+        result = OpenAITaskResult(
+            task_name=task.task_name,
+            reward=0,
+            reward_details={},
+            turns_used=1,
+            tool_calls=0,
+            input_tokens=7,
+            output_tokens=3,
+            reasoning_tokens=None,
+            time_seconds=1,
+            stop_reason="no_tool_calls",
+        )
+        (trial / "results.jsonl").write_text(json.dumps(asdict(result)) + "\n")
+        return result
+
+    from tinker_cookbook.recipes.kokkos_rl.rl.nebius_phase_ledger import claim_pair
+
+    monkeypatch.setattr(phase, "claim_pair", claim_pair)
+    monkeypatch.setattr(phase, "create_nebius_client", lambda **kwargs: LocalClient())
+    monkeypatch.setattr(phase, "ImportedCacheFactory", LocalFactory)
+    monkeypatch.setattr(phase, "create_polling_client", lambda *args: SimpleNamespace(config={}))
+    monkeypatch.setattr(phase, "evaluate_task", evaluated)
+    smoke = tmp_path / "smoke"
+    config = phase.Config(
+        original_root=str(original),
+        output_path=str(smoke),
+        snapshot_dir=str(snapshot),
+        qualification_path=str(qualification),
+        coverage_path=str(coverage),
+        scope_approval_path=str(approvals),
+        required_environment_policies=(),
+        env_file=str(tmp_path / "absent.env"),
+        dispatch=True,
+        max_new_pairs=1,
+    )
+    await phase.main(config)
+    assert len(observed) == 1
+    assert (
+        json.loads((smoke / "status.json").read_text())["state"] == "paused_after_requested_pairs"
+    )
+    await phase.main(config)
+    assert len(observed) == 2 and observed[0] != observed[1]
+    assert len(list(original.rglob("claim.json"))) == 2

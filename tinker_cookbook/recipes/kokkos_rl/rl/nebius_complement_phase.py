@@ -67,6 +67,7 @@ class Config:
     )
     env_file: str = ".env"
     dispatch: bool = False
+    max_new_pairs: int | None = 1
     poll_seconds: int = 30
 
 
@@ -140,6 +141,10 @@ def validate_catalog(catalog: dict[str, object], configs: dict[str, CLIConfig]) 
 
 
 async def run(config: Config) -> None:
+    if config.max_new_pairs is not None and (
+        isinstance(config.max_new_pairs, bool) or config.max_new_pairs < 1
+    ):
+        raise ValueError("The per-launch pair limit must be positive or None")
     if not 1 <= config.poll_seconds <= 60:
         raise ValueError("Polling interval must be within one to sixty seconds")
     original, phase = Path(config.original_root), Path(config.output_path)
@@ -306,6 +311,8 @@ async def run(config: Config) -> None:
     load_env_file(Path(config.env_file))
     first = configs[MODELS[0]]
     primary = None
+    dispatched = 0
+    paused = False
     lock = asyncio.Lock()
     async with create_nebius_client(
         api_key=os.environ[first.api_key_env], base_url=first.base_url or ""
@@ -412,7 +419,18 @@ async def run(config: Config) -> None:
                 raise RuntimeError(
                     "Uncertain generation remains explicit; stop dispatch for review"
                 )
-    write_json(phase / "status.json", {"state": "complete", "active": [], "completed": completed})
+            dispatched += 1
+            if config.max_new_pairs is not None and dispatched >= config.max_new_pairs:
+                paused = True
+                break
+    write_json(
+        phase / "status.json",
+        {
+            "state": "paused_after_requested_pairs" if paused else "complete",
+            "active": [],
+            "completed": completed,
+        },
+    )
 
 
 async def main(config: Config) -> None:
