@@ -813,3 +813,21 @@ polling policy, with no model requests. Reuse matching prior evidence and retain
 same-hash failures/partials as blocked. Load the staging fail-closed correction.
 Any new terminal infrastructure or verifier failure remains available for
 specific diagnosis, without automatic task re-execution.
+
+Read-only original-operation metadata confirms 8928, 9055, and 9260 reached
+900-second execution limits during compilation (126/142, 134/145, and 124/134
+build steps respectively), before any runtime checks. Their declared task
+resources are four CPUs and 16 GiB. Prepare the explicit runtime_v11 resource
+policy: preserve runtime_v10 mappings and assign these three tasks Modal CPU,
+16 GiB, four CPUs, build parallelism four, and the unchanged 900-second grader
+limit. Preserve every original failure and frozen v10 payload; apply the same
+resource mapping to every model in any later evaluation phase.
+
+After offline policy tests, run a separate three-task NOP/Oracle validation
+phase against the unchanged v10 task hashes, using readonly_status_retry_v1 and
+the staging checks. Wait for the original bulk validation PID to actually exit
+before dispatch; reserve one new sandbox alongside four original model slots
+and the one-slot runtime_v10 queue (at most six). Keep the runtime_v10 queue and
+original worker untouched. Record old failure paths and the changed resource
+identity. A new failure remains terminal and requires diagnosis; this is not an
+automatic retry under the original resource policy, and performs no inference.

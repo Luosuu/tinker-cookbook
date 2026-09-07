@@ -53,14 +53,17 @@ class Config:
 
 
 def policy_for_task(task: HarborTask, version: str = "v7") -> Policy:
-    if version not in {"v7", "runtime_v10"}:
+    if version not in {"v7", "runtime_v10", "runtime_v11"}:
         raise ValueError("Unknown reviewed resource policy version")
     name = task.task_name
     if name in {"kokkos__kokkos-8989", "kokkos__kokkos-9147"} or (
-        version == "runtime_v10" and name == "kokkos__kokkos-9159"
+        version in {"runtime_v10", "runtime_v11"} and name == "kokkos__kokkos-9159"
     ):
         policy = Policy("modal", 4, 900, 16384, 4.0, "L4")
-    elif name in {
+    elif (
+        version == "runtime_v11"
+        and name in {"kokkos__kokkos-8928", "kokkos__kokkos-9055", "kokkos__kokkos-9260"}
+    ) or name in {
         "kokkos__kokkos-7074",
         "kokkos__kokkos-8164",
         "kokkos__kokkos-8399",

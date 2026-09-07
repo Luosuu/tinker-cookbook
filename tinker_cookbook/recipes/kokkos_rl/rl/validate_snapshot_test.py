@@ -164,3 +164,28 @@ def test_cuda_runtime_policy_is_explicit_and_old_cpu_evidence_cannot_qualify(tmp
     assert not gate.matching_evidence(old_record, task.task_name, "same-payload", runtime_policy)
     with pytest.raises(ValueError, match="Unknown reviewed"):
         gate.policy_for_task(task, "unreviewed")
+
+
+@pytest.mark.parametrize("number", [8928, 9055, 9260])
+def test_confirmed_compile_timeouts_have_versioned_resources(tmp_path, number):
+    task = task_with_metadata(tmp_path, f"kokkos__kokkos-{number}")
+    old_policy = gate.policy_for_task(task, "runtime_v10")
+    new_policy = gate.policy_for_task(task, "runtime_v11")
+    assert old_policy == gate.Policy()
+    assert new_policy == gate.Policy("modal", 4, 900, 16384, 4.0)
+    failed_record = {
+        "task": task.task_name,
+        "task_hash": "unchanged-payload",
+        **asdict(old_policy),
+        "passed": False,
+        "stage": "error",
+    }
+    assert not gate.matching_evidence(
+        failed_record, task.task_name, "unchanged-payload", new_policy
+    )
+
+
+@pytest.mark.parametrize("number", [7043, 7074, 7244, 8164, 8989, 9147, 9159])
+def test_new_compile_resources_preserve_other_task_policies(tmp_path, number):
+    task = task_with_metadata(tmp_path, f"kokkos__kokkos-{number}")
+    assert gate.policy_for_task(task, "runtime_v11") == gate.policy_for_task(task, "runtime_v10")
