@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import tempfile
 from dataclasses import asdict
+from datetime import UTC, datetime
 from pathlib import Path
 
 import chz
 
 from tinker_cookbook.recipes.harbor_rl.eval_state import _task_digest
 from tinker_cookbook.recipes.harbor_rl.harbor_env import load_harbor_tasks_from_dir
-from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos_nebius import write_json
 from tinker_cookbook.recipes.kokkos_rl.rl.validate_snapshot import (
     Policy,
     matching_evidence,
@@ -25,6 +27,21 @@ class Config:
     snapshot_dir: str
     evidence_dirs: tuple[str, ...]
     output_path: str
+
+
+def write_report(path: Path, report: dict[str, object]) -> None:
+    """Allow independent read-only monitors to refresh the same report atomically."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode="w", dir=path.parent, prefix=f".{path.name}.", suffix=".tmp", delete=False
+    ) as file:
+        temporary = Path(file.name)
+        json.dump(report, file, indent=2)
+        file.write("\n")
+    try:
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def qualify(config: Config) -> dict[str, object]:
@@ -78,6 +95,7 @@ def qualify(config: Config) -> dict[str, object]:
         }
     qualified = sum(result["qualified"] is True for result in results.values())
     report: dict[str, object] = {
+        "created_at": datetime.now(UTC).isoformat(),
         "snapshot_dir": str(snapshot.resolve()),
         "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
         "task_hashes": hashes,
@@ -92,7 +110,7 @@ def qualify(config: Config) -> dict[str, object]:
             if name not in hashes
         },
     }
-    write_json(Path(config.output_path), report)
+    write_report(Path(config.output_path), report)
     return report
 
 

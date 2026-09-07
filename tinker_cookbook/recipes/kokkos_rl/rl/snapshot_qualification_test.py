@@ -1,4 +1,5 @@
 import json
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
 
 import pytest
@@ -90,3 +91,21 @@ def test_manifest_tampering_and_missing_evidence_directory_fail_closed(tmp_path,
     with pytest.raises(ValueError, match="exactly match"):
         qualification.qualify(config)
     assert not (tmp_path / "out.json").exists()
+
+
+def test_independent_monitors_can_refresh_the_same_report(tmp_path, monkeypatch):
+    snapshot = tmp_path / "snapshot"
+    tasks, hashes = make_snapshot(snapshot, monkeypatch)
+    evidence = tmp_path / "evidence"
+    evidence.mkdir()
+    for task in tasks:
+        save_record(evidence, task, hashes[task.task_name])
+    output = tmp_path / "report.json"
+    config = qualification.Config(
+        snapshot_dir=str(snapshot), evidence_dirs=(str(evidence),), output_path=str(output)
+    )
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        reports = list(pool.map(lambda _: qualification.qualify(config), range(20)))
+    assert all(report["ready_for_sampling"] is True for report in reports)
+    assert json.loads(output.read_text())["qualified"] == 3
+    assert not list(tmp_path.glob(".report.json.*.tmp"))
