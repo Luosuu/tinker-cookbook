@@ -28,6 +28,7 @@ class Config:
     evidence_dirs: tuple[str, ...]
     output_path: str
     coverage_review_path: str | None = None
+    resource_policy_version: str = "v7"
 
 
 def write_report(path: Path, report: dict[str, object]) -> None:
@@ -53,7 +54,9 @@ def qualify(config: Config) -> dict[str, object]:
     hashes = {task.task_name: _task_digest(task) for task in tasks}
     if not tasks or hashes != manifest["task_hashes"]:
         raise ValueError("Snapshot contents must exactly match a nonempty manifest")
-    policies = {task.task_name: policy_for_task(task) for task in tasks}
+    policies = {
+        task.task_name: policy_for_task(task, config.resource_policy_version) for task in tasks
+    }
     evidence: dict[str, list[tuple[dict[str, object], dict[str, object]]]] = {}
     for directory in config.evidence_dirs:
         folder = Path(directory)
@@ -113,6 +116,7 @@ def qualify(config: Config) -> dict[str, object]:
     report: dict[str, object] = {
         "created_at": datetime.now(UTC).isoformat(),
         "snapshot_dir": str(snapshot.resolve()),
+        "resource_policy_version": config.resource_policy_version,
         "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
         "task_hashes": hashes,
         "total": len(tasks),

@@ -1239,5 +1239,447 @@
         "case": "mathematical_functions_binary_predicates"
       }
     ]
+  },
+  "kokkos__kokkos-7043": {
+    "base_commit": "881f15b617061c8b332f3a9189e330d0051788c0",
+    "test_patch_sha256": "cd4e7f5c13a507b7efe450cbf2758b097f9da5b300ec7adb3cd82ec60a92c1e8",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_CoreTestCompileOnly"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_CoreTestCompileOnly",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_KokkosP --gtest_filter='*.kernel_name_parallel_for'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_KokkosP --gtest_filter='*.kernel_name_parallel_reduce'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_KokkosP --gtest_filter='*.kernel_name_parallel_scan'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_KokkosP --gtest_filter='*.kernel_name_internal'"
+        ]
+      },
+      "build_targets": {
+        "original": [
+          "Kokkos_CoreUnitTest_Serial1"
+        ],
+        "replacement": [
+          "Kokkos_CoreUnitTest_Serial1",
+          "Kokkos_CoreUnitTest_KokkosP"
+        ]
+      }
+    },
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_KokkosP",
+        "case": "kernel_name_parallel_for"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_KokkosP",
+        "case": "kernel_name_parallel_reduce"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_KokkosP",
+        "case": "kernel_name_parallel_scan"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_KokkosP",
+        "case": "kernel_name_internal"
+      }
+    ],
+    "reason": "Keep TypeInfo compile-time checks and execute the changed tool callback/kernel-label expectations in the registered KokkosP target. Diagnostic-only type-name changes in old atomic assertions are not counted as new numerical tests.",
+    "evidence": [
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/881f15b617061c8b332f3a9189e330d0051788c0/core/unit_test/CMakeLists.txt",
+        "sha256": "5c24a66853f6062bea82b517b87ef6e6d15ac3554a6e228fb87ad089d3fb47e0"
+      },
+      {
+        "path": "core/unit_test/tools/TestKernelNames.cpp",
+        "url": "https://github.com/kokkos/kokkos/blob/881f15b617061c8b332f3a9189e330d0051788c0/core/unit_test/tools/TestKernelNames.cpp",
+        "sha256": "72cbcd103be9a3be42ce9434c6815e22dc3cddf9a91e76649c0b4856f00fa40f"
+      }
+    ],
+    "coverage_scope": "Execute callbacks under the configured compiler and C++ standard. Non-const string-prefix checks are guarded by the hidden test for C++20 or later; other compiler spelling branches remain compile-time conditional."
+  },
+  "kokkos__kokkos-7441": {
+    "base_commit": "998f5b8c7fb2c10a0f8601a2ed589e11eabf1976",
+    "test_patch_sha256": "1b821d793af3722bf9d3b2c370424ccc4c2f6855430617a9f4024609e6a01bae",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_CoreTestCompileOnly"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_CoreTestCompileOnly",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial_SmokeTest --gtest_filter='*.range_for'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial_SmokeTest --gtest_filter='*.range_reduce'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial_SmokeTest --gtest_filter='*.impl_shared_alloc'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.range_policy_runtime_parameters'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.range_policy_check_exceeding_max'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.range_policy_check_exceeding_min'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.range_policy_round_trip_conversion_fires'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.range_policy_check_sign_changes'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.range_policy_implicitly_converted_bounds'"
+        ]
+      },
+      "build_targets": {
+        "original": [
+          "Kokkos_CoreTestCompileOnly"
+        ],
+        "replacement": [
+          "Kokkos_CoreTestCompileOnly",
+          "Kokkos_CoreUnitTest_Serial_SmokeTest",
+          "Kokkos_CoreUnitTest_Serial1"
+        ]
+      }
+    },
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial_SmokeTest",
+        "case": "range_for"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial_SmokeTest",
+        "case": "range_reduce"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial_SmokeTest",
+        "case": "impl_shared_alloc"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "range_policy_runtime_parameters"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "range_policy_check_exceeding_max"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "range_policy_check_exceeding_min"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "range_policy_round_trip_conversion_fires"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "range_policy_check_sign_changes"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "range_policy_implicitly_converted_bounds"
+      }
+    ],
+    "reason": "Keep CompileOnly type checks. This exact base places RangePolicy and SharedAlloc in Serial_SmokeTest and bounds constructors in Serial1. Execute the added negative-offset work, unsafe-conversion death checks, and changed existing bounds checks in their actual registrations.",
+    "evidence": [
+      {
+        "path": "core/unit_test/TestRangePolicy.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/998f5b8c7fb2c10a0f8601a2ed589e11eabf1976/core/unit_test/TestRangePolicy.hpp",
+        "sha256": "ee466f9d1c07540a7527590bb77726b36b7411b2ccdd50d685b0780b263d42cf"
+      },
+      {
+        "path": "core/unit_test/TestRange.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/998f5b8c7fb2c10a0f8601a2ed589e11eabf1976/core/unit_test/TestRange.hpp",
+        "sha256": "d72483854b099c9ff61df0a51fcd4e964ad6982122dbc2f67395de2accaa50cd"
+      },
+      {
+        "path": "core/unit_test/TestSharedAlloc.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/998f5b8c7fb2c10a0f8601a2ed589e11eabf1976/core/unit_test/TestSharedAlloc.hpp",
+        "sha256": "908ba6d4ae717c200ea1d938c632742e687e3bd7c8fe13cdf70182d13176cf47"
+      },
+      {
+        "path": "core/unit_test/TestCommonPolicyInterface.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/998f5b8c7fb2c10a0f8601a2ed589e11eabf1976/core/unit_test/TestCommonPolicyInterface.hpp",
+        "sha256": "f5bc82d17c943f798714f475595e56268f5dcc019a481de27db8b3cab7acabd1"
+      },
+      {
+        "path": "core/unit_test/TestRangePolicyConstructors.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/998f5b8c7fb2c10a0f8601a2ed589e11eabf1976/core/unit_test/TestRangePolicyConstructors.hpp",
+        "sha256": "2c5a5efc3e7dfa69cdcf9fb581b872804d145df98c6fca703e2bad93af0d9477"
+      },
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/998f5b8c7fb2c10a0f8601a2ed589e11eabf1976/core/unit_test/CMakeLists.txt",
+        "sha256": "8f19fde53b0f398630e7b427cb6d8f8c276d37b874fec019be1163190835baec"
+      }
+    ]
+  },
+  "kokkos__kokkos-8577": {
+    "base_commit": "4747e234408f3b1c84a127956471c538f89b624a",
+    "test_patch_sha256": "d63b22c56676a4815c97f014c2cedd3656978d783a09de2b567b893c7b487216",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_CoreTestCompileOnly"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_CoreTestCompileOnly",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.array_stl_compatibility'"
+        ]
+      },
+      "build_targets": {
+        "original": [
+          "Kokkos_CoreTestCompileOnly"
+        ],
+        "replacement": [
+          "Kokkos_CoreTestCompileOnly",
+          "Kokkos_CoreUnitTest_Serial1"
+        ]
+      }
+    },
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "array_stl_compatibility"
+      }
+    ],
+    "reason": "Array constexpr checks remain in CompileOnly, but the new std::reduce value assertions in array_stl_compatibility belong to Serial1 and must execute.",
+    "evidence": [
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/4747e234408f3b1c84a127956471c538f89b624a/core/unit_test/CMakeLists.txt",
+        "sha256": "bcef6b0ce23371e3065e7dcd6d68ce88822a3d0504849eb3f9a112f23a983c60"
+      }
+    ]
+  },
+  "kokkos__kokkos-9159": {
+    "base_commit": "a0b7eec785ee94633a518cba5ede57403c2cbf9d",
+    "test_patch_sha256": "cfd53baf418d26f5300c639f73edf03d21cdcda1a469806ed5144564096deb35",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_CoreUnitTest_CudaInterOpGraph --parallel"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_CoreUnitTest_CudaInterOpGraph --parallel",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_CudaInterOpGraph --gtest_filter='*.promises_on_cuda_objects'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_CudaInterOpGraph --gtest_filter='*.count_nodes'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_CudaInterOpGraph --gtest_filter='*.debug_dot_print'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_CudaInterOpGraph --gtest_filter='*.instantiation_flags'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_CudaInterOpGraph --gtest_filter='*.construct_from_cuda_graph'"
+        ]
+      }
+    },
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_CudaInterOpGraph",
+        "case": "promises_on_cuda_objects"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_CudaInterOpGraph",
+        "case": "count_nodes"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_CudaInterOpGraph",
+        "case": "debug_dot_print"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_CudaInterOpGraph",
+        "case": "instantiation_flags"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_CudaInterOpGraph",
+        "case": "construct_from_cuda_graph"
+      }
+    ],
+    "reason": "Execute all changed CUDA graph object, instantiation, submission, and construction checks in the already configured CUDA executable. CPU compilation cannot validate their runtime behavior.",
+    "evidence": [
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/a0b7eec785ee94633a518cba5ede57403c2cbf9d/core/unit_test/CMakeLists.txt",
+        "sha256": "59d466f2a9792ead16216b589db73ed5abd9d836c896d1414269fee2a4346356"
+      },
+      {
+        "path": "core/unit_test/cuda/TestCuda_InterOp_Graph.cpp",
+        "url": "https://github.com/kokkos/kokkos/blob/a0b7eec785ee94633a518cba5ede57403c2cbf9d/core/unit_test/cuda/TestCuda_InterOp_Graph.cpp",
+        "sha256": "d5d583853c78b6dde3b61c98984716b5a0cf367fb38a7de1219f54eef79cb9ae"
+      }
+    ],
+    "coverage_scope": "CUDA 12.8/ADA89 on an L4 GPU, matching the declared CUDA task. HIP and SYCL source branches are not compiled or tested by this configuration."
+  },
+  "kokkos__kokkos-9239": {
+    "base_commit": "42712cb43401bdbfcaad4aee238a21a290d7ef91",
+    "test_patch_sha256": "dc5ce8ada21d6c24aed159de8d5c57bb4bc3eb3c8e19c0beca2afb4991b4541d",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [],
+        "replacement": [
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.function_annotation'"
+        ]
+      }
+    },
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial1",
+        "case": "function_annotation"
+      }
+    ],
+    "reason": "The hidden CMake patch moves FunctionAnnotationMacros out of CompileOnly into the per-backend target. Execute the new kernel and its expected value assertion in Serial1.",
+    "evidence": [
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/42712cb43401bdbfcaad4aee238a21a290d7ef91/core/unit_test/CMakeLists.txt",
+        "sha256": "8ce1db43d238d60e2df8aa9a57b38cf4b8381acb553b5b150e7a48bf2d30f288"
+      }
+    ]
+  },
+  "kokkos__kokkos-9276": {
+    "base_commit": "0124d61300fe46337b948aa31c95453d4b3b485c",
+    "test_patch_sha256": "c55dd176d80a804bc85cead0632eadc5683964c83c258851482da8f914ebe297",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_CoreTestCompileOnly"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_CoreTestCompileOnly",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial_ViewSupport --gtest_filter='*.view_minimal_mdspan_args_create_mirror'"
+        ]
+      },
+      "build_targets": {
+        "original": [
+          "Kokkos_CoreTestCompileOnly"
+        ],
+        "replacement": [
+          "Kokkos_CoreTestCompileOnly",
+          "Kokkos_CoreUnitTest_Serial_ViewSupport"
+        ]
+      }
+    },
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial_ViewSupport",
+        "case": "view_minimal_mdspan_args_create_mirror"
+      }
+    ],
+    "reason": "Keep the new CompileOnly type assertions and run the modified mirror allocation/extents/copied-value checks in the configured mdspan ViewSupport target.",
+    "evidence": [
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/0124d61300fe46337b948aa31c95453d4b3b485c/core/unit_test/CMakeLists.txt",
+        "sha256": "2574a2face0363294fdd3fc1292647e1f9a276eeeefc53c2e6dc6477ff78d347"
+      },
+      {
+        "path": "core/unit_test/view/TestMinimalViewMDSpanTemplateArgumentViability.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/0124d61300fe46337b948aa31c95453d4b3b485c/core/unit_test/view/TestMinimalViewMDSpanTemplateArgumentViability.hpp",
+        "sha256": "a125513d356e02d1ebd56d11b96c3b42830920e359bf48640e5fbf4ec296997d"
+      }
+    ]
+  },
+  "kokkos__kokkos-7247": {
+    "base_commit": "1f99b1d3851c780aa18829ff4bf2b9b61bb9df21",
+    "test_patch_sha256": "cffab3b55dff89e20a0cd93c491de7493f70cfefe70d42ccbdc6e4b7e64268dd",
+    "instance_fields": {
+      "p2p_commands": {
+        "original": [],
+        "replacement": [
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter='*.team_broadcast_long'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter='*.team_broadcast_long_wrapper'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter='*.team_broadcast_char'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter='*.team_broadcast_float'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter='*.team_broadcast_double'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter='*.view_api_b'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter='*.view_mapping'"
+        ]
+      }
+    },
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial2",
+        "case": "team_broadcast_long"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial2",
+        "case": "team_broadcast_long_wrapper"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial2",
+        "case": "team_broadcast_char"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial2",
+        "case": "team_broadcast_float"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial2",
+        "case": "team_broadcast_double"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial2",
+        "case": "view_api_b"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial2",
+        "case": "view_mapping"
+      }
+    ],
+    "reason": "Preserve the original source-style assertion and build. Execute existing broadcast, mirror, and mapping checks surrounding the type-trait cleanup as regression coverage; the rewritten ASSERT expressions are not new independent behavioral assertions.",
+    "evidence": [
+      {
+        "path": "core/unit_test/TestTeam.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/1f99b1d3851c780aa18829ff4bf2b9b61bb9df21/core/unit_test/TestTeam.hpp",
+        "sha256": "acd6d5b359ea6b3d1717cd41aa83bca579cf1b916f7f1c045d24739f8291fa59"
+      },
+      {
+        "path": "core/unit_test/TestTeamBasic.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/1f99b1d3851c780aa18829ff4bf2b9b61bb9df21/core/unit_test/TestTeamBasic.hpp",
+        "sha256": "229f255073b8747a28dae0edac82528e170db24e695fc1d819653cb29a6d0ace"
+      },
+      {
+        "path": "core/unit_test/TestViewMapping_a.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/1f99b1d3851c780aa18829ff4bf2b9b61bb9df21/core/unit_test/TestViewMapping_a.hpp",
+        "sha256": "81b06c5da3de285d124b401f101bdcf697bda79d364d56f109f3acbd73f58444"
+      },
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/1f99b1d3851c780aa18829ff4bf2b9b61bb9df21/core/unit_test/CMakeLists.txt",
+        "sha256": "ea12c3f90b0506ebacc67370999afd1681ed65bc9e57babd22952efc2c0e3d33"
+      },
+      {
+        "path": "core/unit_test/TestViewAPI.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/1f99b1d3851c780aa18829ff4bf2b9b61bb9df21/core/unit_test/TestViewAPI.hpp",
+        "sha256": "201bf97c8dc346669dca3ad186fc69f8dc7cc1f62fcf1fc9d696f8280e165095"
+      },
+      {
+        "path": "core/unit_test/TestViewAPI_b.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/1f99b1d3851c780aa18829ff4bf2b9b61bb9df21/core/unit_test/TestViewAPI_b.hpp",
+        "sha256": "90e624a1a6a64ea91de2105894a4635fb0e52538a875f1a427e7c5c0eb923e4c"
+      },
+      {
+        "path": "core/unit_test/TestViewAPI_a.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/1f99b1d3851c780aa18829ff4bf2b9b61bb9df21/core/unit_test/TestViewAPI_a.hpp",
+        "sha256": "bc35fbc8bc8538944b73a6661d2612ec959494a9cbbe46ffeecd37b6c1c7c87a"
+      }
+    ]
+  },
+  "kokkos__kokkos-9309": {
+    "base_commit": "2f6aa91b7628d3d52f247f2540b1164c9adf0db6",
+    "test_patch_sha256": "d7b05b6b2c82bdc49c3ea081402e5fd8031331c7c11e9baa29fa98a239acc9fa",
+    "instance_fields": {
+      "f2p_commands": {
+        "original": [],
+        "replacement": [
+          "./build/core/unit_test/Kokkos_CoreUnitTest_InitializeFinalize --gtest_filter='*.print_help_and_exit_early'"
+        ]
+      }
+    },
+    "required_runtime_cases": [
+      {
+        "executable": "core/unit_test/Kokkos_CoreUnitTest_InitializeFinalize",
+        "case": "print_help_and_exit_early"
+      }
+    ],
+    "reason": "Keep compilation of the public-header changes and run the help/early-exit death test whose unreachable fallback changes from Kokkos::abort to std::abort. Other header substitutions are compile compatibility changes.",
+    "evidence": [
+      {
+        "path": "core/unit_test/TestKokkosHelpCausesNormalProgramTermination.cpp",
+        "url": "https://github.com/kokkos/kokkos/blob/2f6aa91b7628d3d52f247f2540b1164c9adf0db6/core/unit_test/TestKokkosHelpCausesNormalProgramTermination.cpp",
+        "sha256": "2165bf8c51533aa5641744b06a42af660a2d0a28a06e7effa053b8b0ecaac561"
+      },
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/2f6aa91b7628d3d52f247f2540b1164c9adf0db6/core/unit_test/CMakeLists.txt",
+        "sha256": "2a7e45efe4df0c05e5da662aa6ba8736b29be5ddcf518bce94c724f7aeb07a07"
+      }
+    ]
   }
 }

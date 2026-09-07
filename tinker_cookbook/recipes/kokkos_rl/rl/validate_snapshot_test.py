@@ -145,3 +145,22 @@ async def test_bulk_reuses_passed_blocks_failed_and_limits_concurrency(tmp_path,
     await gate.main(config)
     assert calls == 10
     assert len((tmp_path / "out/launch_history.jsonl").read_text().splitlines()) == 2
+
+
+def test_cuda_runtime_policy_is_explicit_and_old_cpu_evidence_cannot_qualify(tmp_path):
+    task = task_with_metadata(tmp_path, "kokkos__kokkos-9159")
+    old_policy = gate.policy_for_task(task)
+    runtime_policy = gate.policy_for_task(task, "runtime_v10")
+    assert old_policy == gate.Policy()
+    assert runtime_policy == gate.Policy("modal", 4, 900, 16384, 4.0, "L4")
+    old_record = {
+        "task": task.task_name,
+        "task_hash": "same-payload",
+        **asdict(old_policy),
+        "nop": 0,
+        "oracle": 1,
+        "passed": True,
+    }
+    assert not gate.matching_evidence(old_record, task.task_name, "same-payload", runtime_policy)
+    with pytest.raises(ValueError, match="Unknown reviewed"):
+        gate.policy_for_task(task, "unreviewed")

@@ -759,3 +759,24 @@ combined corrected payload separately after source review; any new gate must
 use its exact hash and static resource policy. Do not launch new gates during
 the current ConTree transport-error burst, and do not retry old errors or begin
 additional model sampling as a side effect of preparing the corrected snapshot.
+
+Source review confirms six further mixed compile/runtime tasks. Keep CompileOnly
+checks and add exact registered cases: 7043 KokkosP kernel-name callbacks; 7441
+Serial_SmokeTest range/shared-allocation behavior plus Serial1 bounds checks;
+8577 Serial1 array/std::reduce values; 9239 Serial1 function annotations; and
+9276 Serial_ViewSupport mirror allocation/copy behavior. For 7247 preserve the
+source-style assertion and add surrounding existing broadcast/mirror/mapping
+regressions; its trait-expression rewrites are not newly invented assertions.
+For 9309 retain public-header compilation and check the modified early-exit
+death-test fallback in InitializeFinalize.
+
+9159 already configures CUDA12.8/ADA89 but previously only compiled the graph
+executable. Its five changed CUDA graph cases require a GPU at runtime. Add an
+explicit resource_policy_version=runtime_v10 for subsequent frozen-snapshot
+validation/qualification, assigning this task Modal L4/16GiB/4CPU/build4 with
+the same 900-second grader limit. The default v7 policy and running processes
+remain unchanged. Keep HIP/SYCL branches explicitly outside the configured CUDA
+coverage. Old CPU evidence cannot qualify this GPU policy, even for an unchanged
+payload hash. Prepare the combined v10 snapshot after offline checks; perform
+no new validation calls until the transport-error burst is diagnosed and the
+shared resource ledger has an available slot.

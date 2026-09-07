@@ -47,11 +47,16 @@ class Config:
     wait_for_pids: tuple[int, ...] = ()
     cache_path: str = "notes/experiments/SWE-kokkos-bench/v2-pass-at-k/contree_images.json"
     env_file: str = ".env"
+    resource_policy_version: str = "v7"
 
 
-def policy_for_task(task: HarborTask) -> Policy:
+def policy_for_task(task: HarborTask, version: str = "v7") -> Policy:
+    if version not in {"v7", "runtime_v10"}:
+        raise ValueError("Unknown reviewed resource policy version")
     name = task.task_name
-    if name in {"kokkos__kokkos-8989", "kokkos__kokkos-9147"}:
+    if name in {"kokkos__kokkos-8989", "kokkos__kokkos-9147"} or (
+        version == "runtime_v10" and name == "kokkos__kokkos-9159"
+    ):
         policy = Policy("modal", 4, 900, 16384, 4.0, "L4")
     elif name in {
         "kokkos__kokkos-7074",
@@ -154,7 +159,9 @@ async def run(config: Config) -> None:
     tasks = [
         task for task in all_tasks if not config.task_names or task.task_name in config.task_names
     ]
-    policies = {task.task_name: policy_for_task(task) for task in tasks}
+    policies = {
+        task.task_name: policy_for_task(task, config.resource_policy_version) for task in tasks
+    }
     identity = {
         "task_hashes": hashes,
         "resource_policy": {n: asdict(p) for n, p in policies.items()},
