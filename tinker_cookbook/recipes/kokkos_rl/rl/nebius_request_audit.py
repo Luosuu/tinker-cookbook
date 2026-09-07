@@ -11,16 +11,18 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import cast
 
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, NotGiven, Omit
 from openai.types.chat import ChatCompletion
 
 
 def write_exclusive(path: Path, value: object) -> None:
     """A prior file, including a partial write, always prevents another attempt."""
+    # Serialize before creating the file: a local unsupported object must not
+    # leave a truncated artifact that resembles a dispatched provider request.
+    encoded = json.dumps(value, indent=2) + "\n"
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("x") as stream:
-        json.dump(value, stream, indent=2)
-        stream.write("\n")
+        stream.write(encoded)
         stream.flush()
         os.fsync(stream.fileno())
 
@@ -49,10 +51,21 @@ class AuditedCompletions:
             "phase_identity_sha256": self.identity_sha256,
             "request_number": number,
             "started_at": datetime.now(UTC).isoformat(),
-            "arguments": kwargs,
+            "arguments": {k: v for k, v in kwargs.items() if not isinstance(v, (Omit, NotGiven))},
+            "omitted_sdk_arguments": sorted(
+                k for k, v in kwargs.items() if isinstance(v, (Omit, NotGiven))
+            ),
             "automatic_retries": 0,
         }
         write_exclusive(folder / "request.json", request)
+        write_exclusive(
+            folder / "dispatch_started.json",
+            {
+                "request_number": number,
+                "at": datetime.now(UTC).isoformat(),
+                "phase_identity_sha256": self.identity_sha256,
+            },
+        )
         try:
             response = await self._create(**kwargs)
             # Preserve the provider response even when a later usage/protocol
