@@ -11,6 +11,7 @@ import functools
 import hashlib
 import json
 import math
+import os
 import random
 import shlex
 import shutil
@@ -55,6 +56,8 @@ class Config:
     learning_rate: float = 1e-5
     minimum_donor_tasks: int = 16
     validation_only: bool = False
+    qualified_bundle_dir: str | None = None
+    split_manifest: str | None = None
     # Optional fixed subset for a small end-to-end pilot, chosen before sampling.
     task_names: str | None = None
 
@@ -267,6 +270,35 @@ async def main(config: Config) -> None:
         print(stage, json.dumps(details), flush=True)
 
     try:
+        # Imported after this module is initialized: validation also uses grade_patch.
+        from tinker_cookbook.recipes.kokkos_rl.rl.qualified_self_train import (
+            qualified_evidence,
+            qualified_factory,
+            review_ready,
+        )
+        from tinker_cookbook.sandbox.contree_polling import (
+            OperationPollPolicy,
+            create_polling_client,
+        )
+
+        qualified: dict[str, object] | None = None
+        if config.qualified_bundle_dir:
+            if (
+                config.sandbox_backend != "contree"
+                or config.sandbox_build_parallelism != 1
+                or config.train_samples != 4
+                or config.eval_samples != 4
+                or config.eval_size != 20
+                or config.split_seed != 7
+                or config.task_names
+                or not config.split_manifest
+                or not 1 <= config.concurrency <= 4
+            ):
+                raise ValueError("Qualified experiment must preserve its fixed protocol and split")
+            qualified_evidence(
+                load_harbor_tasks_from_dir(Path(config.tasks_dir)),
+                Path(config.qualified_bundle_dir),
+            )
         resolved = chz.asdict(config)
         config_path = root / "config.json"
         if config_path.exists() and json.loads(config_path.read_text()) != resolved:
@@ -277,10 +309,15 @@ async def main(config: Config) -> None:
             staging = root / "tasks.pending"
             if staging.exists():
                 shutil.rmtree(staging)
-            with prepared_kokkos_tasks(Path(config.tasks_dir)) as prepared:
+            if config.qualified_bundle_dir:
                 staging.mkdir()
-                for task in prepared:
+                for task in load_harbor_tasks_from_dir(Path(config.tasks_dir)):
                     shutil.copytree(task.task_dir, staging / task.task_name)
+            else:
+                with prepared_kokkos_tasks(Path(config.tasks_dir)) as prepared:
+                    staging.mkdir()
+                    for task in prepared:
+                        shutil.copytree(task.task_dir, staging / task.task_name)
             staging.replace(snapshot)
         tasks = load_harbor_tasks_from_dir(snapshot)
         if config.task_names:
@@ -292,6 +329,13 @@ async def main(config: Config) -> None:
         shuffled = list(tasks)
         random.Random(config.split_seed).shuffle(shuffled)
         heldout, training = shuffled[: config.eval_size], shuffled[config.eval_size :]
+        if config.qualified_bundle_dir:
+            qualified = qualified_evidence(tasks, Path(config.qualified_bundle_dir))
+            original_split = json.loads(Path(str(config.split_manifest)).read_text())
+            if [t.task_name for t in heldout] != original_split["heldout"] or [
+                t.task_name for t in training
+            ] != original_split["train"]:
+                raise ValueError("Qualified snapshot changed the original train/heldout split")
         if not heldout or not training:
             raise ValueError("Need disjoint nonempty train and heldout task sets")
         manifest = {
@@ -301,6 +345,24 @@ async def main(config: Config) -> None:
             "heldout": [t.task_name for t in heldout],
         }
         manifest_path = root / "manifest.json"
+        if qualified is not None:
+            manifest["qualification"] = qualified
+            manifest["split_manifest_sha256"] = hashlib.sha256(
+                Path(str(config.split_manifest)).read_bytes()
+            ).hexdigest()
+            # Unrelated commits in the shared checkout must not invalidate a
+            # paused experiment. Pin the actual execution sources instead.
+            manifest["execution_sources"] = {
+                str(path): hashlib.sha256(path.read_bytes()).hexdigest()
+                for path in (
+                    Path(__file__).resolve(),
+                    Path(__file__).with_name("qualified_self_train.py").resolve(),
+                    Path(__file__).with_name("rollout_data.py").resolve(),
+                    Path(__file__).parents[2] / "harbor_rl/eval.py",
+                )
+            }
+            if manifest_path.exists():
+                manifest["code_commit"] = json.loads(manifest_path.read_text())["code_commit"]
         if manifest_path.exists() and json.loads(manifest_path.read_text()) != manifest:
             raise ValueError("Code or task snapshot changed; use a fresh experiment directory")
         write_json(manifest_path, manifest)
@@ -313,6 +375,13 @@ async def main(config: Config) -> None:
                 runtime_build_parallelism=config.sandbox_build_parallelism,
                 allow_network=False,
             )
+            if qualified is not None:
+                factory._client = create_polling_client(
+                    factory._client.config, OperationPollPolicy()
+                )
+                factory = qualified_factory(
+                    factory, tasks, str(qualified["resource_policy_version"])
+                )
         elif config.sandbox_backend == "modal":
             factory = functools.partial(default_sandbox_factory, allow_network=False)
         else:
@@ -339,10 +408,14 @@ async def main(config: Config) -> None:
                 if not record["passed"]:
                     raise RuntimeError("Oracle/NOP gate failed: " + task.task_name)
 
-        state("validating_verifiers", tasks=len(tasks))
-        # Await every bounded validation before advancing; one failure closes the gate.
-        validation_results = await asyncio.gather(
-            *(validate(t) for t in tasks), return_exceptions=True
+        state(
+            "using_qualified_verifiers" if qualified else "validating_verifiers", tasks=len(tasks)
+        )
+        # Frozen qualified evidence already contains the exact independent pairs.
+        validation_results = (
+            []
+            if qualified
+            else await asyncio.gather(*(validate(t) for t in tasks), return_exceptions=True)
         )
         failures = [str(r) for r in validation_results if isinstance(r, BaseException)]
         if failures:
@@ -355,6 +428,42 @@ async def main(config: Config) -> None:
             label: str, selected: list[HarborTask], samples: int, checkpoint: str | None = None
         ) -> list[TaskResult]:
             directory = root / label
+            if qualified is not None:
+                if qualified_evidence(tasks, Path(str(config.qualified_bundle_dir))) != qualified:
+                    raise ValueError("Qualified inputs changed before evaluation")
+                expected = {(t.task_name, i) for t in selected for i in range(samples)}
+                result_path = directory / "results.jsonl"
+                rows = (
+                    [
+                        json.loads(line)
+                        for line in result_path.read_text().splitlines()
+                        if line.strip()
+                    ]
+                    if result_path.exists()
+                    else []
+                )
+                completed = {(r["task_name"], r["sample_index"]): r for r in rows}
+                if len(completed) != len(rows) or any(r.get("error") for r in rows):
+                    raise ValueError(
+                        "Ambiguous or failed prior evaluation requires explicit recovery"
+                    )
+                journal = root / "evaluation_attempts" / label
+                for marker in journal.glob("*.json"):
+                    requested = {tuple(pair) for pair in json.loads(marker.read_text())["pairs"]}
+                    if not requested.issubset(completed):
+                        raise ValueError(
+                            "Interrupted evaluation cannot silently resample missing results"
+                        )
+                if expected.issubset(completed):
+                    results = [TaskResult(**completed[key]) for key in sorted(expected)]
+                    write_json(directory / "efficiency.json", delivery_metrics(results, directory))
+                    return results
+                journal.mkdir(parents=True, exist_ok=True)
+                marker = journal / f"{len(list(journal.glob('*.json'))):03d}.json"
+                with marker.open("x") as stream:
+                    json.dump({"pairs": sorted(expected)}, stream)
+                    stream.flush()
+                    os.fsync(stream.fileno())
             cfg = EvalConfig(
                 model_name=config.model_name,
                 output_path=str(directory),
@@ -373,6 +482,10 @@ async def main(config: Config) -> None:
                 pass_at_k="1",
                 sandbox_backend=config.sandbox_backend,
                 sandbox_build_parallelism=config.sandbox_build_parallelism,
+                sandbox_resource_policy=json.dumps(qualified, sort_keys=True)
+                if qualified
+                else None,
+                max_infra_retries=0 if qualified else 2,
                 allow_network=False,
                 checkpoint_url=checkpoint,
                 export_kokkos_rollouts=True,
@@ -389,7 +502,22 @@ async def main(config: Config) -> None:
             training_rollouts=len(training) * config.train_samples,
         )
         # Sequential stages keep the global sandbox concurrency bounded.
+        if qualified is not None:
+            await evaluate("baseline", heldout[:1], config.eval_samples)
+            pilot_files = [
+                root / "baseline/rollouts" / f"{heldout[0].task_name}__{i:02d}" / name
+                for i in range(config.eval_samples)
+                for name in ("trajectory.json", "messages.json", "patch.diff", "verifier.json")
+            ]
+            if not review_ready(root, "pilot", pilot_files):
+                state("awaiting_pilot_review", trajectories=4, additional_sampling=False)
+                return
         await evaluate("baseline", heldout, config.eval_samples)
+        if qualified is not None and not review_ready(
+            root, "baseline", [root / "baseline/results.jsonl", root / "baseline/efficiency.json"]
+        ):
+            state("awaiting_baseline_review", additional_sampling=False)
+            return
         await evaluate("collection", training, config.train_samples)
         state("qualifying_donors")
         by_name = {t.task_name: t for t in training}

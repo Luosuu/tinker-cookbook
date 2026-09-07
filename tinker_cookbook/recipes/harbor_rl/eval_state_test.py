@@ -20,6 +20,14 @@ def make_task(root: Path, name: str) -> HarborTask:
     return HarborTask(name, "fix this", directory)
 
 
+def test_absent_resource_policy_preserves_legacy_identity(tmp_path):
+    task = make_task(tmp_path, "task")
+    out = tmp_path / "results"
+    prepare_eval_state(out, {}, [task], evaluator="tinker")
+    prepare_eval_state(out, {"sandbox_resource_policy": None}, [task], evaluator="tinker")
+    assert json.loads((out / "eval_identity.json").read_text())["identity"]["config"] == {}
+
+
 @pytest.mark.parametrize(
     "field,value",
     [
@@ -29,6 +37,7 @@ def make_task(root: Path, name: str) -> HarborTask:
         ("max_tokens", 12),
         ("sandbox_backend", "other"),
         ("allow_network", False),
+        ("sandbox_resource_policy", "{\"resources\": \"reviewed\"}"),
     ],
 )
 def test_resume_rejects_different_trial_config(tmp_path, field, value):

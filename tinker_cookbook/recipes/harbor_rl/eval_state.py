@@ -55,7 +55,11 @@ def prepare_eval_state(
     identity = {
         "version": 1,
         "evaluator": evaluator,
-        "config": {k: v for k, v in config.items() if k not in _INVOCATION_FIELDS},
+        "config": {
+            k: v
+            for k, v in config.items()
+            if k not in _INVOCATION_FIELDS and not (k == "sandbox_resource_policy" and v is None)
+        },
     }
     task_digests = {task.task_name: _task_digest(task) for task in tasks}
     if len(task_digests) != len(tasks):

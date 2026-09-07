@@ -59,6 +59,8 @@ class EvalConfig:
     command_timeout: int = 120
     grader_timeout: int = 60
     sandbox_build_parallelism: int | None = None
+    # Identity of an explicitly injected per-task resource/environment factory.
+    sandbox_resource_policy: str | None = None
     max_tasks: int | None = None
     max_concurrency: int = 6
     checkpoint_url: str | None = None

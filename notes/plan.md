@@ -1074,3 +1074,19 @@ separate from the preserved zero-generation error. Stop after this first
 actual result for protocol, response, candidate and identity review. Any
 uncertain or post-dispatch failure remains blocked and cannot use this
 zero-generation exception.
+
+
+Resume the fixed 40-turn self-training comparison in a fresh experiment using
+a frozen bundle of all 100 exact verifier pairs and positive scope reviews.
+Copy qualified tasks byte-for-byte, require the original seed-seven 80/20
+split, and record per-task resource and environment policy in evaluation
+identity. Reuse the same ConTree/Modal routing for evaluation and donor patch
+regrading; do not repeat already qualified verifier pairs.
+
+Evaluate four samples of the first heldout task as the initial baseline pilot.
+Pause for a receipt tied to the exact raw-token, message, patch and verifier
+artifacts. Once reviewed, reuse those four results and finish the original
+80-slot heldout baseline, then pause for a second evidence-bound review before
+training-data collection. Disable automatic infrastructure retries in this
+qualified path and journal requested slots before evaluation; incomplete or
+ambiguous prior slots require explicit recovery instead of resampling.
