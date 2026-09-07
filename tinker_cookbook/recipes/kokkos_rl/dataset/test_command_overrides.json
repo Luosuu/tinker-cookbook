@@ -1127,17 +1127,45 @@
         "replacement": [
           "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_rotmg_double'"
         ]
+      },
+      "p2p_commands": {
+        "original": [
+          "build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter=TestCategory.test_batched_rotm_double"
+        ],
+        "replacement": [
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_serial_rotm_double'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_team_rotm_double'",
+          "./build/batched/dense/unit_test/KokkosKernels_batched_dla_serial --gtest_filter='*.test_batched_teamvector_rotm_double'"
+        ]
       }
     },
-    "reason": " Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
+    "reason": "Run the new double Rotmg regression and the existing double Rotm Serial, Team and TeamVector compatibility cases. The annotated TestCategory.test_batched_rotm_double does not exist at this base; each real case has an independent nonempty runtime guard.",
     "required_runtime_cases": [
       {
         "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
         "case": "test_batched_rotmg_double"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_serial_rotm_double"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_team_rotm_double"
+      },
+      {
+        "executable": "batched/dense/unit_test/KokkosKernels_batched_dla_serial",
+        "case": "test_batched_teamvector_rotm_double"
       }
     ],
-    "evidence": [],
-    "coverage_scope": "The original CMake configuration instantiates double only. Execute new rotmg_double; float remains outside the configured scalar scope."
+    "evidence": [
+      {
+        "path": "batched/dense/unit_test/Test_Batched_Rotm.hpp",
+        "url": "https://github.com/kokkos/kokkos-kernels/blob/e0a706f8f6abcd3a7c3dcb84bc72a7843a50b34c/batched/dense/unit_test/Test_Batched_Rotm.hpp",
+        "sha256": "ece28720da0e694afe11666ea0159a4bc3f3ec41c6af0faa6b6f91bebafb2cd2"
+      }
+    ],
+    "coverage_scope": "The original CMake configuration instantiates double only. Execute new Rotmg plus all three existing Rotm modes for double; float remains outside the configured scalar scope."
   },
   "kokkos__kokkos-8399": {
     "base_commit": "08f79ebe085bc6f03d222f069f9034b55e59465d",

@@ -1005,3 +1005,15 @@ implicitly. Require both compile-only object witnesses and the ten requested
 incremental runtime cases plus the new ViewSupport case before positive scope
 acceptance. This replaces a released validation slot, keeping reserved capacity
 at most six alongside the original four model slots and one v10 validator.
+
+The 3088 runtime gate correctly rejected an empty compatibility selection after
+the new Rotmg regression passed. Read the exact cached base source and replace
+the nonexistent generic Rotm annotation with its three actual double Serial,
+Team and TeamVector cases, each guarded independently. Preserve the new Rotmg
+case, original double-only configuration, production gold and hidden patch.
+Freeze v14 from v13 with only this task's metadata/verifier script changed and
+preserve all previous gate evidence. A new independent single-slot NOP/Oracle
+pair may run after the existing v10 queue exits, with ConTree build-one, 900
+seconds, explicit read-only status transport and zero inference. Do not replay
+the failed old verifier or count it as a model failure. Require all four actual
+runtime cases and the new exact pair before positive scope acceptance.
