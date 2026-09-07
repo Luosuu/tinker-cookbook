@@ -598,3 +598,11 @@ its scalar configuration changes; verifier commands alone cannot enable a test
 that was never compiled. Keep the remaining payloads unchanged except for their
 reviewed commands and metadata. Validate exact hashes before sampling; compiler
 cost or resource failures remain explicit infrastructure/coverage blockers.
+
+Two final framework-name corrections are reviewed from the original source:
+7458's CTest name contains a misplaced underscore, and 8819's isinf check is a
+GoogleTest case inside Serial1 rather than a CTest test. Preserve the exact case
+and executable scope in snapshot v6. Task 8891 additionally selects an FP16
+GoogleTest check that explicitly skips without native 16-bit support; keep it
+blocked for a justified backend or annotation correction. An all-skipped test
+cannot qualify as runtime coverage.

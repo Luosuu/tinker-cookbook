@@ -409,5 +409,33 @@
         "sha256": "ff07386aae09bd46a04c96fe38bafa642c5fa4344ebcf827c103ec45be256645"
       }
     ]
+  },
+  "kokkos__kokkos-7458": {
+    "base_commit": "6b8d3777dd0cf2d590b8e5151b1af82c37855b8d",
+    "commands": {
+      "ctest --test-dir build -R KokkosCore_UnitTest_Serial1 --output-on-failure": "ctest --test-dir build -R Kokkos_CoreUnitTest_Serial1 --output-on-failure"
+    },
+    "reason": "Use the actual CTest registration.",
+    "evidence": [
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/6b8d3777dd0cf2d590b8e5151b1af82c37855b8d/core/unit_test/CMakeLists.txt",
+        "sha256": "5637c6d3046fbe1d110fd0ebbe44e4cb4f941004bb8a3d6083a9e1d5f90382dd"
+      }
+    ]
+  },
+  "kokkos__kokkos-8819": {
+    "base_commit": "e2d872a422bed5d2375934f403897d0282896e54",
+    "commands": {
+      "ctest --test-dir build -R mathematical_functions_isinf -V": "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.mathematical_functions_isinf'"
+    },
+    "reason": "The requested existing isinf test is a GoogleTest case within Serial1, not a CTest registration.",
+    "evidence": [
+      {
+        "path": "core/unit_test/TestMathematicalFunctions.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/e2d872a422bed5d2375934f403897d0282896e54/core/unit_test/TestMathematicalFunctions.hpp",
+        "sha256": "61046ac5afbd009fb37b450ad22e4e89fae5ac195610f5e421217ee095ca7440"
+      }
+    ]
   }
 }

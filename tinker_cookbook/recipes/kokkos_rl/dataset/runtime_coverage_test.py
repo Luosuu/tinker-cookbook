@@ -276,3 +276,23 @@ def test_reviewed_ctest_names_do_not_use_executable_prefix(tmp_path):
         assert "KokkosKernels_" not in actual
         assert "--verbose" in actual
         assert "KokkosKernels_" in normalize_test_command(command, instance=instance)
+
+
+def test_reviewed_ctest_typo_and_gtest_case_keep_frameworks_distinct(tmp_path):
+    import json
+    from pathlib import Path
+
+    _, instance = _local_instance(tmp_path)
+    entries = json.loads(Path(__file__).with_name("test_command_overrides.json").read_text())
+    for number in (7458, 8819):
+        task = f"kokkos__kokkos-{number}"
+        entry = entries[task]
+        pinned = replace(instance, instance_id=task, base_commit=entry["base_commit"])
+        actual = normalize_test_command(next(iter(entry["commands"])), instance=pinned)
+        if number == 7458:
+            assert "-R Kokkos_CoreUnitTest_Serial1" in actual
+            assert "ctest --verbose" in actual
+        else:
+            assert "--gtest_filter='*.mathematical_functions_isinf'" in actual
+            assert not actual.startswith("ctest")
+            assert coverage_error(actual, "[==========] Running 0 tests from 0 test suites.", 0)
