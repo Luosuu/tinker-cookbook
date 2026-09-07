@@ -63,6 +63,20 @@ def fixture(tmp_path):
     c = write(
         tmp_path / "coverage.json", {"task_hashes": hashes, "status": "pending", "blockers": []}
     )
+    review = write(tmp_path / "manual_review.json", {"decision": "reviewed configured scope"})
+    allowlist = write(
+        tmp_path / "scope.json",
+        {
+            "approvals": {
+                task.task_name: {
+                    "task": task.task_name,
+                    "task_hash": digest,
+                    "status": "accepted",
+                    "sources": [ledger.pinned_file(review)],
+                }
+            }
+        },
+    )
     kwargs = {
         "task": task,
         "model": MODEL,
@@ -70,6 +84,7 @@ def fixture(tmp_path):
         "reserved_original_tasks": frozenset({"reserved"}),
         "qualification_path": q,
         "coverage_path": c,
+        "scope_approval_path": allowlist,
         "policy": ledger.Policy(),
         "required_environment_policy": "dockerfile_env_v1",
     }
@@ -207,3 +222,45 @@ def test_modal_original_gate_requires_matching_resource_and_task_hash(tmp_path):
     assert task.task_name not in ledger.original_gate(old)[0]
     write(path, {**value, "task_hash": ledger._task_digest(task)})
     assert task.task_name in ledger.original_gate(old)[0]
+
+
+@pytest.mark.parametrize("change", ["missing", "hash", "pending", "empty_sources", "source"])
+def test_positive_scope_review_is_required(tmp_path, change):
+    task, _, kwargs = fixture(tmp_path)
+    path = kwargs["scope_approval_path"]
+    data = json.loads(path.read_text())
+    row = data["approvals"][task.task_name]
+    if change == "missing":
+        data["approvals"] = {}
+    elif change == "hash":
+        row["task_hash"] = "wrong"
+    elif change == "pending":
+        row["status"] = "pending"
+    elif change == "empty_sources":
+        row["sources"] = []
+    else:
+        write(tmp_path / "manual_review.json", {"decision": "changed"})
+    write(path, data)
+    with pytest.raises((ValueError, TypeError)):
+        ledger.eligible_evidence(**kwargs)
+
+
+@pytest.mark.parametrize("change", ["allowlist", "source"])
+def test_scope_proof_mutation_before_claim_blocks_dispatch(tmp_path, change):
+    task, _, kwargs = fixture(tmp_path)
+    evidence = ledger.eligible_evidence(**kwargs)
+    write(
+        kwargs["scope_approval_path"] if change == "allowlist" else tmp_path / "manual_review.json",
+        {},
+    )
+    with pytest.raises(ValueError):
+        ledger.claim_pair(
+            task=task,
+            ledger_root=tmp_path / "claims",
+            phase_root=tmp_path / "new",
+            original_root=kwargs["original_root"],
+            reserved_original_tasks=kwargs["reserved_original_tasks"],
+            evidence=evidence,
+            phase_identity_sha256="identity",
+        )
+    assert not (tmp_path / "claims").exists()

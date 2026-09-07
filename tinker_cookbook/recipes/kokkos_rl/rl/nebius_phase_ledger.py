@@ -95,6 +95,28 @@ def current_task_digest(task: HarborTask) -> str:
     return _task_digest(task)
 
 
+def scope_approval(path: Path, name: str, digest: str) -> dict[str, object]:
+    """Require a positive, explicitly accepted review with immutable source proof."""
+    approvals = mapping(read_json(path).get("approvals"))
+    approval = mapping(approvals.get(name))
+    if (
+        approval.get("task") != name
+        or approval.get("task_hash") != digest
+        or approval.get("status") != "accepted"
+    ):
+        raise ValueError("Missing accepted scope approval for this exact task")
+    sources = approval.get("sources")
+    if not isinstance(sources, list) or not sources:
+        raise ValueError("Scope approval requires original review evidence")
+    verified = []
+    for value in sources:
+        proof = mapping(value)
+        if pinned_file(Path(str(proof["path"]))) != proof:
+            raise ValueError("Scope review source changed after approval")
+        verified.append(proof)
+    return {"allowlist": pinned_file(path), "approval": approval, "sources": verified}
+
+
 def eligible_evidence(
     *,
     task: HarborTask,
@@ -103,6 +125,7 @@ def eligible_evidence(
     reserved_original_tasks: frozenset[str],
     qualification_path: Path,
     coverage_path: Path,
+    scope_approval_path: Path,
     policy: Policy,
     required_environment_policy: str | None = None,
 ) -> dict[str, object]:
@@ -122,6 +145,7 @@ def eligible_evidence(
     blockers = coverage.get("blockers")
     if not isinstance(blockers, list) or any(mapping(b).get("task") == name for b in blockers):
         raise ValueError("Task coverage review is not ready")
+    approved_scope = scope_approval(scope_approval_path, name, digest)
     row = mapping(mapping(qualification["tasks"])[name])
     sources = row.get("successful_evidence")
     if row.get("qualified") is not True or not isinstance(sources, list) or not sources:
@@ -148,6 +172,7 @@ def eligible_evidence(
         "task_hash": digest,
         "qualification": pinned_file(qualification_path),
         "coverage_review": pinned_file(coverage_path),
+        "scope_approval": approved_scope,
         "successful_verifier_evidence": verified,
         "required_environment_policy": required_environment_policy,
     }
@@ -176,6 +201,13 @@ def claim_pair(
         proof = mapping(evidence[key])
         if pinned_file(Path(str(proof["path"]))) != proof:
             raise ValueError("Eligibility evidence changed before claim")
+    scope = mapping(evidence["scope_approval"])
+    allowlist = mapping(scope["allowlist"])
+    if (
+        pinned_file(Path(str(allowlist["path"]))) != allowlist
+        or scope_approval(Path(str(allowlist["path"])), name, str(evidence["task_hash"])) != scope
+    ):
+        raise ValueError("Scope approval changed before claim")
     sources = evidence["successful_verifier_evidence"]
     if not isinstance(sources, list) or not sources:
         raise ValueError("Missing verifier evidence")

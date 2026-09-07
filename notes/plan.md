@@ -903,3 +903,14 @@ resource/environment mismatches, task/evidence mutation, and competing claims.
 Record a read-only complement preflight, keeping previous attempts, the three
 unknown requests, and all old scores unchanged. No baseline, SFT, or new model
 request is part of this preparatory change.
+
+Strengthen the complementary-phase ledger with a positive per-task scope
+approval allowlist. Require the exact task name/hash and accepted status, plus
+nonempty original review evidence paths and SHA-256 digests. Verify the frozen
+allowlist and every source again immediately before a claim. Absence from the
+coverage blocker list alone is insufficient. Test missing review, wrong hash,
+unaccepted review, missing evidence, and source mutation before dispatch. This
+remains offline preparation: no new model requests or claims. The shared model
+limit remains four including all three unknown original requests; a future
+complement runner must prove the original fourth slot is released before using
+it, independently of the eight-sandbox ceiling.
