@@ -1138,7 +1138,7 @@ before launching the separately recorded zero-inference phase.
 
 ### Retain a reviewed provider failure and continue untouched pairs
 
-The qualified Nebius controller stopped after a received HTTP 500 on the
+The qualified Nebius controller stopped after a received server error on the
 thirteenth Flash request for task 7605. Preserve the twelve raw responses,
 known usage, successful earlier source edit/readback, and the final request's
 unknown usage; never resample this claimed pair. A contemporaneous sandbox
