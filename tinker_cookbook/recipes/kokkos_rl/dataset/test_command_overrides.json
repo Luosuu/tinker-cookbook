@@ -88,5 +88,238 @@
       "blocksparse_openmp"
     ],
     "generated_testfile_sha256": "5793805662f76414e3b090da3e3c20f62157fc231397de41fad4b51a084a390c"
+  },
+  "kokkos__kokkos-7308": {
+    "base_commit": "ee53b3f73c7e81b0414cfa7e44d70a361987a727",
+    "test_patch_sha256": "8ad8272c74b404229383deeb627fc46f5eae31630046dbf33c4c2830608b8148",
+    "instance_fields": {
+      "build_targets": {
+        "original": [
+          "Kokkos_CoreUnitTest_Serial1"
+        ],
+        "replacement": [
+          "Kokkos_CoreUnitTest_Serial1",
+          "Kokkos_CoreUnitTest_Serial2"
+        ]
+      },
+      "p2p_commands": {
+        "original": [
+          "\"$(find build -type f -name Kokkos_CoreUnitTest_Serial1 -perm -111 -print -quit)\" --gtest_filter='*view_mdspan_conversion*'",
+          "\"$(find build -type f -name Kokkos_CoreUnitTest_Serial1 -perm -111 -print -quit)\" --gtest_filter='*view_api_b*'"
+        ],
+        "replacement": [
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.view_mdspan_conversion*'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter='*.view_api_b'"
+        ]
+      }
+    },
+    "reason": "ViewAPI_b is compiled into Serial2, while MDSpanConversion belongs to Serial1.",
+    "evidence": [
+      {
+        "path": "core/unit_test/TestViewAPI_b.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/ee53b3f73c7e81b0414cfa7e44d70a361987a727/core/unit_test/TestViewAPI_b.hpp",
+        "sha256": "90e624a1a6a64ea91de2105894a4635fb0e52538a875f1a427e7c5c0eb923e4c"
+      },
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/ee53b3f73c7e81b0414cfa7e44d70a361987a727/core/unit_test/CMakeLists.txt",
+        "sha256": "e4d50c549fdce60cf12fa7bc120891f77417fc709b36c11460e9e5487ce4720b"
+      }
+    ]
+  },
+  "kokkos__kokkos-7517": {
+    "base_commit": "98faff3915c87bed36bf55aac32373e2f79f42cc",
+    "test_patch_sha256": "039211b42943b0dafecad8d30156193e817df11112f754827a913281b2e04aaa",
+    "instance_fields": {
+      "p2p_commands": {
+        "original": [
+          "\"$(find build -type f -name Kokkos_ContainersUnitTest_Serial -perm -111 -print -quit)\" --gtest_filter='*ContainersUnitTest_Serial*'"
+        ],
+        "replacement": [
+          "./build/containers/unit_tests/Kokkos_ContainersUnitTest_Serial --gtest_filter='serial.*'"
+        ]
+      }
+    },
+    "reason": "The requested whole Serial containers suite is serial.*, not the executable name.",
+    "evidence": [
+      {
+        "path": "containers/unit_tests/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/98faff3915c87bed36bf55aac32373e2f79f42cc/containers/unit_tests/CMakeLists.txt",
+        "sha256": "7b870aae1134c5c03e81782d08f64fa78438358b5d89bf5ebfd5819112f7edae"
+      },
+      {
+        "path": "core/unit_test/category_files/TestSerial_Category.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/98faff3915c87bed36bf55aac32373e2f79f42cc/core/unit_test/category_files/TestSerial_Category.hpp",
+        "sha256": "367facd15cee87b0c7d0cef09c8cf57622a1d520cd4b1a52cd3041eba3d9094b"
+      }
+    ]
+  },
+  "kokkos__kokkos-7605": {
+    "base_commit": "765cd9d1fa9a01d3cb6ba3b0d2a4d4914d5060d1",
+    "test_patch_sha256": "badd28975fd949c8d92cdf63e2decd95e7800a1fd5bf0a75b84b0f69e8d91114",
+    "instance_fields": {
+      "p2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial2",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter='TEST(TEST_CATEGORY, vcp_pointer_add_property)'"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial2",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter='*.vcp_*'"
+        ]
+      }
+    },
+    "reason": "Run existing constructor-property tests before the patch and include the new vcp_pointer_add_property after the patch; a TEST declaration is not a filter.",
+    "evidence": [
+      {
+        "path": "core/unit_test/TestViewCtorProp.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/765cd9d1fa9a01d3cb6ba3b0d2a4d4914d5060d1/core/unit_test/TestViewCtorProp.hpp",
+        "sha256": "b37425b8aa8d63a8888b48ab9a5087d03526105e1a854692da0e69d6ed55d021"
+      },
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/765cd9d1fa9a01d3cb6ba3b0d2a4d4914d5060d1/core/unit_test/CMakeLists.txt",
+        "sha256": "9a1da5ed99833e51901e32d876e13be71c7c1d9a96a1c9003b8250aee6d238fb"
+      }
+    ]
+  },
+  "kokkos__kokkos-7675": {
+    "base_commit": "66014c0fe5b402d2a2ff40dfe2f43a99e6f0823f",
+    "test_patch_sha256": "0ec3db4e44c56c2107a8a2b071dace75e4187fe9eb3b75fcadeec0300d5612c3",
+    "instance_fields": {
+      "p2p_commands": {
+        "original": [
+          "\"$(find build -type f -name Kokkos_CoreUnitTest_InitializeFinalize -perm -111 -print -quit)\" --gtest_filter=ExecutionEnvironmentNonInitializedOrFinalized_DeathTest.finalizeThenFree"
+        ],
+        "replacement": [
+          "./build/core/unit_test/Kokkos_CoreUnitTest_InitializeFinalize --gtest_filter=ExecutionEnvironmentNonInitializedOrFinalized_DeathTest.c_style_memory_management"
+        ]
+      }
+    },
+    "reason": "The existing c_style_memory_management test contains the finalize-then-free assertion; finalizeThenFree is not registered.",
+    "evidence": [
+      {
+        "path": "core/unit_test/TestExecutionEnvironmentNonInitializedOrFinalized.cpp",
+        "url": "https://github.com/kokkos/kokkos/blob/66014c0fe5b402d2a2ff40dfe2f43a99e6f0823f/core/unit_test/TestExecutionEnvironmentNonInitializedOrFinalized.cpp",
+        "sha256": "c3b84bb40b28025dafa552ef73e2130188fc038f05a5180637d101835b3cbcd2"
+      }
+    ]
+  },
+  "kokkos__kokkos-8838": {
+    "base_commit": "63fd412b488606b557e1456b00f4cf728586faf4",
+    "test_patch_sha256": "55f29e1206586356f99beb983c27ee8cb3e8b5000e14056e0fd6f7032c85de5e",
+    "instance_fields": {
+      "build_targets": {
+        "original": [
+          "Kokkos_ContainersUnitTest_Serial",
+          "Kokkos_CoreUnitTest_Serial1"
+        ],
+        "replacement": [
+          "Kokkos_ContainersUnitTest_Serial",
+          "Kokkos_CoreUnitTest_Serial1",
+          "Kokkos_CoreUnitTest_Serial_ViewSupport"
+        ]
+      },
+      "f2p_commands": {
+        "original": [
+          "\"$(find build -type f -name Kokkos_ContainersUnitTest_Serial -perm -111 -print -quit)\" --gtest_filter='*dyn_rank_view_layout_bug*'"
+        ],
+        "replacement": [
+          "./build/containers/unit_tests/Kokkos_ContainersUnitTest_Serial --gtest_filter='*.dyn_rank_view_layout_bug'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial_ViewSupport --gtest_filter='*.view_legacy_layout_member'"
+        ]
+      },
+      "p2p_commands": {
+        "original": [
+          "\"$(find build -type f -name Kokkos_ContainersUnitTest_Serial -perm -111 -print -quit)\" --gtest_filter='*dyn_rank_view_layout_member*'",
+          "\"$(find build -type f -name Kokkos_ContainersUnitTest_Serial -perm -111 -print -quit)\" --gtest_filter='*view_legacy_layout_member*'"
+        ],
+        "replacement": [
+          "./build/containers/unit_tests/Kokkos_ContainersUnitTest_Serial --gtest_filter='*.dyn_rank_view_layout_member'"
+        ]
+      }
+    },
+    "reason": "The newly added legacy-layout regression is compiled into ViewSupport; classify it as F2P and validate that classification, not as an existing P2P test.",
+    "evidence": [
+      {
+        "path": "containers/unit_tests/TestDynRankView_LayoutMember.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/63fd412b488606b557e1456b00f4cf728586faf4/containers/unit_tests/TestDynRankView_LayoutMember.hpp",
+        "sha256": "12c150ee3e595e4558e0e2db047b69aa6e161d23cd757c1cd8e8071be36c97ff"
+      },
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/63fd412b488606b557e1456b00f4cf728586faf4/core/unit_test/CMakeLists.txt",
+        "sha256": "81c8773ca49d9504a4a0037be134ee929ce7ae6dd789df166d40e36b91bba723"
+      }
+    ]
+  },
+  "kokkos__kokkos-9027": {
+    "base_commit": "5836b7c2df57227d26777912dd1a5f4b82b18fbd",
+    "test_patch_sha256": "29a2b2f214ea6d5cfceed16ae14810e5b5afe0b0a6c613bdeca70a1f066208ee",
+    "instance_fields": {
+      "p2p_commands": {
+        "original": [
+          "build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter=Serial_graph.graph_then_tag",
+          "build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter=Serial_graph.graph_then_tag"
+        ],
+        "replacement": [
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter=serial.graph_then_tag"
+        ]
+      }
+    },
+    "reason": "graph_then_tag uses TEST(TEST_CATEGORY, ...), not the graph fixture; it exists only in Serial1, so remove the duplicate lookup in Serial2.",
+    "evidence": [
+      {
+        "path": "core/unit_test/TestGraph.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/5836b7c2df57227d26777912dd1a5f4b82b18fbd/core/unit_test/TestGraph.hpp",
+        "sha256": "150ab047b994c18da3d7648bda9121ba4d29acc99738747152b2b1984181d88e"
+      },
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/5836b7c2df57227d26777912dd1a5f4b82b18fbd/core/unit_test/CMakeLists.txt",
+        "sha256": "ce59d679958ab2d53bdafbe0261a0725fccc6f4c17b1b269ed113677956eabdb"
+      },
+      {
+        "path": "core/unit_test/category_files/TestSerial_Category.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/5836b7c2df57227d26777912dd1a5f4b82b18fbd/core/unit_test/category_files/TestSerial_Category.hpp",
+        "sha256": "3e0e8bca51fbddafbe51f90faf0b1ac01c8f3718bc0ad00f8d0b7c9050654ed6"
+      }
+    ]
+  },
+  "kokkos__kokkos-9055": {
+    "base_commit": "ebc97ecea854d1b1ac1e35ec48aaf9d2adf8af42",
+    "test_patch_sha256": "6f8065b1a6838cee8b3de526da425f89054fb1962537c78d4583226467730445",
+    "instance_fields": {
+      "build_targets": {
+        "original": [
+          "Kokkos_CoreUnitTest_Serial1"
+        ],
+        "replacement": [
+          "Kokkos_CoreUnitTest_Serial1",
+          "Kokkos_CoreUnitTest_Serial2"
+        ]
+      },
+      "p2p_commands": {
+        "original": [
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 '--gtest_filter=*.view_copy_tests'"
+        ],
+        "replacement": [
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter='*.view_copy_tests'"
+        ]
+      }
+    },
+    "reason": "ViewCopy_a is compiled into Serial2, while the new deep-copy regression is built in Serial1.",
+    "evidence": [
+      {
+        "path": "core/unit_test/TestViewCopy_a.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/ebc97ecea854d1b1ac1e35ec48aaf9d2adf8af42/core/unit_test/TestViewCopy_a.hpp",
+        "sha256": "94118f06c78e737170527c002ca9aec77d848ea7a1d4621050b36733d20f860b"
+      },
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/ebc97ecea854d1b1ac1e35ec48aaf9d2adf8af42/core/unit_test/CMakeLists.txt",
+        "sha256": "2becd9fa79b92b2048727f64d1720dc3655801fb0d6568dd943565c60b01e58a"
+      }
+    ]
   }
 }

@@ -200,3 +200,52 @@ def test_reviewed_directory_test_target_uses_ctest_with_identical_scope(tmp_path
     assert normalize_test_command(old.replace("sparse/", "dense/"), instance=pinned) != new
     assert coverage_error(new, "No tests were found!!!", 0)
     assert coverage_error(new, "100% tests passed, 0 tests failed out of 4", 0) is None
+
+
+def test_reviewed_target_and_role_repairs_require_original_payload(tmp_path, monkeypatch):
+    import hashlib
+
+    from tinker_cookbook.recipes.kokkos_rl.dataset import test_commands
+    from tinker_cookbook.recipes.kokkos_rl.dataset.export_harbor import _test_script
+
+    _, instance = _local_instance(tmp_path)
+    instance = replace(
+        instance, f2p_commands=("./binary --gtest_filter='*.new'",), build_command=""
+    )
+    entry = {
+        "base_commit": instance.base_commit,
+        "test_patch_sha256": hashlib.sha256(instance.test_patch.encode()).hexdigest(),
+        "instance_fields": {
+            "build_targets": {
+                "original": list(instance.build_targets),
+                "replacement": ["RealTarget"],
+            },
+            "p2p_commands": {
+                "original": list(instance.p2p_commands),
+                "replacement": ["./binary --gtest_filter='*.existing'"],
+            },
+        },
+    }
+    monkeypatch.setattr(test_commands, "_reviewed_overrides", lambda: {instance.instance_id: entry})
+    repaired = test_commands.apply_reviewed_test_overrides(instance)
+    assert repaired.build_targets == ("RealTarget",)
+    assert repaired.f2p_commands == instance.f2p_commands
+    assert repaired.p2p_commands == ("./binary --gtest_filter='*.existing'",)
+    assert instance.p2p_commands == ("true",)
+    assert test_commands.apply_reviewed_test_overrides(repaired) == repaired
+    assert (
+        test_commands.apply_reviewed_test_overrides(
+            replace(instance, base_commit="other")
+        ).build_targets
+        == instance.build_targets
+    )
+    with pytest.raises(ValueError, match="different hidden test patch"):
+        test_commands.apply_reviewed_test_overrides(replace(instance, test_patch="changed"))
+    with pytest.raises(ValueError, match="review before applying"):
+        test_commands.apply_reviewed_test_overrides(
+            replace(instance, p2p_commands=("new annotation",))
+        )
+    script = _test_script(instance)
+    assert "RealTarget" in script
+    assert "*.existing" in script
+    assert "*.new" in script

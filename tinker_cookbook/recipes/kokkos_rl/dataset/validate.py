@@ -13,6 +13,7 @@ from pathlib import Path
 from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
 from tinker_cookbook.recipes.kokkos_rl.dataset.runtime_coverage import ERROR_MARKER
 from tinker_cookbook.recipes.kokkos_rl.dataset.test_commands import (
+    apply_reviewed_test_overrides,
     guarded_command,
     normalize_test_command,
 )
@@ -110,6 +111,7 @@ def validate_instance(
 ) -> ValidationReport:
     """Validate one instance in an incremental detached git worktree."""
 
+    instance = apply_reviewed_test_overrides(instance)
     if not instance.is_validation_ready:
         raise ValueError(
             "instance needs build_targets, f2p_commands, test_patch, and code_patch before validation"

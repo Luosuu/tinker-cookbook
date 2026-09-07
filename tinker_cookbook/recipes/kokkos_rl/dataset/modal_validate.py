@@ -13,6 +13,7 @@ from tinker_cookbook.recipes.kokkos_rl.dataset.ecosystem import get_repository_p
 from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
 from tinker_cookbook.recipes.kokkos_rl.dataset.runtime_coverage import ERROR_MARKER
 from tinker_cookbook.recipes.kokkos_rl.dataset.test_commands import (
+    apply_reviewed_test_overrides,
     guarded_command,
     normalize_test_command,
 )
@@ -368,6 +369,7 @@ async def validate_instance_in_sandbox(
 ) -> ValidationReport:
     """Run baseline, test-only failure, and gold-fix success in a sandbox."""
 
+    instance = apply_reviewed_test_overrides(instance)
     if not instance.is_validation_ready:
         raise ValueError(
             "instance needs build_targets, an F2P stage, test_patch, and code_patch "

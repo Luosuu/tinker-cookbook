@@ -36,6 +36,7 @@ from tinker_cookbook.recipes.kokkos_rl.dataset.modal_validate import (
 )
 from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
 from tinker_cookbook.recipes.kokkos_rl.dataset.test_commands import (
+    apply_reviewed_test_overrides,
     normalize_filter,
     normalize_test_command,
 )
@@ -745,7 +746,7 @@ async def annotate_and_validate_instance(
             )
             attempt.annotation = annotation
             previous_annotation = annotation
-            annotated = apply_annotations(instance, annotation)
+            annotated = apply_reviewed_test_overrides(apply_annotations(instance, annotation))
             validation_report = await validate_instance_in_sandbox(
                 annotated,
                 sandbox_timeout=sandbox_timeout,

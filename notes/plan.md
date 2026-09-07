@@ -557,3 +557,20 @@ base commit, preserving the test scope and enforcing nonempty nested runtime
 coverage. Prepare this change as snapshot v3; v2's four control gates continue
 against their frozen hashes. Validate 2864 separately before making any model
 attempt eligible.
+
+## Repair reviewed target and test-role annotations (2026-09-07)
+
+Seven further quarantined tasks need source-backed annotation repairs. Build
+Serial2 for ViewAPI_b (7308) and ViewCopy_a (9055); select the registered serial
+containers suite (7517), constructor-property test family (7605), and existing
+C-style finalize/free check (7675). Route 8838's new core legacy-layout test to
+ViewSupport and classify it as F2P, retaining the existing containers layout
+check as P2P; that F2P classification must pass validation before use. For 9027,
+run the existing serial.graph_then_tag once in its actual Serial1 executable.
+
+Pin these changes to the original instance, base commit, hidden test patch
+hash, and original annotation fields. Reject changed annotations rather than
+silently applying an outdated review. Apply the repaired build targets and
+command roles consistently to export and both validators. Preserve prior
+snapshots and prepare v4 with only these seven task changes. No model sampling
+or successful-gate claims are authorized until exact new hashes pass NOP/Oracle.

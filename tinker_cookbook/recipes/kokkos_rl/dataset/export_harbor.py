@@ -14,6 +14,7 @@ from tinker_cookbook.recipes.kokkos_rl.dataset.patching import (
     split_unified_diff,
 )
 from tinker_cookbook.recipes.kokkos_rl.dataset.test_commands import (
+    apply_reviewed_test_overrides,
     guard_source,
     normalize_test_command,
 )
@@ -42,6 +43,7 @@ def _clean_room_command(base_commit: str) -> str:
 
 
 def _dockerfile(instance: KokkosInstance) -> str:
+    instance = apply_reviewed_test_overrides(instance)
     profile = get_repository_profile(instance.repo)
     toolchain = str(instance.metadata.get("toolchain", instance.metadata.get("accelerator", "cpu")))
     image = {
@@ -133,6 +135,7 @@ def _shell_array(name: str, commands: tuple[str, ...]) -> str:
 
 
 def _test_script(instance: KokkosInstance) -> str:
+    instance = apply_reviewed_test_overrides(instance)
     build_command = _build_command(instance)
     # Bare --parallel overrides CMAKE_BUILD_PARALLEL_LEVEL with the native
     # default. Pass the intended job count explicitly to avoid verifier OOMs.
@@ -268,6 +271,7 @@ verification.
 
 
 def export_instance(instance: KokkosInstance, output_dir: Path, *, org: str = "swe-kokkos") -> Path:
+    instance = apply_reviewed_test_overrides(instance)
     if not instance.is_validation_ready:
         raise ValueError(f"{instance.instance_id} has not been annotated for validation")
     task_dir = output_dir / instance.instance_id

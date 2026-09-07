@@ -2,15 +2,53 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import shlex
+from dataclasses import replace
 from pathlib import Path
 
 from tinker_cookbook.recipes.kokkos_rl.dataset import runtime_coverage
 from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
 
 FILTER = re.compile(r"(--gtest_filter(?:=|\s+))(\"[^\"]*\"|'[^']*'|[^\s;&|]+)")
+
+
+def _reviewed_overrides():
+    return json.loads(Path(__file__).with_name("test_command_overrides.json").read_text())
+
+
+def apply_reviewed_test_overrides(instance: KokkosInstance) -> KokkosInstance:
+    """Apply reviewed target/role repairs only to the exact original annotation."""
+    entries = _reviewed_overrides()
+    entry = entries.get(instance.instance_id)
+    if not entry or entry["base_commit"] != instance.base_commit or "instance_fields" not in entry:
+        return instance
+    if hashlib.sha256(instance.test_patch.encode()).hexdigest() != entry["test_patch_sha256"]:
+        raise ValueError("Reviewed test annotation has a different hidden test patch")
+    updates: dict[str, tuple[str, ...]] = {}
+    for field, change in entry["instance_fields"].items():
+        if field not in {"build_targets", "f2p_commands", "p2p_commands"}:
+            raise ValueError("Unsupported reviewed annotation field")
+        current = list(getattr(instance, field))
+        expected = [change["original"], change["replacement"]]
+        if field.endswith("commands"):
+            current = [
+                normalize_test_command(c, after_test_patch=False, instance=instance)
+                for c in current
+            ]
+            expected = [
+                [
+                    normalize_test_command(c, after_test_patch=False, instance=instance)
+                    for c in values
+                ]
+                for values in expected
+            ]
+        if current not in expected:
+            raise ValueError(f"Reviewed {field} annotation differs; review before applying")
+        updates[field] = tuple(change["replacement"])
+    return replace(instance, **updates)
 
 
 def _renamed_cases(test_patch: str) -> dict[str, str]:
@@ -65,7 +103,7 @@ def normalize_test_command(
     renames = _renamed_cases(test_patch) if after_test_patch else {}
     reviewed: dict[str, str] = {}
     if instance is not None:
-        overrides = json.loads(Path(__file__).with_name("test_command_overrides.json").read_text())
+        overrides = _reviewed_overrides()
         entry = overrides.get(instance.instance_id)
         if entry is not None and entry["base_commit"] == instance.base_commit:
             reviewed = entry.get("selectors", {})
