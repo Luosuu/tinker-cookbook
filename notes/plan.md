@@ -1107,3 +1107,31 @@ evidence before grading. A grading exception must retain known response counts
 and a separate incomplete-trajectory failure record, rather than reporting zero
 turns and discarding the sampled actions. An unmatched sampling request remains
 uncertain; this recording path adds no timeout, retry, or replacement sample.
+
+Regrade the 83 complete saved external-model candidates against the final v14
+verifier without generating replacement trajectories. Freeze the candidate
+inventory, ledger, independent review, original split, task snapshots, and all
+referenced mutable source bytes in a separate content-addressed input bundle.
+Recheck candidate stage, patch SHA, baseline/HEAD, original request budgets,
+identical prompts and build environments, resource policies, positive scope,
+and the 64-training/19-heldout partition before opening a sandbox client.
+Heldout candidates remain evaluation-only.
+
+Give each saved candidate one explicit grading identity binding the complete
+verifier file tree, environment, resource policy, source ledger, and regrading
+implementation. Compare the two historical grader-transport recoveries with
+that identity: reuse any already completed same-verifier score, including
+wrong answers, and block partial same-verifier attempts. A changed v14
+verifier permits a separate, explicitly attributed score; preserve the old
+reward, error, and original inference cost without counting inference twice.
+
+Use at most two ConTree sandboxes, single-process builds, the fixed 900-second
+grader limit, and the reviewed bounded same-operation status-GET recovery.
+Reserve the other six shared slots, including the three unresolved original
+model requests and the continuing single-slot model evaluation. Require the
+previous native baseline process to have exited. Persist an exclusive marker
+before each grading attempt, retain every failure, and never automatically
+retry it. If a dispatch guard changes, stop new work and drain in-flight
+sandboxes before declaring the phase blocked. Run negative provenance,
+reuse, interruption, and drain tests plus an actual frozen-input CLI dry-run
+before launching the separately recorded zero-inference phase.
