@@ -128,7 +128,9 @@ def validate_catalog(catalog: dict[str, object], configs: dict[str, CLIConfig]) 
     if not set(MODELS).issubset(entries):
         raise ValueError("An exact requested model is unavailable")
     for model in MODELS:
-        prices = mapping(entries[model].get("pricing"))
+        if not isinstance(entries[model].get("pricing"), dict):
+            raise ValueError("Verbose catalog pricing is unavailable; refuse generation")
+        prices = mapping(entries[model]["pricing"])
         expected = configs[model]
         if Decimal(str(prices.get("prompt"))) * 1_000_000 != Decimal(
             str(expected.input_price_per_million)
@@ -340,7 +342,8 @@ async def run(config: Config) -> None:
                     break
                 await asyncio.sleep(config.poll_seconds)
             if primary is None:
-                catalog = await client.models.list()
+                # Nebius exposes prices only on its documented verbose catalog.
+                catalog = await client.models.list(extra_query={"verbose": "true"})
                 catalog_record = catalog.model_dump(mode="json")
                 write_exclusive(
                     phase

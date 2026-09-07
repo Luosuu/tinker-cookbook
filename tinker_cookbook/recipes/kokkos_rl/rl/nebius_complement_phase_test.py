@@ -123,6 +123,8 @@ def test_catalog_must_preserve_exact_models_and_pricing():
         {"id": m, "pricing": {"prompt": "0.00000015", "completion": "0.0000005"}} for m in MODELS
     ]
     validate_catalog({"data": rows}, configs)
+    with pytest.raises(ValueError, match="Verbose catalog pricing"):
+        validate_catalog({"data": [{"id": m} for m in MODELS]}, configs)
     rows[0]["pricing"]["prompt"] = "0.0000015"
     with pytest.raises(ValueError, match="pricing changed"):
         validate_catalog({"data": rows}, configs)
@@ -271,7 +273,8 @@ async def test_full_dry_run_reserves_original_queue_without_clients_or_claims(
     async def unused_provider(**kwargs):
         raise AssertionError("This controller test must not generate remotely")
 
-    async def catalog():
+    async def catalog(**kwargs):
+        assert kwargs == {"extra_query": {"verbose": "true"}}
         rows = [
             {"id": m, "pricing": {"prompt": "0.000002", "completion": "0.000012"}} for m in MODELS
         ]
