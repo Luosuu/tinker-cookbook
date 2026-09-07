@@ -954,3 +954,16 @@ Test exact scope, unknown payload rejection, idempotence and role compatibility.
 This prepares a reviewable exporter change only: do not modify frozen snapshots
 or start a new verifier/model phase for these tasks yet. Keep their scope holds
 until the stronger checks receive independent paired validation.
+
+A further positive-scope audit found 7148's hidden TestArray.cpp constraints are
+not part of the runtime Serial1 target. Read-only inspection of the exact base
+CMake confirms that file belongs to CoreTestCompileOnly; the successful old
+Oracle compiled only Serial1. Prepare an exact-base/hidden-hash annotation repair
+adding the compile-only target and F2P build. Classify the newly added
+array_operator_equal runtime case as F2P and retain the original compatibility
+target build. Hidden source remains byte-identical. A read-only all-100 standalone
+C++ compilation audit found no other newly confirmed omission among completed
+tasks; pending and explicitly unconfigured GPU companion units remain review
+items. Keep 7148 blocked until a new frozen task and independent NOP/Oracle pair
+prove both static constraints and runtime equality checks execute. This change
+prepares that stronger verifier but does not launch it or alter old scores.

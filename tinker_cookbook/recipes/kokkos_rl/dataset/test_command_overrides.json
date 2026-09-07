@@ -1714,5 +1714,47 @@
         "sha256": "781fa8d23f108ec1091267193862cb06259d5ad0468edb426c680ba6972653cf"
       }
     ]
+  },
+  "kokkos__kokkos-7148": {
+    "base_commit": "d306b408b5838bc60b3e800bd1323ab2926cdd90",
+    "test_patch_sha256": "7f1d24d9ad1ad0534802c674962b673ee3514378c9e11a1c62c4cfbde2a77faa",
+    "instance_fields": {
+      "build_targets": {
+        "original": [
+          "Kokkos_CoreUnitTest_Serial1"
+        ],
+        "replacement": [
+          "Kokkos_CoreUnitTest_Serial1",
+          "Kokkos_CoreTestCompileOnly"
+        ]
+      },
+      "f2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial1"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_CoreTestCompileOnly",
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial1",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.array_operator_equal'"
+        ]
+      },
+      "p2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial1",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='TEST_CATEGORY.array_operator_equal'"
+        ],
+        "replacement": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial1"
+        ]
+      }
+    },
+    "reason": "Hidden TestArray.cpp adds equality-detection constraints to COMPILE_ONLY_SOURCES, while the previous annotation only built Serial1. Build the compile-only target too, and classify the newly added array_operator_equal runtime case as F2P. Keep original compatibility target compilation.",
+    "evidence": [
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/d306b408b5838bc60b3e800bd1323ab2926cdd90/core/unit_test/CMakeLists.txt",
+        "sha256": "cc6d4654899037e024411dd2a70a8ab0d894182ce7e49dfce9cb2ae8d08e28a1"
+      }
+    ]
   }
 }
