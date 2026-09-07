@@ -574,3 +574,11 @@ silently applying an outdated review. Apply the repaired build targets and
 command roles consistently to export and both validators. Preserve prior
 snapshots and prepare v4 with only these seven task changes. No model sampling
 or successful-gate claims are authorized until exact new hashes pass NOP/Oracle.
+
+The initial four v2 control validations all ended in ConTree ApiTimeoutError
+without a verdict, after the original validator exited. Retain those failures
+and permit one explicit infrastructure retry in a separate directory, using
+identical task hashes, one sandbox, no model calls, and the unchanged SDK HTTP
+timeout. Record the prior failure, failed phase, endpoint, and timeout type.
+A fresh read-only token-info probe succeeded before this retry. Any further
+failure remains blocked for diagnosis; there is no automatic retry loop.
