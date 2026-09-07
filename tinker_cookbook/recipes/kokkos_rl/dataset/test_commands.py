@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import re
 import shlex
 from pathlib import Path
 
 from tinker_cookbook.recipes.kokkos_rl.dataset import runtime_coverage
+from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
 
 FILTER = re.compile(r"(--gtest_filter(?:=|\s+))(\"[^\"]*\"|'[^']*'|[^\s;&|]+)")
 
@@ -54,9 +56,19 @@ def normalize_filter(selector: str, *, renames: dict[str, str] | None = None) ->
 
 
 def normalize_test_command(
-    command: str, *, test_patch: str = "", after_test_patch: bool = True
+    command: str,
+    *,
+    test_patch: str = "",
+    after_test_patch: bool = True,
+    instance: KokkosInstance | None = None,
 ) -> str:
     renames = _renamed_cases(test_patch) if after_test_patch else {}
+    reviewed: dict[str, str] = {}
+    if instance is not None:
+        overrides = json.loads(Path(__file__).with_name("test_command_overrides.json").read_text())
+        entry = overrides.get(instance.instance_id)
+        if entry is not None and entry["base_commit"] == instance.base_commit:
+            reviewed = entry["selectors"]
     # Quoting the whole --flag=value argument is valid shell syntax too.
     command = re.sub(
         r"(['\"])(--gtest_filter=)([^'\"]*)\1",
@@ -75,6 +87,7 @@ def normalize_test_command(
             value = value[1:-1]
         if "'" in value or '"' in value:
             raise ValueError("GoogleTest filter contains an ambiguous literal quote")
+        value = reviewed.get(value, value)
         return "--gtest_filter=" + shlex.quote(normalize_filter(value, renames=renames))
 
     command = FILTER.sub(replace_filter, command)

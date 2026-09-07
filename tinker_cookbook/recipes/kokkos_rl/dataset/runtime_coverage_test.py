@@ -150,3 +150,35 @@ def test_exported_verifier_checks_runtime_p2p_even_for_compile_failure_tasks(
         p2p_commands=(f"python3 {shlex.quote(str(fake))} --gtest_filter=TEST_CATEGORY.case",),
     )
     assert _run_verifier(tmp_path, repo, instance) == str(int(selected > 0))
+
+
+def test_reviewed_selectors_are_instance_and_base_scoped_and_idempotent(tmp_path):
+    import json
+    from pathlib import Path
+
+    from tinker_cookbook.recipes.kokkos_rl.dataset.export_harbor import _test_script
+
+    _, instance = _local_instance(tmp_path)
+    overrides = json.loads(Path(__file__).with_name("test_command_overrides.json").read_text())
+    expected = {
+        "kokkos__kokkos-7428": "serial.task_*",
+        "kokkos__kokkos-8594": "serial.scatterview:serial.scatterview_devicetype",
+        "kokkos__kokkos-8967": "serial_DeathTest.view_subview_constructor_layout_compatibility",
+    }
+    for task, selector in expected.items():
+        entry = overrides[task]
+        old = next(iter(entry["selectors"]))
+        pinned = replace(instance, instance_id=task, base_commit=entry["base_commit"])
+        command = "./binary --gtest_filter=" + shlex.quote(old)
+        actual = normalize_test_command(command, instance=pinned)
+        assert shlex.split(actual)[1] == "--gtest_filter=" + selector
+        assert normalize_test_command(actual, instance=pinned) == actual
+        for unrelated in (
+            replace(pinned, instance_id="another-instance"),
+            replace(pinned, base_commit="0" * 40),
+        ):
+            assert normalize_test_command(command, instance=unrelated) == command
+        script = _test_script(replace(pinned, p2p_commands=(command,)))
+        assert selector in script
+        assert old not in script
+        assert all(item["url"].endswith(item["path"]) for item in entry["evidence"])

@@ -672,7 +672,7 @@ def _normalize_toolchain_annotation(
         commands = annotation.get(key)
         if isinstance(commands, list):
             annotation[key] = [
-                normalize_test_command(command, after_test_patch=False)
+                normalize_test_command(command, after_test_patch=False, instance=instance)
                 if isinstance(command, str)
                 else command
                 for command in commands

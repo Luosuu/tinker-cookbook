@@ -183,8 +183,8 @@ run_checked() {{
 KOKKOS_RUNTIME_GUARD
 }}
 
-{_shell_array("f2p_commands", tuple(normalize_test_command(command, test_patch=instance.test_patch) for command in instance.f2p_commands))}
-{_shell_array("p2p_commands", tuple(normalize_test_command(command, test_patch=instance.test_patch) for command in instance.p2p_commands))}
+{_shell_array("f2p_commands", tuple(normalize_test_command(command, test_patch=instance.test_patch, instance=instance) for command in instance.f2p_commands))}
+{_shell_array("p2p_commands", tuple(normalize_test_command(command, test_patch=instance.test_patch, instance=instance) for command in instance.p2p_commands))}
 for command in "${{f2p_commands[@]}}" "${{p2p_commands[@]}}"; do
   if [[ -n "$command" ]] && ! run_checked "$command"; then
     exit 0

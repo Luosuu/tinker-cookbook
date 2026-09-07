@@ -523,3 +523,21 @@ each remaining task. Restore eligible records only after rechecking the known
 zero-test quarantine rules; compromised gates stay quarantined. This adds
 patch retention without changing model sampling, task hashes, result identities
 or the fixed 40-turn budget, and never resamples completed attempts.
+
+## Review exact runtime selectors (2026-09-07)
+
+The cached original source confirms three selectors need explicit corrections
+beyond syntax normalization: 7428 uses the executable name as a GoogleTest
+suite, 8594 uses the wrong case for ScatterView tests, and 8967 invents a death
+test suite name. Pin each reviewed replacement to the instance and base commit;
+record source paths and SHA-256 evidence. Apply the same replacements in export,
+local validation, sandbox validation, and annotation. Keep unrelated selectors
+and revisions unchanged, and retain the runtime coverage guard.
+
+Prepare a second corrected snapshot with these replacements, preserving the
+first unvalidated snapshot and original experiment payload. Before model calls,
+validate exact new hashes with NOP and Oracle. Initial coverage checks exercise
+an unchanged control (6375), build-stage runtime coverage (7040), renamed tests
+(7088), and CTest (7074), using one additional sandbox at a time. Then validate
+the three manually reviewed selectors. No recovery sampling or regrading claims
+are permitted without the corresponding corrected verifier evidence.

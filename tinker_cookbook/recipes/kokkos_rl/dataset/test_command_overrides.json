@@ -1,0 +1,61 @@
+{
+  "kokkos__kokkos-7428": {
+    "base_commit": "5891899e00ea10ecedc6e80aa8d3d9bfef300692",
+    "selectors": {
+      "*CoreUnitTest_Serial1*": "serial.task_*"
+    },
+    "evidence": [
+      {
+        "path": "core/unit_test/serial/TestSerial_Task.cpp",
+        "url": "https://github.com/kokkos/kokkos/blob/5891899e00ea10ecedc6e80aa8d3d9bfef300692/core/unit_test/serial/TestSerial_Task.cpp",
+        "sha256": "3f6049d7b9bcbdbd41db80cb238d2eea0bb4916a3f5ad9a645fa3fd3572f67a9"
+      },
+      {
+        "path": "core/unit_test/TestTaskScheduler_single.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/5891899e00ea10ecedc6e80aa8d3d9bfef300692/core/unit_test/TestTaskScheduler_single.hpp",
+        "sha256": "804d8d51c29863a963cc1ed215477fd44c9421a01420db3fddd0cafc6384170e"
+      },
+      {
+        "path": "core/unit_test/category_files/TestSerial_Category.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/5891899e00ea10ecedc6e80aa8d3d9bfef300692/core/unit_test/category_files/TestSerial_Category.hpp",
+        "sha256": "367facd15cee87b0c7d0cef09c8cf57622a1d520cd4b1a52cd3041eba3d9094b"
+      }
+    ]
+  },
+  "kokkos__kokkos-8594": {
+    "base_commit": "a09ef1205e310a4817a6fab5793c03da0fdbb5d0",
+    "selectors": {
+      "*Scatter*": "serial.scatterview:serial.scatterview_devicetype"
+    },
+    "evidence": [
+      {
+        "path": "containers/unit_tests/TestScatterView.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/a09ef1205e310a4817a6fab5793c03da0fdbb5d0/containers/unit_tests/TestScatterView.hpp",
+        "sha256": "ba17ea7959feabde1cb213396a65c8609308f98294e6a017433720baf5000ff2"
+      },
+      {
+        "path": "core/unit_test/category_files/TestSerial_Category.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/a09ef1205e310a4817a6fab5793c03da0fdbb5d0/core/unit_test/category_files/TestSerial_Category.hpp",
+        "sha256": "3e0e8bca51fbddafbe51f90faf0b1ac01c8f3718bc0ad00f8d0b7c9050654ed6"
+      }
+    ]
+  },
+  "kokkos__kokkos-8967": {
+    "base_commit": "f58d70314ce28b4ccff5b078e2187226e48f09b2",
+    "selectors": {
+      "SerialDeath.view_subview_constructor_layout_compatibility": "serial_DeathTest.view_subview_constructor_layout_compatibility"
+    },
+    "evidence": [
+      {
+        "path": "core/unit_test/TestSubView_c15.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/f58d70314ce28b4ccff5b078e2187226e48f09b2/core/unit_test/TestSubView_c15.hpp",
+        "sha256": "f1485f205366b78492d2b82735d461ba50766fec3fae154ca2534220e663c1e8"
+      },
+      {
+        "path": "core/unit_test/category_files/TestSerial_Category.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/f58d70314ce28b4ccff5b078e2187226e48f09b2/core/unit_test/category_files/TestSerial_Category.hpp",
+        "sha256": "3e0e8bca51fbddafbe51f90faf0b1ac01c8f3718bc0ad00f8d0b7c9050654ed6"
+      }
+    ]
+  }
+}

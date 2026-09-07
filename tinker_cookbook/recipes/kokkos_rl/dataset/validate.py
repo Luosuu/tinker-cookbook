@@ -141,7 +141,10 @@ def validate_instance(
                     report,
                     _run(
                         normalize_test_command(
-                            command, test_patch=instance.test_patch, after_test_patch=False
+                            command,
+                            test_patch=instance.test_patch,
+                            after_test_patch=False,
+                            instance=instance,
                         ),
                         cwd=worktree,
                         timeout=command_timeout,
@@ -175,7 +178,9 @@ def validate_instance(
                         _record(
                             report,
                             _run(
-                                normalize_test_command(command, test_patch=instance.test_patch),
+                                normalize_test_command(
+                                    command, test_patch=instance.test_patch, instance=instance
+                                ),
                                 cwd=worktree,
                                 timeout=command_timeout,
                                 expected_exit="nonzero",
@@ -197,7 +202,9 @@ def validate_instance(
                 _record(
                     report,
                     _run(
-                        normalize_test_command(command, test_patch=instance.test_patch),
+                        normalize_test_command(
+                            command, test_patch=instance.test_patch, instance=instance
+                        ),
                         cwd=worktree,
                         timeout=command_timeout,
                         runtime_check=True,
