@@ -18,11 +18,38 @@ from tinker_cookbook.recipes.kokkos_rl.rl.self_train import (
     RecordedDataset,
     RecordedDatasetBuilder,
     choose_donors,
+    grade_patch,
     validate_instruction_quality,
 )
 from tinker_cookbook.renderers.base import ToolCall
 from tinker_cookbook.rl.types import Trajectory, Transition
 from tinker_cookbook.sandbox import SandboxResult
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("upload_exit_code", [-1, 1])
+async def test_failed_candidate_upload_stops_before_apply_and_cleans_up(
+    tmp_path: Path, upload_exit_code: int
+) -> None:
+    (tmp_path / "metadata.json").write_text(
+        json.dumps({"base_commit": "a" * 40, "merge_commit": "b" * 40})
+    )
+    sandbox = AsyncMock()
+    sandbox.run_command.return_value = SandboxResult(stdout="", stderr="", exit_code=0)
+    sandbox.write_file.return_value = SandboxResult(
+        stdout="", stderr="upload transport failure", exit_code=upload_exit_code
+    )
+    factory = AsyncMock(return_value=sandbox)
+    task = HarborTask("upload-test", "Apply a production patch", tmp_path)
+
+    with pytest.raises(RuntimeError, match="Candidate patch upload failed"):
+        await grade_patch(task, factory, "candidate source patch")
+
+    # Only the initial clean-room check ran; never apply a missing or stale patch.
+    sandbox.run_command.assert_awaited_once()
+    assert "git apply" not in sandbox.run_command.call_args.args[0]
+    sandbox.write_file.assert_awaited_once_with("/tmp/candidate.patch", "candidate source patch")
+    sandbox.cleanup.assert_awaited_once()
 
 
 def test_known_instruction_contradiction_blocks_training(tmp_path: Path) -> None:

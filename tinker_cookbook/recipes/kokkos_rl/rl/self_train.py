@@ -203,7 +203,12 @@ async def grade_patch(
         if check.exit_code != 0:
             raise RuntimeError("Clean-room Git or hidden-material check failed")
         if patch is not None:
-            await sandbox.write_file("/tmp/candidate.patch", patch)
+            uploaded = await sandbox.write_file("/tmp/candidate.patch", patch)
+            if uploaded.exit_code != 0:
+                raise RuntimeError(
+                    "Candidate patch upload failed: "
+                    f"exit={uploaded.exit_code}, stderr={uploaded.stderr[-1000:]}"
+                )
             applied = await sandbox.run_command(
                 "git apply --whitespace=nowarn /tmp/candidate.patch",
                 workdir="/workspace/repo",
