@@ -13,6 +13,7 @@ import secrets
 import shlex
 import socket
 import time
+import tomllib
 import uuid
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -26,15 +27,20 @@ if TYPE_CHECKING:
 class ApptainerSandbox:
     """One persistent container per episode, with async Cookbook operations."""
 
-    def __init__(self, workspace: ApptainerWorkspace, timeout: int) -> None:
+    def __init__(
+        self, workspace: ApptainerWorkspace, timeout: int, default_workdir: str | None = None
+    ) -> None:
         self._workspace = workspace
         self._id = f"apptainer-{uuid.uuid4().hex}"
         self._deadline = time.monotonic() + timeout
         self._closed = False
         self._lock = asyncio.Lock()
+        self._default_workdir = default_workdir
 
     @classmethod
-    async def create(cls, sif_file: str | Path, timeout: int = 1800) -> ApptainerSandbox:
+    async def create(
+        cls, sif_file: str | Path, timeout: int = 1800, default_workdir: str | None = None
+    ) -> ApptainerSandbox:
         from openhands.workspace import ApptainerWorkspace
 
         # Set once for this worker process; never forward the Tinker API key.
@@ -49,7 +55,7 @@ class ApptainerSandbox:
             forward_env=["SESSION_API_KEY", "OH_ENABLE_VSCODE"],
             health_check_timeout=180,
         )
-        return cls(workspace, timeout)
+        return cls(workspace, timeout, default_workdir)
 
     @property
     def sandbox_id(self) -> str:
@@ -76,7 +82,7 @@ class ApptainerSandbox:
             result = await asyncio.to_thread(
                 self._workspace.execute_command,
                 command,
-                cwd=workdir,
+                cwd=workdir if workdir is not None else self._default_workdir,
                 timeout=min(timeout, remaining),
             )
         return SandboxResult(
@@ -145,4 +151,9 @@ async def apptainer_sandbox_factory(env_dir: Path, timeout: int) -> ApptainerSan
     sif = Path(pointer.read_text().strip()) if pointer.exists() else env_dir / "agent-server.sif"
     if not sif.is_absolute():
         sif = (env_dir / sif).resolve() if pointer.exists() else sif.resolve()
-    return await ApptainerSandbox.create(sif, timeout)
+    config_path = env_dir.parent / "task.toml"
+    config = tomllib.loads(config_path.read_text()) if config_path.exists() else {}
+    workdir = config.get("environment", {}).get("workdir")
+    if workdir is not None and (not isinstance(workdir, str) or not workdir.startswith("/")):
+        raise ValueError("environment.workdir must be an absolute container path")
+    return await ApptainerSandbox.create(sif, timeout, default_workdir=workdir)

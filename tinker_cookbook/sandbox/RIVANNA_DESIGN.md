@@ -134,7 +134,7 @@ OpenHands 默认的 VSCode 辅助服务在并发试验中使用同一个 8001 �
 
 测试账号没有直接的 subuid 映射，Apptainer 使用 root-mapped namespace 与 host fakeroot 的组合。简单文件操作、程序执行和 verifier 已成功，但这不代表拥有完整 root 语义，任意 `apt install`、`chown`、切换用户或系统服务仍需逐题验证。
 
-当前 `HarborBashTool` 显式使用 `workdir="/"`；verifier 从 `/root` 运行。**真实任务依赖 Docker `WORKDIR` 或 `task.toml` 工作目录时，需要另外接入，不能认为当前实现自动保留了这些语义。** 集成测试使用绝对 `/app/...` 路径避开了该问题。
+Rebase 到 `science-rl` 后，`HarborBashTool` 使用 `workdir=None`。Adapter 从 `task.toml` 的 `environment.workdir` 读取默认容器工作目录；调用方显式指定的目录优先，因此 verifier 仍可从 `/root` 运行。未填写该配置时沿用 OpenHands 的默认目录；adapter 不解析 Dockerfile 的 `WORKDIR`。
 
 `cleanup()` 返回后，HTTP listener 可能稍晚退出。Adapter 在上游 cleanup 后增加最多 20 秒的端口关闭等待，以实际停止监听作为检查条件。这不等于已经验证所有子进程和端口都被完整回收。
 
