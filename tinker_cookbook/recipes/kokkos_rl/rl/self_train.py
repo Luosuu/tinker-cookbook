@@ -358,6 +358,7 @@ async def main(config: Config) -> None:
                     Path(__file__).resolve(),
                     Path(__file__).with_name("qualified_self_train.py").resolve(),
                     Path(__file__).with_name("rollout_data.py").resolve(),
+                    Path(__file__).with_name("candidate_artifact.py").resolve(),
                     Path(__file__).parents[2] / "harbor_rl/eval.py",
                 )
             }

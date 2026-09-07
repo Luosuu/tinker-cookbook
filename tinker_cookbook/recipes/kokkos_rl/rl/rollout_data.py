@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import json
 import re
-import shlex
 from pathlib import Path
 from typing import TypedDict
 
 from tinker_cookbook.recipes.harbor_rl.harbor_env import HarborTask
 from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborReward
+from tinker_cookbook.recipes.kokkos_rl.rl.candidate_artifact import capture_candidate
 from tinker_cookbook.renderers.base import Message, message_to_jsonable
 from tinker_cookbook.rl.data_processing import trajectory_to_data
 from tinker_cookbook.rl.types import Trajectory
@@ -45,7 +45,11 @@ def command_audit(history: list[Message]) -> list[str]:
                 r"github\.com|api\.github|git\s+(?:show|log|cherry-pick|fetch|pull)", arguments
             ):
                 flags.add("answer_lookup")
-            if re.search(r"/tests/|/solution/|/logs/verifier|test\.patch|gold\.patch", arguments):
+            if re.search(
+                r"(?<![\w./-])/(?:tests|solution)(?:/|(?=[\s\"'\\]|$))"
+                r"|/logs/verifier|test\.patch|gold\.patch",
+                arguments,
+            ):
                 flags.add("verifier_access")
     return sorted(flags)
 
@@ -72,23 +76,15 @@ class RolloutRecorder:
 
     async def __call__(self, history: list[Message]) -> tuple[float, dict[str, float]]:
         self.history = history
-        metadata = json.loads((self.task.task_dir / "metadata.json").read_text())
-        baseline = metadata["base_commit"]
-        if not re.fullmatch(r"[0-9a-f]{40}", baseline):
-            raise ValueError("Invalid base commit")
-        # Intent-to-add makes new source files visible to diff. Run only after
-        # the agent has finished; do not stage or alter source file contents.
-        result = await self.sandbox.run_command(
-            "git add --intent-to-add -- . && git --no-replace-objects diff "
-            f"--no-ext-diff --binary {shlex.quote(baseline)} -- .",
-            workdir="/workspace/repo",
-            timeout=120,
-            max_output_bytes=2_000_000,
-        )
-        if result.exit_code != 0 or len(result.stdout.encode()) >= 2_000_000:
+        # Do not stage files: intent-to-add turns ignored-by-the-verifier
+        # untracked build outputs into tracked changes and can change rewards.
+        self.directory.mkdir(parents=True, exist_ok=True)
+        await capture_candidate(self.sandbox, task=self.task, results_dir=self.directory)
+        metadata = json.loads((self.directory / "candidate.json").read_text())
+        if not metadata["complete"]:
             self.capture_error = "patch_capture_failed_or_truncated"
         else:
-            self.patch = result.stdout
+            self.patch = (self.directory / "candidate.patch").read_text()
         return await self.reward_fn(history)
 
     def save(self, trajectory: Trajectory) -> None:

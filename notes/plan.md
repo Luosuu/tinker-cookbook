@@ -1090,3 +1090,13 @@ artifacts. Once reviewed, reuse those four results and finish the original
 training-data collection. Disable automatic infrastructure retries in this
 qualified path and journal requested slots before evaluation; incomplete or
 ambiguous prior slots require explicit recovery instead of resampling.
+
+Candidate recording must not change the index inspected by the verifier.
+Staging untracked build outputs with intent-to-add can move generated unit-test
+files into the tracked diff, trigger a protected-path rejection, and overflow
+the patch capture limit. Reuse the read-only candidate exporter, retain its
+integrity metadata, and pin that exporter in new self-training identities.
+Distinguish absolute hidden-test paths from ordinary repository test paths in
+command auditing. Existing affected evaluations retain their original results
+and require an explicit provenance and scoring review before collection; do
+not resume them by changing pinned source hashes or resampling failed slots.
