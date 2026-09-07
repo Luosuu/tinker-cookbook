@@ -1135,3 +1135,24 @@ retry it. If a dispatch guard changes, stop new work and drain in-flight
 sandboxes before declaring the phase blocked. Run negative provenance,
 reuse, interruption, and drain tests plus an actual frozen-input CLI dry-run
 before launching the separately recorded zero-inference phase.
+
+### Retain a reviewed provider failure and continue untouched pairs
+
+The qualified Nebius controller stopped after a received HTTP 500 on the
+thirteenth Flash request for task 7605. Preserve the twelve raw responses,
+known usage, successful earlier source edit/readback, and the final request's
+unknown usage; never resample this claimed pair. A contemporaneous sandbox
+status-GET 500 during an independent saved-candidate grade remains a separate
+unscored error and is not retried.
+
+Add an explicit terminal-error review receipt to the scheduling preflight.
+Pin the original claim, phase identity, exact task hash, complete request and
+result evidence, and the decision to retain the failure without retry. Require
+two separated, recent, read-only health checks of the exact inference catalog
+and an existing sandbox operation before continuing only the 216 unattempted
+pairs in the existing single model slot. Keep the sampling protocol and phase
+identity unchanged and record the review receipt and new scheduling code in a
+separate launch. Test rejection of altered evidence, received final responses,
+missing responses, changed identities, absent or stale health checks, and
+retry authorization. Run the actual dry-run before dispatch. Do not change
+code pinned by the still-running saved-candidate grading phase.

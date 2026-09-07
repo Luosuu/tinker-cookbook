@@ -47,6 +47,7 @@ from tinker_cookbook.recipes.kokkos_rl.rl.nebius_transport import (
     create_nebius_client,
 )
 from tinker_cookbook.recipes.kokkos_rl.rl.resource_sandbox import create_resource_sandbox_factory
+from tinker_cookbook.recipes.kokkos_rl.rl.terminal_error_review import reviewed_terminal_errors
 from tinker_cookbook.recipes.kokkos_rl.rl.validate_snapshot import policy_for_task
 from tinker_cookbook.recipes.kokkos_rl.rl.validation_recovery import mapping, read_json
 from tinker_cookbook.sandbox.contree_polling import OperationPollPolicy, create_polling_client
@@ -69,6 +70,7 @@ class Config:
     dispatch: bool = False
     max_new_pairs: int | None = 1
     poll_seconds: int = 30
+    terminal_error_reviews: tuple[tuple[str, str], ...] = ()
 
 
 def evaluation_config(
@@ -227,6 +229,9 @@ async def run(config: Config) -> None:
     if not identity_path.exists():
         write_exclusive(identity_path, identity)
     identity_sha = pinned_file(identity_path)["sha256"]
+    reviewed_errors = reviewed_terminal_errors(
+        config.terminal_error_reviews, phase, identity_sha, hashes
+    )
     ledger = original / "complementary_pair_ledger"
     pending = []
     completed = []
@@ -253,8 +258,10 @@ async def run(config: Config) -> None:
                 ]
                 if len(rows) != 1 or mapping(rows[0]).get("task_name") != task.task_name:
                     raise ValueError("Ambiguous existing result")
-                if (trial / "requests").exists() and list(
-                    (trial / "requests").glob("*/unreceived_or_unpersisted_response.json")
+                if (
+                    (trial / "requests").exists()
+                    and list((trial / "requests").glob("*/unreceived_or_unpersisted_response.json"))
+                    and (model, task.task_name) not in reviewed_errors
                 ):
                     raise ValueError("Uncertain generation usage requires explicit recovery review")
                 completed.append({"model": model, **mapping(rows[0])})
