@@ -541,3 +541,10 @@ an unchanged control (6375), build-stage runtime coverage (7040), renamed tests
 (7088), and CTest (7074), using one additional sandbox at a time. Then validate
 the three manually reviewed selectors. No recovery sampling or regrading claims
 are permitted without the corresponding corrected verifier evidence.
+
+The v2 control validator uses its own process lock and output directory and
+waits until the original validator process has actually exited before opening
+any sandbox. It validates the four initial cases serially and refuses to replay
+an existing attempt. Waiting consumes no model calls or sandbox slots; the
+ongoing Nebius worker retains its four-slot limit. Record the validator script
+hash, repository commit, fixed snapshot hashes, and NOP/Oracle evidence.
