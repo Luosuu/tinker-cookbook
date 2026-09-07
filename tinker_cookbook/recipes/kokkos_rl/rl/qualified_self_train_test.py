@@ -142,9 +142,11 @@ async def test_resource_factory_preserves_gpu_and_cpu_policies(tmp_path, monkeyp
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("interrupt", [False, True])
+@pytest.mark.parametrize(
+    "scenario", ["complete", "interrupt", "prior_empty_error", "new_empty_error"]
+)
 async def test_pilot_counts_toward_baseline_and_interrupted_slots_never_resample(
-    tmp_path, monkeypatch, interrupt
+    tmp_path, monkeypatch, scenario
 ):
     from tinker_cookbook.sandbox import contree_polling, contree_sandbox
 
@@ -177,6 +179,8 @@ async def test_pilot_counts_toward_baseline_and_interrupted_slots_never_resample
                     continue
                 generated.append((task.task_name, i))
                 row = self_train.TaskResult(task.task_name, i, 0, {}, 40, 1)
+                if scenario == "new_empty_error":
+                    row.error = ""
                 rows.append(asdict(row))
                 folder = directory / "rollouts" / f"{task.task_name}__{i:02d}"
                 for name in ("trajectory.json", "messages.json", "patch.diff", "verifier.json"):
@@ -193,12 +197,26 @@ async def test_pilot_counts_toward_baseline_and_interrupted_slots_never_resample
         qualified_bundle_dir=str(bundle),
         split_manifest=str(split),
     )
+    if scenario == "new_empty_error":
+        with pytest.raises(RuntimeError, match="Unresolved infrastructure errors"):
+            await self_train.main(config)
+        assert len(generated) == 4
+        assert not (tmp_path / "run/pilot_review_required.json").exists()
+        return
     await self_train.main(config)
     assert len(generated) == 4
     assert (
         json.loads((tmp_path / "run/status.json").read_text())["stage"] == "awaiting_pilot_review"
     )
-    if interrupt:
+    if scenario == "prior_empty_error":
+        path = tmp_path / "run/baseline/results.jsonl"
+        rows = [json.loads(line) for line in path.read_text().splitlines()]
+        rows[0]["error"] = ""
+        path.write_text("".join(json.dumps(row) + "\n" for row in rows))
+        with pytest.raises(ValueError, match="Ambiguous or failed prior evaluation"):
+            await self_train.main(config)
+        assert len(generated) == 4
+    elif scenario == "interrupt":
         path = tmp_path / "run/baseline/results.jsonl"
         path.write_text("\n".join(path.read_text().splitlines()[:-1]) + "\n")
         with pytest.raises(ValueError, match="Interrupted evaluation"):

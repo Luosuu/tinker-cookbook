@@ -185,7 +185,7 @@ async def evaluate_task(
         )
     except Exception as e:
         elapsed = time.monotonic() - start
-        logger.error("Task %s failed: %s", task.task_name, e)
+        logger.exception("Task %s failed", task.task_name)
         failure_details = {}
         known_turns = 0
         if recorder is not None:
@@ -206,7 +206,7 @@ async def evaluate_task(
             reward_details=failure_details,
             turns_used=known_turns,
             time_seconds=round(elapsed, 1),
-            error=str(e),
+            error=f"{type(e).__name__}: {e}",
         )
     finally:
         if sandbox is not None:
@@ -216,7 +216,7 @@ async def evaluate_task(
                 logger.warning("Sandbox cleanup failed for %s: %s", task.task_name, e)
 
     # Write results to files immediately
-    status = "ERROR" if result.error else ("PASS" if result.reward > 0 else "FAIL")
+    status = "ERROR" if result.error is not None else ("PASS" if result.reward > 0 else "FAIL")
     summary_line = (
         f"{result.task_name:<40} {result.sample_index + 1:>6} {result.reward:>7.1f} "
         f"{result.turns_used:>6} "
@@ -227,7 +227,7 @@ async def evaluate_task(
         with open(results_dir / "asummary.txt", "a") as f:
             f.write(summary_line)
 
-        if result.error:
+        if result.error is not None:
             with open(results_dir / "aerr.txt", "a") as f:
                 f.write(f"{'=' * 60}\n")
                 f.write(f"Task: {result.task_name}\n")

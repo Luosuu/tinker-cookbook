@@ -444,7 +444,7 @@ async def main(config: Config) -> None:
                     else []
                 )
                 completed = {(r["task_name"], r["sample_index"]): r for r in rows}
-                if len(completed) != len(rows) or any(r.get("error") for r in rows):
+                if len(completed) != len(rows) or any(r.get("error") is not None for r in rows):
                     raise ValueError(
                         "Ambiguous or failed prior evaluation requires explicit recovery"
                     )
@@ -493,7 +493,7 @@ async def main(config: Config) -> None:
             )
             result = await run_eval(cfg, selected, sandbox_factory=factory)
             write_json(directory / "efficiency.json", delivery_metrics(result, directory))
-            if any(r.error for r in result):
+            if any(r.error is not None for r in result):
                 raise RuntimeError("Unresolved infrastructure errors in " + label)
             return result
 

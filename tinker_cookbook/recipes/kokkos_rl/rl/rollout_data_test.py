@@ -39,8 +39,9 @@ async def test_sampling_failure_keeps_request_and_never_retries(tmp_path):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("error_message", ["verifier produced no reward file", ""])
 async def test_grader_exception_preserves_raw_response_candidate_and_error_result(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, error_message
 ):
     task = make_task(tmp_path, "task")
     (task.task_dir / "tests/test.sh").write_text("baseline=" + "a" * 40 + "\n")
@@ -69,7 +70,7 @@ async def test_grader_exception_preserves_raw_response_candidate_and_error_resul
         # Both must be on disk before any grader work can fail.
         assert json.loads((directory / "messages.json").read_text()) == history
         assert (directory / "candidate.patch").read_bytes() == patch
-        raise RuntimeError("verifier produced no reward file")
+        raise RuntimeError(error_message)
 
     monkeypatch.setattr(harbor_eval, "HarborReward", Mock(return_value=grade))
     monkeypatch.setattr(harbor_eval, "_initial_messages", Mock(return_value=[]))
@@ -93,7 +94,9 @@ async def test_grader_exception_preserves_raw_response_candidate_and_error_resul
         output,
         asyncio.Lock(),
     )
-    assert result.error == "verifier produced no reward file"
+    assert result.error == f"RuntimeError: {error_message}"
+    assert "ERROR" in (output / "asummary.txt").read_text()
+    assert "RuntimeError:" in (output / "aerr.txt").read_text()
     assert result.turns_used == 1
     assert result.reward_details == {
         "sampling/policy_calls_started": 1.0,
