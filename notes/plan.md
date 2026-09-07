@@ -537,6 +537,15 @@ separate patch-only evidence whether the answer passes or fails. Do not retry
 a negative grading result. This uses one additional sandbox slot after the
 original main validation process has exited.
 
+Task 9147 already declares one L4 GPU, four CPUs and 16 GiB RAM in its original
+task configuration. Validate its corrected v6 verifier separately with those
+explicit Modal resources, build parallelism four, network disabled, and the
+unchanged 900-second grader limit. Run NOP then Oracle once, with no model
+requests; record the frozen task hash and GPU policy in the evidence. This
+policy is isolated from the running CPU evaluation and cannot unlock its
+original resource identity. The sandbox factory's optional GPU defaults to
+None and only applies to the explicitly selected tasks.
+
 ## Review exact runtime selectors (2026-09-07)
 
 The cached original source confirms three selectors need explicit corrections

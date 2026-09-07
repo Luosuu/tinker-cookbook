@@ -10,7 +10,13 @@ from tinker_cookbook.sandbox import SandboxInterface
 
 
 async def _create_modal_sandbox(
-    env_dir: Path, timeout: int, *, memory_mb: int, cpu: float, build_parallelism: int = 1
+    env_dir: Path,
+    timeout: int,
+    *,
+    memory_mb: int,
+    cpu: float,
+    build_parallelism: int = 1,
+    gpu: str | None = None,
 ) -> SandboxInterface:
     import modal
 
@@ -24,6 +30,7 @@ async def _create_modal_sandbox(
         timeout=timeout,
         memory=memory_mb,
         cpu=cpu,
+        gpu=gpu,
         allow_network=False,
     )
 
@@ -35,6 +42,7 @@ def create_resource_sandbox_factory(
     memory_mb: int = 16384,
     cpu: float = 4.0,
     build_parallelism: int = 1,
+    gpu: str | None = None,
 ) -> SandboxFactory:
     """Route named tasks before sampling, never based on the model's outcome.
 
@@ -44,6 +52,8 @@ def create_resource_sandbox_factory(
     """
     if build_parallelism < 1:
         raise ValueError("Build parallelism must be positive")
+    if gpu is not None and not gpu.strip():
+        raise ValueError("GPU type must be nonempty when specified")
     if memory_mb < 1 or not math.isfinite(cpu) or cpu <= 0:
         raise ValueError("Sandbox memory and CPU must be positive")
     if len(set(modal_task_names)) != len(modal_task_names):
@@ -55,7 +65,12 @@ def create_resource_sandbox_factory(
     async def factory(env_dir: Path, timeout: int) -> SandboxInterface:
         if env_dir.parent.name in selected:
             return await _create_modal_sandbox(
-                env_dir, timeout, memory_mb=memory_mb, cpu=cpu, build_parallelism=build_parallelism
+                env_dir,
+                timeout,
+                memory_mb=memory_mb,
+                cpu=cpu,
+                build_parallelism=build_parallelism,
+                gpu=gpu,
             )
         return await primary_factory(env_dir, timeout)
 
