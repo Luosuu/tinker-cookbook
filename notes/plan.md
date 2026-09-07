@@ -1017,3 +1017,14 @@ pair may run after the existing v10 queue exits, with ConTree build-one, 900
 seconds, explicit read-only status transport and zero inference. Do not replay
 the failed old verifier or count it as a model failure. Require all four actual
 runtime cases and the new exact pair before positive scope acceptance.
+
+Prepare the complementary evaluation controller offline. It must use the
+positive per-task scope allowlist and exclusive cross-phase claims, preserve
+all earlier attempts, and borrow only a proven free slot after the original
+reserved queue has no unstarted pairs. Three unknown old generations continue
+to occupy slots. Before each future generation, exclusively persist its full
+request arguments and phase identity; persist the raw provider response and
+usage before returning to the rollout. Cancellation or transport failure keeps
+unknown usage explicitly and never retries. New phase clients use the declared
+keepalive transport with SDK and HTTP retries disabled. This preparation does
+not attach code to the old controller or authorize re-sampling any old pair.
