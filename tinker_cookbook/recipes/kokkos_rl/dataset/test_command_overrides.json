@@ -437,5 +437,28 @@
         "sha256": "61046ac5afbd009fb37b450ad22e4e89fae5ac195610f5e421217ee095ca7440"
       }
     ]
+  },
+  "kokkos__kokkos-8891": {
+    "base_commit": "f89b514015c862e2fc13ca3e7c971428a246fbfa",
+    "test_patch_sha256": "241c4e4584c49d41fa6066a634ae0a105e0208085a5512170b06c5c35c65a939",
+    "instance_fields": {
+      "p2p_commands": {
+        "original": [
+          "cmake --build build --target Kokkos_CoreUnitTest_Serial1",
+          "ctest --test-dir build -R mathematical_functions_nextafter_fp16 --output-on-failure"
+        ],
+        "replacement": [
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*.mathematical_functions_floating_point_manipulation_functions'"
+        ]
+      }
+    },
+    "reason": "The CPU task cannot execute the FP16-only P2P case. The existing floating_point_manipulation_functions test covers nextafter for ordinary scalar types; preserve the new nexttoward regression and original F2P build stage.",
+    "evidence": [
+      {
+        "path": "core/unit_test/TestMathematicalFunctions.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/f89b514015c862e2fc13ca3e7c971428a246fbfa/core/unit_test/TestMathematicalFunctions.hpp",
+        "sha256": "c3104ca0828f767259229bed202f2bf98838e27e9445b9a227724a2a03ae2abd"
+      }
+    ]
   }
 }

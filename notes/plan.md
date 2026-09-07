@@ -619,3 +619,12 @@ and executable scope in snapshot v6. Task 8891 additionally selects an FP16
 GoogleTest check that explicitly skips without native 16-bit support; keep it
 blocked for a justified backend or annotation correction. An all-skipped test
 cannot qualify as runtime coverage.
+
+Task 8891 is explicitly a CPU task. Its existing
+mathematical_functions_floating_point_manipulation_functions test exercises
+nextafter with supported ordinary scalar types, so replace the incorrectly
+selected FP16-only P2P case with that existing CPU test. Pin the replacement to
+the original base, hidden-test hash, and P2P command. Preserve the new nexttoward
+hidden regression, F2P build stage, production patch, and CPU resources. Prepare
+v7 without changing v6; independently validate the corrected case before use.
+Task 9147 retains its originally requested L4 GPU under a separate resource gate.
