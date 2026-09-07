@@ -460,5 +460,28 @@
         "sha256": "c3104ca0828f767259229bed202f2bf98838e27e9445b9a227724a2a03ae2abd"
       }
     ]
+  },
+  "kokkos__kokkos-7089": {
+    "base_commit": "ba2075b3d4ea1eaef66703564439e31547d4a2f3",
+    "test_patch_sha256": "d2c018815447595ec0cc6708f04f287c886a60b0ea3c621c8451d12fd8d7c982",
+    "instance_fields": {
+      "p2p_commands": {
+        "original": [
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*mdspan_atomic_accessor*'",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial2 --gtest_filter='*mdspan_atomic_accessor*'"
+        ],
+        "replacement": [
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial1 --gtest_filter='*mdspan_atomic_accessor*'"
+        ]
+      }
+    },
+    "reason": "The hidden test patch adds MDSpanAtomicAccessor only to TESTNAMES1B, which feeds Serial1. Keep its real runtime regression and both original build targets; remove the duplicate request to Serial2 where this case does not exist.",
+    "evidence": [
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/ba2075b3d4ea1eaef66703564439e31547d4a2f3/core/unit_test/CMakeLists.txt",
+        "sha256": "10865140a386f4e24b1d4e0eab65eb7926b6396a56b4f949fd18e6497f1db30b"
+      }
+    ]
   }
 }

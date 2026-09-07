@@ -668,3 +668,13 @@ fourth control passes, reuse the three ConTree controls and the same-hash L4
 9147 gate, and launch the remaining v7 gates with at most three shared slots.
 Do not reuse the old low-memory result as evidence for the new policy or erase
 it from the experiment record.
+
+Full v7 validation exposed a further incorrect duplicate runtime command in
+7089. Its Oracle completes both builds and passes the real mdspan_atomic_accessor
+case in Serial1, then requests that same case from Serial2, which contains no
+matching test. The hidden CMake patch adds this case only to TESTNAMES1B. Remove
+only the second runtime command, pinning the original base, hidden-test hash,
+and command list. Preserve both build targets, the F2P build stage, and the
+real Serial1 regression. Prepare a new frozen snapshot without changing the
+active v7 validation or its failed evidence. A later exact-hash NOP/Oracle gate
+must qualify the repaired payload before any additional model sampling.
