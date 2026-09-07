@@ -962,18 +962,92 @@
       "f2p_commands": {
         "original": [],
         "replacement": [
-          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial_ViewSupport --gtest_filter='*.view_create_mirror_view_and_copy'"
+          "cmake --build build --target Kokkos_CoreTestCompileOnly Kokkos_ContainersTestCompileOnly Kokkos_IncrementalTest_SERIAL",
+          "./build/core/unit_test/Kokkos_CoreUnitTest_Serial_ViewSupport --gtest_filter='*.view_create_mirror_view_and_copy'",
+          "./build/core/unit_test/Kokkos_IncrementalTest_SERIAL --gtest_filter='*.IncrTest_10_Hierarchical_Basics'",
+          "./build/core/unit_test/Kokkos_IncrementalTest_SERIAL --gtest_filter='*.IncrTest_11a_Hierarchical_ForLoop'",
+          "./build/core/unit_test/Kokkos_IncrementalTest_SERIAL --gtest_filter='*.IncrTest_11b_Hierarchical_ForLoop'",
+          "./build/core/unit_test/Kokkos_IncrementalTest_SERIAL --gtest_filter='*.IncrTest_11c_Hierarchical_ForLoop'",
+          "./build/core/unit_test/Kokkos_IncrementalTest_SERIAL --gtest_filter='*.IncrTest_12a_ThreadScratch'",
+          "./build/core/unit_test/Kokkos_IncrementalTest_SERIAL --gtest_filter='*.IncrTest_12b_TeamScratch'",
+          "./build/core/unit_test/Kokkos_IncrementalTest_SERIAL --gtest_filter='*.IncrTest_13a_Hierarchical_Red'",
+          "./build/core/unit_test/Kokkos_IncrementalTest_SERIAL --gtest_filter='*.IncrTest_13b_Hierarchical_Red'",
+          "./build/core/unit_test/Kokkos_IncrementalTest_SERIAL --gtest_filter='*.IncrTest_13c_Hierarchical_Red'",
+          "./build/core/unit_test/Kokkos_IncrementalTest_SERIAL --gtest_filter='*.IncrTest_16_parallelscan'"
+        ]
+      },
+      "build_targets": {
+        "original": [
+          "Kokkos_CoreUnitTest_Serial_ViewSupport"
+        ],
+        "replacement": [
+          "Kokkos_CoreUnitTest_Serial_ViewSupport",
+          "Kokkos_CoreTestCompileOnly",
+          "Kokkos_ContainersTestCompileOnly",
+          "Kokkos_IncrementalTest_SERIAL"
         ]
       }
     },
-    "reason": " Execute the changed runtime behavior after the original build checks; compiling its assertions or running unrelated P2P cases does not exercise it. Each required case has a separate guarded invocation.",
+    "reason": "The hidden patch adds no-argument mirror-and-copy memory-space assertions to separate core and containers compile-only translation units, and changes ten incremental test helpers to call that overload. ViewSupport alone does not instantiate those constraints or execute the changed helper paths. Preserve existing compatibility checks and guard each required runtime case separately.",
     "required_runtime_cases": [
       {
         "executable": "core/unit_test/Kokkos_CoreUnitTest_Serial_ViewSupport",
         "case": "view_create_mirror_view_and_copy"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_IncrementalTest_SERIAL",
+        "case": "IncrTest_10_Hierarchical_Basics"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_IncrementalTest_SERIAL",
+        "case": "IncrTest_11a_Hierarchical_ForLoop"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_IncrementalTest_SERIAL",
+        "case": "IncrTest_11b_Hierarchical_ForLoop"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_IncrementalTest_SERIAL",
+        "case": "IncrTest_11c_Hierarchical_ForLoop"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_IncrementalTest_SERIAL",
+        "case": "IncrTest_12a_ThreadScratch"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_IncrementalTest_SERIAL",
+        "case": "IncrTest_12b_TeamScratch"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_IncrementalTest_SERIAL",
+        "case": "IncrTest_13a_Hierarchical_Red"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_IncrementalTest_SERIAL",
+        "case": "IncrTest_13b_Hierarchical_Red"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_IncrementalTest_SERIAL",
+        "case": "IncrTest_13c_Hierarchical_Red"
+      },
+      {
+        "executable": "core/unit_test/Kokkos_IncrementalTest_SERIAL",
+        "case": "IncrTest_16_parallelscan"
       }
     ],
-    "evidence": []
+    "evidence": [
+      {
+        "path": "core/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/9918f68e0ba8f551793b0f6b5ea694363649a530/core/unit_test/CMakeLists.txt",
+        "sha256": "e903a74549c8be3424064f6181aa6b0e06c1abea590a440b3d09f74afe2a5282"
+      },
+      {
+        "path": "containers/unit_tests/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos/blob/9918f68e0ba8f551793b0f6b5ea694363649a530/containers/unit_tests/CMakeLists.txt",
+        "sha256": "78f8a3372e170cbc2c418ddeaf82b14aabe6fecc603b5b2cae11e33d7b102cc1"
+      }
+    ],
+    "coverage_scope": "Configured Serial CPU, mdspan enabled and legacy View disabled. Build both core and containers mirror-property compile-time constraints and execute all ten changed incremental cases plus the new ViewSupport case. The upstream DynamicView exclusion remains; no accelerator-memory or disabled-backend coverage is claimed."
   },
   "kokkos__kokkos-8927": {
     "base_commit": "34922d92da262e3b9da9b97de327c9c63c6e9a50",

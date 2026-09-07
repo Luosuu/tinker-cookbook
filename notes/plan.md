@@ -979,3 +979,14 @@ only same-hash/resource/environment evidence may carry forward. These three
 tasks require new paired evidence and positive actual-execution review before
 sampling. The 9185 scope remains blocked for separate companion compile/runtime
 coverage review; do not change this frozen candidate in place.
+
+
+For task 9185, include the separate core and containers compile-only targets
+that instantiate the newly added no-argument mirror-and-copy memory-space
+constraints. Also build the Serial incremental target and execute the ten
+changed cases individually, retaining the existing ViewSupport case and
+compatibility build checks. Pin the override to the exact base and hidden patch
+hash. Keep the original DynamicView exclusion and configured CPU/mdspan scope
+explicit. Freeze this change in a later snapshot without editing any running
+validation payload, then run one independent NOP/Oracle pair and review actual
+compile and runtime witnesses before accepting the task.
