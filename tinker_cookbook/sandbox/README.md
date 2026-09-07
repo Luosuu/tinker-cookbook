@@ -4,6 +4,42 @@ This directory contains code execution backends for sandboxed evaluation (e.g., 
 
 There are currently two available backends: SandboxFusion for local execution and Modal for cloud execution.
 
+Harbor also supports the experimental OpenHands/Apptainer adapter below.
+
+### OpenHands / Apptainer (Harbor)
+
+`apptainer_sandbox.ApptainerSandbox` implements `SandboxInterface` for a
+persistent OpenHands agent server inside Apptainer. Use Python 3.12+ and install
+`openhands-workspace==1.45.0`, `openhands-sdk==1.45.0`, and
+`openhands-agent-server==1.45.0` in the client environment. Apptainer must be on
+the client machine's PATH; on HPC, launch the client inside allocated resources.
+
+Prepare each task's image separately, including the OpenHands agent server and
+its entrypoint. Put the resulting SIF at `environment/agent-server.sif`, or put
+its absolute path (or a path relative to `environment/`) in `environment/sif.path`.
+The adapter does not build Dockerfiles or substitute a generic task image.
+
+```python
+from tinker_cookbook.sandbox.apptainer_sandbox import apptainer_sandbox_factory
+from tinker_cookbook.recipes.harbor_rl.train import cli_main
+
+await cli_main(config, tasks, sandbox_factory=apptainer_sandbox_factory)
+```
+
+The factory starts one fresh container per call. It keeps that environment
+across commands until cleanup, enables fakeroot and Docker compatibility, and
+disables VSCode to avoid its shared default port. Commands have explicit working
+directories; shell-local variables and `cd` do not constitute persistent state.
+`APPTAINER_CACHEDIR` controls the cache location.
+
+This is an initial integration adapter, not a cluster scheduler or sandbox pool.
+The caller controls concurrency and resource limits. The lifetime argument is
+checked on command submission and limits each command to the remaining time;
+callers must still clean up idle environments and bound their outer job lifetime.
+Output is truncated on the client after execution, not bounded at the server.
+Apptainer uses host networking: distinct API ports do not isolate arbitrary
+network services launched by tasks. Real task-image compatibility must be tested.
+
 ## Backends
 
 ### SandboxFusion (local Docker)
