@@ -546,6 +546,21 @@ policy is isolated from the running CPU evaluation and cannot unlock its
 original resource identity. The sandbox factory's optional GPU defaults to
 None and only applies to the explicitly selected tasks.
 
+## Network policy for future evaluation phases (2026-09-07)
+
+Three pending inference connections remain bound to an old VPN source address.
+A read-only probe bound to that address cannot connect, while the new address
+receives a response immediately. Add an explicit future transport policy with
+TCP keepalive, no generation read deadline, and zero HTTP/SDK automatic retries.
+Record the policy in a new phase identity; it must not silently change the
+running experiment. A response lost after sending a request has unknown usage
+and requires explicit recovery review, rather than assuming zero cost or
+silently drawing another answer. Offline tests verify that one read failure
+causes exactly one request and leaves the generation read timeout unlimited.
+This helper cannot repair existing sockets. Preserve current pending requests
+while investigating whether their last successful sandbox state can be
+recovered through read-only immutable-image metadata and files.
+
 ## Review exact runtime selectors (2026-09-07)
 
 The cached original source confirms three selectors need explicit corrections
