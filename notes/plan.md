@@ -524,6 +524,19 @@ zero-test quarantine rules; compromised gates stay quarantined. This adds
 patch retention without changing model sampling, task hashes, result identities
 or the fixed 40-turn budget, and never resamples completed attempts.
 
+## Regrade retained candidates after transport failures (2026-09-07)
+
+The GLM 7441 and DeepSeek Flash 7485 trajectories completed generation but
+their grader operation polling failed with HTTP read timeouts. Both have a
+complete candidate patch captured before hidden tests. Regrade each once,
+serially, in a fresh ConTree sandbox using its original frozen task hash,
+build parallelism one and the 900-second grader budget. Verify the candidate
+byte count, SHA-256 and base commit against the original task before applying.
+Make no model requests, keep the original error/results unchanged, and record
+separate patch-only evidence whether the answer passes or fails. Do not retry
+a negative grading result. This uses one additional sandbox slot after the
+original main validation process has exited.
+
 ## Review exact runtime selectors (2026-09-07)
 
 The cached original source confirms three selectors need explicit corrections
