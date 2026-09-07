@@ -924,3 +924,18 @@ listed active reserves its cleanup slot. Queue expansion, identity mutation,
 stale status, missing markers, and partial results fail closed. Tests cover all
 these cases. The live preflight currently yields zero capacity and 59 original
 reserved pairs still unstarted; this check does not dispatch anything.
+
+The corrected 8891 Oracle reached its unchanged 900-second limit while compiling
+OpenMP object 133 of 218, before any verifier runtime command. Read-only retrieval
+of the same operation confirms timed_out=true, signal 9, and 900.398 seconds;
+preserve that failed pair and its operation/stdout evidence. Introduce resource
+policy runtime_v12, changing only 8891 to Modal CPU 16 GiB/four CPU/build-four,
+with the same 900-second limit and frozen v11 task bytes. Verify the other 99
+policies are unchanged. After offline tests, run one independent NOP/Oracle pair
+under that explicit policy, no inference or automatic retries. Pin the original
+failure/readback, exact snapshot, policy and loaded commit in its launch identity.
+This single validation slot plus four reserved original model slots and the
+existing one-slot v10 queue totals six; prior resource/recovery runners exited.
+Only accept actual OpenMP nexttoward and floating-point-manipulation runtime
+witnesses after the exact pair succeeds. Four models must eventually use the
+same accepted task policy; no old controller or frozen payload is changed.

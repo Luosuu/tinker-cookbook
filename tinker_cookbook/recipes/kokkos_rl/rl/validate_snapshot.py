@@ -53,22 +53,27 @@ class Config:
 
 
 def policy_for_task(task: HarborTask, version: str = "v7") -> Policy:
-    if version not in {"v7", "runtime_v10", "runtime_v11"}:
+    if version not in {"v7", "runtime_v10", "runtime_v11", "runtime_v12"}:
         raise ValueError("Unknown reviewed resource policy version")
     name = task.task_name
     if name in {"kokkos__kokkos-8989", "kokkos__kokkos-9147"} or (
-        version in {"runtime_v10", "runtime_v11"} and name == "kokkos__kokkos-9159"
+        version in {"runtime_v10", "runtime_v11", "runtime_v12"} and name == "kokkos__kokkos-9159"
     ):
         policy = Policy("modal", 4, 900, 16384, 4.0, "L4")
     elif (
-        version == "runtime_v11"
-        and name in {"kokkos__kokkos-8928", "kokkos__kokkos-9055", "kokkos__kokkos-9260"}
-    ) or name in {
-        "kokkos__kokkos-7074",
-        "kokkos__kokkos-8164",
-        "kokkos__kokkos-8399",
-        "kokkos__kokkos-8827",
-    }:
+        (
+            version in {"runtime_v11", "runtime_v12"}
+            and name in {"kokkos__kokkos-8928", "kokkos__kokkos-9055", "kokkos__kokkos-9260"}
+        )
+        or (version == "runtime_v12" and name == "kokkos__kokkos-8891")
+        or name
+        in {
+            "kokkos__kokkos-7074",
+            "kokkos__kokkos-8164",
+            "kokkos__kokkos-8399",
+            "kokkos__kokkos-8827",
+        }
+    ):
         policy = Policy("modal", 4, 900, 16384, 4.0)
     elif name == "kokkos__kokkos-7244":
         policy = Policy("modal", 1, 900, 16384, 4.0)

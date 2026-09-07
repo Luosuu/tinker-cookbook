@@ -189,3 +189,19 @@ def test_confirmed_compile_timeouts_have_versioned_resources(tmp_path, number):
 def test_new_compile_resources_preserve_other_task_policies(tmp_path, number):
     task = task_with_metadata(tmp_path, f"kokkos__kokkos-{number}")
     assert gate.policy_for_task(task, "runtime_v11") == gate.policy_for_task(task, "runtime_v10")
+
+
+@pytest.mark.parametrize(
+    "number", [7043, 7074, 7244, 8164, 8891, 8928, 8989, 9055, 9147, 9159, 9260]
+)
+def test_runtime_v12_only_changes_confirmed_openmp_compile_timeout(tmp_path, number):
+    task = task_with_metadata(tmp_path, f"kokkos__kokkos-{number}")
+    old = gate.policy_for_task(task, "runtime_v11")
+    new = gate.policy_for_task(task, "runtime_v12")
+    if number == 8891:
+        assert old == gate.Policy()
+        assert new == gate.Policy("modal", 4, 900, 16384, 4.0)
+        record = {"task": task.task_name, "task_hash": "same", **asdict(old)}
+        assert not gate.matching_evidence(record, task.task_name, "same", new)
+    else:
+        assert new == old
