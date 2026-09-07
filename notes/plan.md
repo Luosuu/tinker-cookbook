@@ -1028,3 +1028,14 @@ usage before returning to the rollout. Cancellation or transport failure keeps
 unknown usage explicitly and never retries. New phase clients use the declared
 keepalive transport with SDK and HTTP retries disabled. This preparation does
 not attach code to the old controller or authorize re-sampling any old pair.
+
+The complementary phase runner now requires all 100 exact verifier pairs and
+all 100 explicit positive scope approvals before even preparing a phase. Its
+default is a local dry run: no client, sandbox, claim or model call. Each model
+identity includes the full per-task resource/environment mapping and network
+policy. At dispatch it rechecks the original queue capacity, verifies exact
+model IDs and unchanged catalog prices, makes one exclusive claim, and uses
+only one shared model slot. A fixture with 100 tasks, three unknown original
+requests and one unstarted reserved pair confirms that dry-run preparation
+creates zero claims or remote clients. Partial requests stop dispatch and
+require explicit review; completed wrong answers are never sampled again.
