@@ -8,6 +8,9 @@ Harbor also supports the experimental OpenHands/Apptainer adapter below.
 
 ### OpenHands / Apptainer (Harbor)
 
+See [the Rivanna design document](RIVANNA_DESIGN.md) for the workflow,
+lifecycle boundaries, deployment tradeoffs, and validation results.
+
 `apptainer_sandbox.ApptainerSandbox` implements `SandboxInterface` for a
 persistent OpenHands agent server inside Apptainer. Use Python 3.12+ and install
 `openhands-workspace==1.45.0`, `openhands-sdk==1.45.0`, and
