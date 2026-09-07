@@ -321,5 +321,93 @@
         "sha256": "2becd9fa79b92b2048727f64d1720dc3655801fb0d6568dd943565c60b01e58a"
       }
     ]
+  },
+  "kokkos__kokkos-kernels-2935": {
+    "base_commit": "63452bfcde631317f7865032cb426da9b3a4ef17",
+    "commands": {
+      "ctest --test-dir build --output-on-failure -R '^KokkosKernels_batched_dla_openmp$'": "ctest --test-dir build --output-on-failure -R '^batched_dla_openmp$'"
+    },
+    "generated_testfile_sha256": "2d321997d465fca705adc8913943430e9cdc0903e37264b4cb97bc97665d0654",
+    "reason": "CTest uses the registered root test name, not the prefixed executable filename.",
+    "evidence": [
+      {
+        "path": "batched/dense/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos-kernels/blob/63452bfcde631317f7865032cb426da9b3a4ef17/batched/dense/unit_test/CMakeLists.txt",
+        "sha256": "e7ffbc8a4417e73392415593e147e179b77daa34a668a90b40c46f883917ff84"
+      }
+    ]
+  },
+  "kokkos__kokkos-kernels-3130": {
+    "base_commit": "4d1f1d6d7d50d714fd9c5e731b684f0fe21da798",
+    "commands": {
+      "ctest --test-dir build -R '^KokkosKernels_batched_dla_serial$' --output-on-failure": "ctest --test-dir build -R '^batched_dla_serial$' --output-on-failure"
+    },
+    "generated_testfile_sha256": "233c9dbc4f2f2ac54b1c3cff225fc4a563e2fd6c9e0a1cb5f6acd72682e08ce3",
+    "reason": "CTest uses the registered root test name, not the prefixed executable filename.",
+    "evidence": [
+      {
+        "path": "batched/dense/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos-kernels/blob/4d1f1d6d7d50d714fd9c5e731b684f0fe21da798/batched/dense/unit_test/CMakeLists.txt",
+        "sha256": "e7ffbc8a4417e73392415593e147e179b77daa34a668a90b40c46f883917ff84"
+      }
+    ]
+  },
+  "kokkos__kokkos-kernels-3138": {
+    "base_commit": "90a08d70c5b35be697e9b0da703e8e92e52c5718",
+    "commands": {
+      "ctest --test-dir build --output-on-failure -R '^KokkosKernels_batched_dla_openmp$'": "ctest --test-dir build --output-on-failure -R '^batched_dla_openmp$'"
+    },
+    "generated_testfile_sha256": "233c9dbc4f2f2ac54b1c3cff225fc4a563e2fd6c9e0a1cb5f6acd72682e08ce3",
+    "reason": "CTest uses the registered root test name, not the prefixed executable filename.",
+    "evidence": [
+      {
+        "path": "batched/dense/unit_test/CMakeLists.txt",
+        "url": "https://github.com/kokkos/kokkos-kernels/blob/90a08d70c5b35be697e9b0da703e8e92e52c5718/batched/dense/unit_test/CMakeLists.txt",
+        "sha256": "e7ffbc8a4417e73392415593e147e179b77daa34a668a90b40c46f883917ff84"
+      }
+    ]
+  },
+  "kokkos__kokkos-kernels-3217": {
+    "base_commit": "6380905f3f938bffa33777adef2f3435bf590b09",
+    "test_patch_sha256": "ebdf909009e22345c3b2e7cce769f9ae8c28effa41b90e48ddd6b44ca1931fa1",
+    "instance_fields": {
+      "configure_command": {
+        "original": "cmake -S . -B build -G Ninja -DKokkosKernels_ENABLE_TESTS=ON -DKokkos_ROOT=/opt/kokkos -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+        "replacement": "cmake -S . -B build -G Ninja -DKokkosKernels_ENABLE_TESTS=ON -DKokkos_ROOT=/opt/kokkos -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DKokkosKernels_INST_COMPLEX_FLOAT=ON"
+      }
+    },
+    "reason": "The requested complex<float> norm test is compiled only with INST_COMPLEX_FLOAT; the original generated CMake cache has that option OFF.",
+    "original_cmake_cache_sha256": "9e1238b5c51c1eca18b0574f3badf2104bd24543a5f9f21c5eaa1ba4bf4602af",
+    "evidence": [
+      {
+        "path": "batched/dense/unit_test/Test_Batched_Nrm.hpp",
+        "url": "https://github.com/kokkos/kokkos-kernels/blob/6380905f3f938bffa33777adef2f3435bf590b09/batched/dense/unit_test/Test_Batched_Nrm.hpp",
+        "sha256": "197f56e760a540cc779cc333f5461d57bb782ae8402ceb0e12b60e0845049e26"
+      },
+      {
+        "path": "cmake/kokkoskernels_eti_floats.cmake",
+        "url": "https://github.com/kokkos/kokkos-kernels/blob/6380905f3f938bffa33777adef2f3435bf590b09/cmake/kokkoskernels_eti_floats.cmake",
+        "sha256": "148842b130993e5449df1092287233bae9e892ba12af56d0518c253012b4c745"
+      }
+    ]
+  },
+  "kokkos__kokkos-9260": {
+    "base_commit": "e266805395e06adf0b072c0658b10ae7b3c55e27",
+    "selectors": {
+      "OpenMP.view_bad_alloc": "openmp.view_bad_alloc"
+    },
+    "reason": "The original source defines TEST_CATEGORY as lowercase openmp.",
+    "evidence": [
+      {
+        "path": "core/unit_test/TestViewBadAlloc.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/e266805395e06adf0b072c0658b10ae7b3c55e27/core/unit_test/TestViewBadAlloc.hpp",
+        "sha256": "bfe00cb135dcc830ec3acf9d1857a4daf8a83086e89d24cb5d3e49491a878d27"
+      },
+      {
+        "path": "core/unit_test/category_files/TestOpenMP_Category.hpp",
+        "url": "https://github.com/kokkos/kokkos/blob/e266805395e06adf0b072c0658b10ae7b3c55e27/core/unit_test/category_files/TestOpenMP_Category.hpp",
+        "sha256": "ff07386aae09bd46a04c96fe38bafa642c5fa4344ebcf827c103ec45be256645"
+      }
+    ]
   }
 }

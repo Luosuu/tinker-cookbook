@@ -164,6 +164,7 @@ def test_reviewed_selectors_are_instance_and_base_scoped_and_idempotent(tmp_path
         "kokkos__kokkos-7428": "serial.task_*",
         "kokkos__kokkos-8594": "serial.scatterview:serial.scatterview_devicetype",
         "kokkos__kokkos-8967": "serial_DeathTest.view_subview_constructor_layout_compatibility",
+        "kokkos__kokkos-9260": "openmp.view_bad_alloc",
     }
     for task, selector in expected.items():
         entry = overrides[task]
@@ -216,6 +217,10 @@ def test_reviewed_target_and_role_repairs_require_original_payload(tmp_path, mon
         "base_commit": instance.base_commit,
         "test_patch_sha256": hashlib.sha256(instance.test_patch.encode()).hexdigest(),
         "instance_fields": {
+            "configure_command": {
+                "original": instance.configure_command,
+                "replacement": instance.configure_command + " -DINST_COMPLEX_FLOAT=ON",
+            },
             "build_targets": {
                 "original": list(instance.build_targets),
                 "replacement": ["RealTarget"],
@@ -228,6 +233,7 @@ def test_reviewed_target_and_role_repairs_require_original_payload(tmp_path, mon
     }
     monkeypatch.setattr(test_commands, "_reviewed_overrides", lambda: {instance.instance_id: entry})
     repaired = test_commands.apply_reviewed_test_overrides(instance)
+    assert repaired.configure_command.endswith("-DINST_COMPLEX_FLOAT=ON")
     assert repaired.build_targets == ("RealTarget",)
     assert repaired.f2p_commands == instance.f2p_commands
     assert repaired.p2p_commands == ("./binary --gtest_filter='*.existing'",)
@@ -245,7 +251,28 @@ def test_reviewed_target_and_role_repairs_require_original_payload(tmp_path, mon
         test_commands.apply_reviewed_test_overrides(
             replace(instance, p2p_commands=("new annotation",))
         )
+    from tinker_cookbook.recipes.kokkos_rl.dataset.export_harbor import _dockerfile
+
+    assert "-DINST_COMPLEX_FLOAT=ON" in _dockerfile(instance)
     script = _test_script(instance)
     assert "RealTarget" in script
     assert "*.existing" in script
     assert "*.new" in script
+
+
+def test_reviewed_ctest_names_do_not_use_executable_prefix(tmp_path):
+    import json
+    from pathlib import Path
+
+    _, instance = _local_instance(tmp_path)
+    entries = json.loads(Path(__file__).with_name("test_command_overrides.json").read_text())
+    for number, backend in ((2935, "openmp"), (3130, "serial"), (3138, "openmp")):
+        task = f"kokkos__kokkos-kernels-{number}"
+        entry = entries[task]
+        pinned = replace(instance, instance_id=task, base_commit=entry["base_commit"])
+        command = next(iter(entry["commands"]))
+        actual = normalize_test_command(command, instance=pinned)
+        assert f"^batched_dla_{backend}$" in actual
+        assert "KokkosKernels_" not in actual
+        assert "--verbose" in actual
+        assert "KokkosKernels_" in normalize_test_command(command, instance=instance)

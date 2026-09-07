@@ -582,3 +582,19 @@ identical task hashes, one sandbox, no model calls, and the unchanged SDK HTTP
 timeout. Record the prior failure, failed phase, endpoint, and timeout type.
 A fresh read-only token-info probe succeeded before this retry. Any further
 failure remains blocked for diagnosis; there is no automatic retry loop.
+
+## Complete backend and scalar-type coverage repairs (2026-09-07)
+
+Generated CTest files confirm that kernels-2935/3130/3138 register tests as
+batched_dla_openmp or batched_dla_serial, without the KokkosKernels_ executable
+prefix. Repair these exact commands at their original revisions. Task 9260's
+source defines the suite as lowercase openmp. Kernels-3217's complex-float norm
+test is correctly named but excluded by the original CMake configuration;
+enable INST_COMPLEX_FLOAT rather than substituting a double-only test. Preserve
+the baseline CMake-cache hash proving that the option was OFF.
+
+Prepare snapshot v5 separately. Regenerate kernels-3217's Dockerfile because
+its scalar configuration changes; verifier commands alone cannot enable a test
+that was never compiled. Keep the remaining payloads unchanged except for their
+reviewed commands and metadata. Validate exact hashes before sampling; compiler
+cost or resource failures remain explicit infrastructure/coverage blockers.

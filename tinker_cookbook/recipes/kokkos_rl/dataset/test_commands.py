@@ -27,8 +27,13 @@ def apply_reviewed_test_overrides(instance: KokkosInstance) -> KokkosInstance:
         return instance
     if hashlib.sha256(instance.test_patch.encode()).hexdigest() != entry["test_patch_sha256"]:
         raise ValueError("Reviewed test annotation has a different hidden test patch")
-    updates: dict[str, tuple[str, ...]] = {}
+    updates: dict[str, str | tuple[str, ...]] = {}
     for field, change in entry["instance_fields"].items():
+        if field == "configure_command":
+            if instance.configure_command not in (change["original"], change["replacement"]):
+                raise ValueError("Reviewed configure annotation differs; review before applying")
+            updates[field] = str(change["replacement"])
+            continue
         if field not in {"build_targets", "f2p_commands", "p2p_commands"}:
             raise ValueError("Unsupported reviewed annotation field")
         current = list(getattr(instance, field))
