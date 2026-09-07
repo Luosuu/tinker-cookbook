@@ -967,3 +967,15 @@ tasks; pending and explicitly unconfigured GPU companion units remain review
 items. Keep 7148 blocked until a new frozen task and independent NOP/Oracle pair
 prove both static constraints and runtime equality checks execute. This change
 prepares that stronger verifier but does not launch it or alter old scores.
+
+The prepared v12 candidate has been reviewed: exactly 7148/8370/8838 changed,
+with the other 97 task directories byte-identical to v11. Execute its prepared
+single-slot three-task NOP/Oracle launcher after confirming the prior resource
+runner exited. Zero inference, one attempt per verifier stage, explicit readonly
+status transport, runtime_v12 resources and all old evidence preserved. Pin the
+three exact task hashes and both manifests. Move the authoritative qualification
+and pending scope review to payload v12 plus resource runtime_v12 and 422 ENV1;
+only same-hash/resource/environment evidence may carry forward. These three
+tasks require new paired evidence and positive actual-execution review before
+sampling. The 9185 scope remains blocked for separate companion compile/runtime
+coverage review; do not change this frozen candidate in place.
