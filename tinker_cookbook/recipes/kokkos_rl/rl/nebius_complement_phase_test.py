@@ -234,3 +234,21 @@ async def test_full_dry_run_reserves_original_queue_without_clients_or_claims(
     assert report["capacity"]["reserved_unstarted_pairs"] == 1
     assert report["new_claims"] == report["new_model_requests"] == 0
     assert not list(original.rglob("claim.json"))
+
+    second = tmp_path / "second-phase"
+    await phase.main(
+        phase.Config(
+            original_root=str(original),
+            output_path=str(second),
+            snapshot_dir=str(snapshot),
+            qualification_path=str(qualification),
+            coverage_path=str(coverage),
+            scope_approval_path=str(approvals),
+            required_environment_policies=(),
+            dispatch=False,
+        )
+    )
+    assert (
+        pinned_file(output / "phase_identity.json")["sha256"]
+        != pinned_file(second / "phase_identity.json")["sha256"]
+    )

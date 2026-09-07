@@ -202,6 +202,7 @@ async def run(config: Config) -> None:
     else:
         reserved, _ = original_gate(original)
     identity = {
+        "phase_root": str(phase.resolve()),
         "snapshot": pinned_file(snapshot / "manifest.json"),
         "task_hashes": hashes,
         "qualification": pinned_file(qualification),
@@ -234,6 +235,7 @@ async def run(config: Config) -> None:
                 if (
                     not claim.exists()
                     or read_json(claim).get("phase_identity_sha256") != identity_sha
+                    or read_json(claim).get("phase_root") != str(phase.resolve())
                 ):
                     raise ValueError("An earlier phase owns this pair")
                 result = trial / "results.jsonl"
