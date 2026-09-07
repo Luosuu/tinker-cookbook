@@ -53,7 +53,12 @@ def policy_for_task(task: HarborTask) -> Policy:
     name = task.task_name
     if name in {"kokkos__kokkos-8989", "kokkos__kokkos-9147"}:
         policy = Policy("modal", 4, 900, 16384, 4.0, "L4")
-    elif name in {"kokkos__kokkos-8164", "kokkos__kokkos-8399", "kokkos__kokkos-8827"}:
+    elif name in {
+        "kokkos__kokkos-7074",
+        "kokkos__kokkos-8164",
+        "kokkos__kokkos-8399",
+        "kokkos__kokkos-8827",
+    }:
         policy = Policy("modal", 4, 900, 16384, 4.0)
     elif name == "kokkos__kokkos-7244":
         policy = Policy("modal", 1, 900, 16384, 4.0)

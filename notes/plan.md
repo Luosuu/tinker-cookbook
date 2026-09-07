@@ -656,3 +656,15 @@ and independent GPU-validation processes exit before launching the bulk sweep.
 At most three new validation sandboxes run together, alongside the existing
 four model slots. Do not repeat same-hash control or GPU gates already proven
 under that exact resource policy.
+
+The fourth control, 7074, now runs 128 real tests. Its Oracle passes 124 and
+skips three, but fails view_allocation_large_rank because its 4 GiB allocation
+exceeds ConTree's measured VM capacity. Preserve that NOP0/Oracle0 result; the
+conditional bulk launcher stopped without dispatching any validation. Keep the
+same frozen v7 payload and all tests, and explicitly move 7074 to Modal16GiB/
+4CPU/build4. Validate its NOP/Oracle pair once in a separate resource directory,
+with no inference. A failure under this new policy remains blocked. Once this
+fourth control passes, reuse the three ConTree controls and the same-hash L4
+9147 gate, and launch the remaining v7 gates with at most three shared slots.
+Do not reuse the old low-memory result as evidence for the new policy or erase
+it from the experiment record.

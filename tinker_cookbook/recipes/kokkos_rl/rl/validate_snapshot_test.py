@@ -25,6 +25,21 @@ def test_gpu_requirements_and_pinned_resources(tmp_path):
         gate.policy_for_task(other)
 
 
+def test_large_allocation_control_requires_larger_vm(tmp_path):
+    task = task_with_metadata(tmp_path, "kokkos__kokkos-7074")
+    policy = gate.policy_for_task(task)
+    assert policy == gate.Policy("modal", 4, 900, 16384, 4.0)
+    old_failure = {
+        "task": task.task_name,
+        "task_hash": "same-payload",
+        **asdict(gate.Policy()),
+        "nop": 0,
+        "oracle": 0,
+        "passed": False,
+    }
+    assert not gate.matching_evidence(old_failure, task.task_name, "same-payload", policy)
+
+
 @pytest.mark.parametrize(
     "field,wrong",
     [
