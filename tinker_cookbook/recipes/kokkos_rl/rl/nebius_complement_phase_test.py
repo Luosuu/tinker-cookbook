@@ -340,3 +340,11 @@ async def test_full_dry_run_reserves_original_queue_without_clients_or_claims(
     await phase.main(config)
     assert len(observed) == 2 and observed[0] != observed[1]
     assert len(list(original.rglob("claim.json"))) == 2
+
+    launches = list((smoke / "launches").glob("*.json"))
+    assert len(launches) == 2
+    for marker in smoke.glob("*/*/attempt_started.json"):
+        data = json.loads(marker.read_text())
+        proof = data["launch"]
+        assert pinned_file(type(marker)(proof["path"])) == proof
+        assert data["code_commit"] == json.loads(type(marker)(proof["path"]).read_text())["commit"]

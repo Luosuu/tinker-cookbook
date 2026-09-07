@@ -299,15 +299,16 @@ async def run(config: Config) -> None:
             tasks,
             evaluator="nebius-complement-pass1",
         )
-    write_json(
-        phase / "process.json",
-        {
-            "pid": os.getpid(),
-            "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
-            "started_at": datetime.now(UTC).isoformat(),
-            "identity_sha256": identity_sha,
-        },
-    )
+    launch_record = {
+        "pid": os.getpid(),
+        "commit": subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
+        "started_at": datetime.now(UTC).isoformat(),
+        "identity_sha256": identity_sha,
+        "invocation": dump_config(config),
+    }
+    launch_path = phase / "launches" / f"{datetime.now(UTC).strftime('%Y%m%dT%H%M%S%f')}.json"
+    write_exclusive(launch_path, launch_record)
+    write_json(phase / "process.json", launch_record)
     load_env_file(Path(config.env_file))
     first = configs[MODELS[0]]
     primary = None
@@ -388,6 +389,8 @@ async def run(config: Config) -> None:
                     "task": task.task_name,
                     "task_hash": hashes[task.task_name],
                     "phase_identity_sha256": identity_sha,
+                    "code_commit": launch_record["commit"],
+                    "launch": pinned_file(launch_path),
                     "claim": pinned_file(claim),
                     "started_at": datetime.now(UTC).isoformat(),
                 },
