@@ -108,8 +108,9 @@ async def test_disk_claim_collision_and_streaming_fail_before_dispatch(tmp_path)
 @pytest.mark.asyncio
 async def test_real_chat_session_omit_and_reasoning_tool_roundtrip(tmp_path):
     from types import SimpleNamespace
+    from typing import cast
 
-    from openai import Omit
+    from openai import AsyncOpenAI, Omit
 
     from tinker_cookbook.recipes.kokkos_rl.chat_inference import ChatSession
 
@@ -142,7 +143,12 @@ async def test_real_chat_session_omit_and_reasoning_tool_roundtrip(tmp_path):
     audited = AuditedCompletions(provider, tmp_path / "requests", "identity")
     client = SimpleNamespace(chat=SimpleNamespace(completions=audited))
     session = ChatSession(
-        client, "exact-model", 0.9, None, provider="nebius", reasoning_effort="high"
+        cast(AsyncOpenAI, client),
+        "exact-model",
+        0.9,
+        None,
+        provider="nebius",
+        reasoning_effort="high",
     )
     tools = [
         {
