@@ -678,3 +678,9 @@ and command list. Preserve both build targets, the F2P build stage, and the
 real Serial1 regression. Prepare a new frozen snapshot without changing the
 active v7 validation or its failed evidence. A later exact-hash NOP/Oracle gate
 must qualify the repaired payload before any additional model sampling.
+
+Validate only the repaired 7089 v8 payload once in a separate ConTree gate with
+one sandbox and zero inference calls. The original four model slots and three
+v7 validator slots leave one slot within the shared limit of eight. Keep all
+other v8 tasks waiting; reuse same-hash v7 evidence later. Any failure of this
+new gate remains terminal for diagnosis rather than triggering a retry.
