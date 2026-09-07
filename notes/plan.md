@@ -880,3 +880,11 @@ frozen Dockerfiles specify only DEBIAN_FRONTEND; 422 alone adds the runtime JIT
 library path. This adds one reserved slot after both the previous PyKokkos and
 three-task resource runners exit, keeping total reserved sandbox capacity below
 eight. Record the environment policy in future model-evaluation identity too.
+
+The read-only final qualification merge must additionally require the recorded
+runtime environment policy for 422. Add optional per-task environment-policy
+requirements: reject otherwise matching task/resource evidence with a missing
+or different environment version, and retain it as rejected provenance. Keep
+this requirement empty for existing reports. The v11/env1 report requires
+422=dockerfile_env_v1 and includes the independently recorded env1 gate; only a
+fully reviewed pair with the required environment can unblock future sampling.

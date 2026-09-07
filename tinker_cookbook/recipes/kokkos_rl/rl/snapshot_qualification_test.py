@@ -150,3 +150,54 @@ def test_oracle_pairs_cannot_bypass_behavior_coverage_review(tmp_path, monkeypat
     )
     assert report["verifier_pairs_passed"] == 3
     assert report["ready_for_sampling"] is False
+
+
+def test_required_environment_policy_rejects_same_payload_with_legacy_runtime(
+    tmp_path, monkeypatch
+):
+    snapshot = tmp_path / "snapshot"
+    tasks, hashes = make_snapshot(snapshot, monkeypatch)
+    evidence = tmp_path / "evidence"
+    evidence.mkdir()
+    for task in tasks:
+        save_record(evidence, task, hashes[task.task_name])
+    name = tasks[0].task_name
+    config = qualification.Config(
+        snapshot_dir=str(snapshot),
+        evidence_dirs=(str(evidence),),
+        output_path=str(tmp_path / "report.json"),
+        coverage_review_path=save_review(tmp_path / "review.json", hashes),
+        required_environment_policies=((name, "dockerfile_env_v1"),),
+    )
+    before = qualification.qualify(config)
+    assert before["qualified"] == 2
+    assert before["ready_for_sampling"] is False
+    assert before["tasks"][name]["rejected_evidence"]
+    save_record(
+        evidence, tasks[0], hashes[name], runtime_environment_policy_version="dockerfile_env_v1"
+    )
+    after = qualification.qualify(config)
+    assert after["qualified"] == 3 and after["ready_for_sampling"] is True
+    assert after["required_environment_policies"] == {name: "dockerfile_env_v1"}
+
+
+@pytest.mark.parametrize(
+    "entries",
+    [
+        (("missing", "v1"),),
+        (("kokkos__kokkos-6375", ""),),
+        (("kokkos__kokkos-6375", "v1"), ("kokkos__kokkos-6375", "v2")),
+    ],
+)
+def test_invalid_environment_policy_requirements_fail_closed(tmp_path, monkeypatch, entries):
+    snapshot = tmp_path / "snapshot"
+    make_snapshot(snapshot, monkeypatch)
+    with pytest.raises(ValueError, match="Environment policies require"):
+        qualification.qualify(
+            qualification.Config(
+                snapshot_dir=str(snapshot),
+                evidence_dirs=(),
+                output_path=str(tmp_path / "out.json"),
+                required_environment_policies=entries,
+            )
+        )

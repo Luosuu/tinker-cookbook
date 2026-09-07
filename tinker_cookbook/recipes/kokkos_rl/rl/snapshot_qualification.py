@@ -29,6 +29,7 @@ class Config:
     output_path: str
     coverage_review_path: str | None = None
     resource_policy_version: str = "v7"
+    required_environment_policies: tuple[tuple[str, str], ...] = ()
 
 
 def write_report(path: Path, report: dict[str, object]) -> None:
@@ -54,6 +55,13 @@ def qualify(config: Config) -> dict[str, object]:
     hashes = {task.task_name: _task_digest(task) for task in tasks}
     if not tasks or hashes != manifest["task_hashes"]:
         raise ValueError("Snapshot contents must exactly match a nonempty manifest")
+    environment_policies = dict(config.required_environment_policies)
+    if (
+        len(environment_policies) != len(config.required_environment_policies)
+        or not environment_policies.keys() <= hashes.keys()
+        or any(not version for version in environment_policies.values())
+    ):
+        raise ValueError("Environment policies require unique existing tasks and nonempty versions")
     policies = {
         task.task_name: policy_for_task(task, config.resource_policy_version) for task in tasks
     }
@@ -76,6 +84,9 @@ def qualify(config: Config) -> dict[str, object]:
                 "nop": record.get("nop"),
                 "oracle": record.get("oracle"),
                 "policy": {key: record.get(key) for key in asdict(Policy())},
+                "runtime_environment_policy_version": record.get(
+                    "runtime_environment_policy_version"
+                ),
             }
             evidence.setdefault(record["task"], []).append((record, provenance))
     results: dict[str, dict[str, object]] = {}
@@ -83,10 +94,18 @@ def qualify(config: Config) -> dict[str, object]:
         name = task.task_name
         matching, rejected = [], []
         for record, provenance in evidence.get(name, []):
-            if matching_evidence(record, name, hashes[name], policies[name]):
+            if matching_evidence(record, name, hashes[name], policies[name]) and (
+                name not in environment_policies
+                or record.get("runtime_environment_policy_version") == environment_policies[name]
+            ):
                 matching.append((record, provenance))
             else:
-                rejected.append({**provenance, "reason": "task hash or resource policy differs"})
+                rejected.append(
+                    {
+                        **provenance,
+                        "reason": "task hash, resource policy, or required runtime environment policy differs",
+                    }
+                )
         successful = [source for record, source in matching if passed_evidence(record)]
         results[name] = {
             "task_hash": hashes[name],
@@ -94,7 +113,9 @@ def qualify(config: Config) -> dict[str, object]:
             "qualified": bool(successful),
             "stage": "qualified" if successful else "failed" if matching else "missing",
             "successful_evidence": successful,
-            "failed_evidence": [source for record, source in matching if not passed_evidence(record)],
+            "failed_evidence": [
+                source for record, source in matching if not passed_evidence(record)
+            ],
             "rejected_evidence": rejected,
         }
     qualified = sum(result["qualified"] is True for result in results.values())
@@ -117,6 +138,7 @@ def qualify(config: Config) -> dict[str, object]:
         "created_at": datetime.now(UTC).isoformat(),
         "snapshot_dir": str(snapshot.resolve()),
         "resource_policy_version": config.resource_policy_version,
+        "required_environment_policies": environment_policies,
         "manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
         "task_hashes": hashes,
         "total": len(tasks),
