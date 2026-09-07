@@ -841,3 +841,20 @@ and the one-slot runtime_v10 queue (at most six). Keep the runtime_v10 queue and
 original worker untouched. Record old failure paths and the changed resource
 identity. A new failure remains terminal and requires diagnosis; this is not an
 automatic retry under the original resource policy, and performs no inference.
+
+Execute a separate, explicit recovery phase for four unchanged task hashes after
+original bulk validation exits. Original evidence and read-only operation
+metadata authorize exactly five new verifier stages: one Oracle for each of
+8715 and 8741 after confirmed SDK cancellation, the first Oracle for 8789 using
+its recovered immutable-image NOP=0, and the first effective NOP/Oracle pair for
+8792 after a proven test-upload failure. Preserve all original records. Pin the
+proposal, source logs, operation metadata, rewards, task hashes, and unchanged
+ConTree build-one/900-second resource policy. Use the status-GET-only retry
+transport and fail-closed test/candidate staging corrections. Do not retry a
+terminal stage or an interrupted attempt; persist attempt markers before remote
+work and distinct stage-result evidence for qualification. This phase uses one
+sandbox slot and zero inference; combined reserved capacity is at most eight
+(four original model slots, one runtime-v10 slot, one resource-v11 slot, this
+recovery slot, and one independent environment-validation slot). Offline tests
+must cover proof validation, JSON identity round trips, interrupted and completed
+resume, failed NOP stopping Oracle, and source mutation before dispatch.
