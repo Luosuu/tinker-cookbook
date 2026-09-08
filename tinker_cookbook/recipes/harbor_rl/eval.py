@@ -112,6 +112,30 @@ def _reserve_rollout_directory(root: Path) -> Path:
             index += 1
 
 
+def _publish_completed_attempt(root: Path, attempt: Path) -> None:
+    """Expose completed evidence to legacy readers without overwriting prior attempts."""
+    if attempt == root:
+        return
+    names = (
+        "sampling", "candidate.json", "candidate.patch", "messages.json",
+        "failure.json", "verifier.json", "patch.diff", "trajectory.json",
+    )
+    original = root / "attempts" / "000"
+    original.mkdir(exist_ok=True)
+    for name in names:
+        previous = root / name
+        if previous.is_symlink():
+            previous.unlink()
+        elif previous.exists():
+            previous.rename(original / name)
+    # trajectory.json is last so readers discovering completed trajectories see
+    # the matching candidate and sampling evidence already installed.
+    for name in names:
+        source = attempt / name
+        if source.exists():
+            (root / name).symlink_to(source.relative_to(root))
+
+
 def _evaluation_termination() -> TerminationRewardPolicy:
     # HarborReward owns the configured verifier command timeout. An additional
     # preset timer also counts patch capture/upload and used to cancel it at 900s.
@@ -217,6 +241,11 @@ async def evaluate_task(
             time_seconds=round(elapsed, 1),
             trajectory_str=trajectory_str,
         )
+        if recorder is not None:
+            _publish_completed_attempt(
+                results_dir / "rollouts" / f"{task.task_name}__{sample_index:02d}",
+                recorder.directory,
+            )
     except Exception as e:
         elapsed = time.monotonic() - start
         logger.exception("Task %s failed", task.task_name)

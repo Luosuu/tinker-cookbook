@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import math
 import os
 import re
 import secrets
@@ -73,6 +74,7 @@ class ApptainerSandbox:
         self._id = f"apptainer-{uuid.uuid4().hex}"
         self._deadline = time.monotonic() + timeout
         self._closed = False
+        self._cleanup_complete = False
         self._lock = asyncio.Lock()
         self._default_workdir = default_workdir
         self._allow_network = allow_network
@@ -257,18 +259,31 @@ class ApptainerSandbox:
         timeout: int = 60,
     ) -> SandboxResult:
         data = content.encode() if isinstance(content, str) else content
-        encoded = base64.b64encode(data).decode("ascii")
-        program = (
-            "import base64,pathlib; "
-            f"p=pathlib.Path({path!r}); p.parent.mkdir(parents=True,exist_ok=True); "
-            f"p.write_bytes(base64.b64decode({encoded!r})); "
-            + ("p.chmod(p.stat().st_mode | 0o111)" if executable else "pass")
-        )
-        return await self.run_command("python -c " + shlex.quote(program), timeout=timeout)
+        deadline = time.monotonic() + timeout
+        # Bound each shell argument below Linux MAX_ARG_STRLEN, including the
+        # additional quoting introduced by command_env and offline wrappers.
+        for offset in range(0, max(len(data), 1), 16 * 1024):
+            encoded = base64.b64encode(data[offset : offset + 16 * 1024]).decode("ascii")
+            mode = "wb" if offset == 0 else "ab"
+            program = (
+                "import base64,pathlib; "
+                f"p=pathlib.Path({path!r}); p.parent.mkdir(parents=True,exist_ok=True); "
+                f"f=p.open({mode!r}); f.write(base64.b64decode({encoded!r})); f.close(); "
+                + ("p.chmod(p.stat().st_mode | 0o111)" if executable else "pass")
+            )
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return SandboxResult(stdout="", stderr="File upload timed out", exit_code=-1)
+            result = await self.run_command(
+                "python -c " + shlex.quote(program), timeout=math.ceil(remaining)
+            )
+            if result.exit_code != 0:
+                return result
+        return result
 
     async def cleanup(self) -> None:
         async with self._lock:
-            if self._closed:
+            if self._cleanup_complete:
                 return
             self._closed = True
             await asyncio.to_thread(self._workspace.cleanup)
@@ -286,6 +301,7 @@ class ApptainerSandbox:
                 _release_port(self._leased_port)
             if self._identity_file is not None:
                 self._identity_file.unlink(missing_ok=True)
+            self._cleanup_complete = True
 
 
 async def apptainer_sandbox_factory(

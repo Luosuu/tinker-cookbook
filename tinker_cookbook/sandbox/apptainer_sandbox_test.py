@@ -244,3 +244,49 @@ def test_identity_does_not_mutate_process_environment_after_configuration(
     with patch.dict("sys.modules", {"openhands.workspace": Mock(ApptainerWorkspace=construct)}):
         with patch("os.putenv", side_effect=AssertionError("concurrent environment mutation")):
             asyncio.run(run())
+
+
+@pytest.mark.parametrize("data", [b"", bytes(range(256)) * 1024], ids=["empty", "large"])
+def test_chunked_upload_round_trips_large_binary(tmp_path: Path, data: bytes) -> None:
+    import shlex
+    import subprocess
+    import sys
+
+    destination = tmp_path / "space and 'quote.bin"
+    workspace = Mock()
+
+    def execute(command, **kwargs):
+        arguments = shlex.split(command)
+        assert len(command) < 32768
+        completed = subprocess.run([sys.executable, *arguments[1:]], capture_output=True, text=True)
+        return SandboxResult(stdout=completed.stdout, stderr=completed.stderr,
+                             exit_code=completed.returncode)
+
+    workspace.execute_command.side_effect = execute
+    sandbox = ApptainerSandbox(workspace, 60)
+    result = asyncio.run(sandbox.write_file(str(destination), data, executable=True))
+    assert result.exit_code == 0
+    assert destination.read_bytes() == data
+    assert destination.stat().st_mode & 0o111
+
+
+def test_cleanup_can_retry_after_failure(tmp_path: Path) -> None:
+    from tinker_cookbook.sandbox.apptainer_sandbox import _LEASED_PORTS, _lease_port
+
+    port = _lease_port()
+    marker = tmp_path / "identity"
+    marker.touch()
+    workspace = Mock(host_port=port)
+    workspace.cleanup.side_effect = [RuntimeError("temporary failure"), None]
+    sandbox = ApptainerSandbox(workspace, 60, leased_port=port, identity_file=marker)
+
+    async def run() -> None:
+        with pytest.raises(RuntimeError, match="temporary failure"):
+            await sandbox.cleanup()
+        assert port in _LEASED_PORTS and marker.exists()
+        await sandbox.cleanup()
+        await sandbox.cleanup()
+
+    asyncio.run(run())
+    assert workspace.cleanup.call_count == 2
+    assert port not in _LEASED_PORTS and not marker.exists()

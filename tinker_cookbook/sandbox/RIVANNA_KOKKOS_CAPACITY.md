@@ -180,3 +180,21 @@ and cleanup. The optional offline mode isolates each command's network namespace
 it does not isolate the Agent Server's own network. Relevant regression suites
 passed 48 tests. This does not retroactively validate the failed 256 wave or
 establish a new capacity maximum.
+
+
+## Completed full-dataset evaluation
+
+Subsequent validation built all 100 SWE-Kokkos task images and passed every
+NOP/Oracle baseline. A one-sample Inkling evaluation used 63 CPU sandboxes plus
+one GPU sandbox (global limit 64), with explicit OMP/BLAS thread settings of four
+and offline command namespaces. This is a different runtime policy from the
+original default-resource capacity sweep above.
+
+The initial evaluation had two infrastructure errors: the agentic preset's
+900-second outer grading timer interrupted the configured 3600-second verifier,
+and retries collided with preserved sampling evidence. Both original candidate
+patches were regraded in fresh containers without additional sampling; both
+passed tests. One remained zero-reward under the existing 20-turn-limit policy.
+The recovered policy-scored result was 18/100, with no remaining infrastructure
+errors. This figure is specific to these rollout limits and the documented CUDA
+12.9 / Blackwell adaptation; it is not a default benchmark leaderboard result.
