@@ -115,10 +115,14 @@ class RolloutRecorder:
         results_dir: Path,
         sample_index: int,
         reward_fn: HarborReward,
+        *,
+        directory: Path | None = None,
     ) -> None:
         self.task = task
         self.sandbox = sandbox
-        self.directory = results_dir / "rollouts" / f"{task.task_name}__{sample_index:02d}"
+        self.directory = directory if directory is not None else (
+            results_dir / "rollouts" / f"{task.task_name}__{sample_index:02d}"
+        )
         self.sample_index = sample_index
         self.reward_fn = reward_fn
         self.history: list[Message] = []
