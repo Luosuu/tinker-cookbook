@@ -11,6 +11,7 @@ eval_qwen35_35b.md
 run_eval_qwen35.py
 **/__marimo__
 experiments/
+notes/genesis_archive/
 
 # Regenerable Kokkos mining, annotation, and validation artifacts.
 # Release payloads under data/kokkos/SWE-kokkos-bench* remain tracked.
