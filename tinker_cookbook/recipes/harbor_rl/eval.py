@@ -36,7 +36,7 @@ from tinker_cookbook.recipes.harbor_rl.harbor_env import (
 from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborBashTool, HarborReward
 from tinker_cookbook.renderers import get_renderer
 from tinker_cookbook.renderers.base import Renderer
-from tinker_cookbook.rl.rollout_limits import RolloutLimits
+from tinker_cookbook.rl.rollout_limits import RolloutLimits, TerminationRewardPolicy
 from tinker_cookbook.rl.rollout_presets import RolloutConfig, agentic
 from tinker_cookbook.rl.rollouts import do_single_rollout
 from tinker_cookbook.tool_use import build_agent_tool_env
@@ -92,6 +92,56 @@ class TaskResult:
     trajectory_str: str | None = None
 
 
+def _reserve_rollout_directory(root: Path) -> Path:
+    """Keep the first attempt compatible, and atomically reserve fresh retry evidence."""
+    root.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        root.mkdir()
+        return root
+    except FileExistsError:
+        pass
+    attempts = root / "attempts"
+    attempts.mkdir(exist_ok=True)
+    index = 1
+    while True:
+        directory = attempts / f"{index:03d}"
+        try:
+            directory.mkdir()
+            return directory
+        except FileExistsError:
+            index += 1
+
+
+def _publish_completed_attempt(root: Path, attempt: Path) -> None:
+    """Expose completed evidence to legacy readers without overwriting prior attempts."""
+    if attempt == root:
+        return
+    names = (
+        "sampling", "candidate.json", "candidate.patch", "messages.json",
+        "failure.json", "verifier.json", "patch.diff", "trajectory.json",
+    )
+    original = root / "attempts" / "000"
+    original.mkdir(exist_ok=True)
+    for name in names:
+        previous = root / name
+        if previous.is_symlink():
+            previous.unlink()
+        elif previous.exists():
+            previous.rename(original / name)
+    # trajectory.json is last so readers discovering completed trajectories see
+    # the matching candidate and sampling evidence already installed.
+    for name in names:
+        source = attempt / name
+        if source.exists():
+            (root / name).symlink_to(source.relative_to(root))
+
+
+def _evaluation_termination() -> TerminationRewardPolicy:
+    # HarborReward owns the configured verifier command timeout. An additional
+    # preset timer also counts patch capture/upload and used to cancel it at 900s.
+    return chz.replace(agentic().termination, grader_timeout_seconds=None)
+
+
 async def evaluate_task(
     task: HarborTask,
     policy: TinkerTokenCompleter,
@@ -118,21 +168,29 @@ async def evaluate_task(
     try:
         sandbox = await sandbox_factory(env_dir, config.sandbox_timeout)
         bash_tool = HarborBashTool(sandbox, command_timeout=config.command_timeout)
+        rollout_directory = (
+            _reserve_rollout_directory(
+                results_dir / "rollouts" / f"{task.task_name}__{sample_index:02d}"
+            )
+            if config.export_kokkos_rollouts else None
+        )
         reward_fn = HarborReward(
             tests_dir=task.task_dir / "tests",
             sandbox=sandbox,
             grader_timeout=config.grader_timeout,
             raise_on_grading_error=True,
             grading_log_path=(
-                results_dir / "rollouts" / f"{task.task_name}__{sample_index:02d}" / "verifier.json"
-                if config.export_kokkos_rollouts
+                rollout_directory / "verifier.json"
+                if rollout_directory is not None
                 else None
             ),
         )
         if config.export_kokkos_rollouts:
             from tinker_cookbook.recipes.kokkos_rl.rl.rollout_data import RolloutRecorder
 
-            recorder = RolloutRecorder(task, sandbox, results_dir, sample_index, reward_fn)
+            recorder = RolloutRecorder(
+                task, sandbox, results_dir, sample_index, reward_fn, directory=rollout_directory
+            )
 
         base_rollout_config = agentic()
         rollout_config = RolloutConfig(
@@ -143,7 +201,7 @@ async def evaluate_task(
                 max_tool_calls=config.max_tool_calls,
             ),
             parse_errors=base_rollout_config.parse_errors,
-            termination=base_rollout_config.termination,
+            termination=_evaluation_termination(),
             tool_execution=base_rollout_config.tool_execution,
         )
 
@@ -183,6 +241,11 @@ async def evaluate_task(
             time_seconds=round(elapsed, 1),
             trajectory_str=trajectory_str,
         )
+        if recorder is not None:
+            _publish_completed_attempt(
+                results_dir / "rollouts" / f"{task.task_name}__{sample_index:02d}",
+                recorder.directory,
+            )
     except Exception as e:
         elapsed = time.monotonic() - start
         logger.exception("Task %s failed", task.task_name)
