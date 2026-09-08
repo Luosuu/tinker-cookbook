@@ -13,6 +13,7 @@ import secrets
 import shlex
 import socket
 import time
+import threading
 import tomllib
 import uuid
 from pathlib import Path
@@ -24,11 +25,37 @@ if TYPE_CHECKING:
     from openhands.workspace import ApptainerWorkspace
 
 
+_PORT_LOCK = threading.Lock()
+_LEASED_PORTS: set[int] = set()
+
+
+def _lease_port() -> int:
+    with _PORT_LOCK:
+        for _ in range(1000):
+            with socket.socket() as sock:
+                # Keep service ports outside Linux's usual ephemeral client range.
+                port = 10000 + secrets.randbelow(20000)
+                try:
+                    sock.bind(("0.0.0.0", port))
+                except OSError:
+                    continue
+            if port not in _LEASED_PORTS:
+                _LEASED_PORTS.add(port)
+                return port
+    raise RuntimeError("Could not reserve a unique sandbox port")
+
+
+def _release_port(port: int) -> None:
+    with _PORT_LOCK:
+        _LEASED_PORTS.discard(port)
+
+
 class ApptainerSandbox:
     """One persistent container per episode, with async Cookbook operations."""
 
     def __init__(
-        self, workspace: ApptainerWorkspace, timeout: int, default_workdir: str | None = None
+        self, workspace: ApptainerWorkspace, timeout: int, default_workdir: str | None = None,
+        *, allow_network: bool = True, leased_port: int | None = None
     ) -> None:
         self._workspace = workspace
         self._id = f"apptainer-{uuid.uuid4().hex}"
@@ -36,26 +63,81 @@ class ApptainerSandbox:
         self._closed = False
         self._lock = asyncio.Lock()
         self._default_workdir = default_workdir
+        self._allow_network = allow_network
+        self._leased_port = leased_port
 
     @classmethod
     async def create(
-        cls, sif_file: str | Path, timeout: int = 1800, default_workdir: str | None = None
+        cls,
+        sif_file: str | Path,
+        timeout: int = 1800,
+        default_workdir: str | None = None,
+        *,
+        enable_gpu: bool = False,
+        allow_network: bool = True,
     ) -> ApptainerSandbox:
         from openhands.workspace import ApptainerWorkspace
+
+        if enable_gpu and "SLURM_JOB_ID" in os.environ and not os.environ.get("CUDA_VISIBLE_DEVICES"):
+            raise RuntimeError("GPU sandbox requires Slurm CUDA_VISIBLE_DEVICES; request GPUs first")
+        forward_env = ["SESSION_API_KEY", "OH_ENABLE_VSCODE"]
+        if enable_gpu and "CUDA_VISIBLE_DEVICES" in os.environ:
+            forward_env.append("CUDA_VISIBLE_DEVICES")
 
         # Set once for this worker process; never forward the Tinker API key.
         os.environ.setdefault("SESSION_API_KEY", secrets.token_urlsafe(32))
         os.environ["OH_ENABLE_VSCODE"] = "false"
-        workspace = await asyncio.to_thread(
-            ApptainerWorkspace,
-            sif_file=str(Path(sif_file).resolve(strict=True)),
-            cache_dir=os.environ.get("APPTAINER_CACHEDIR"),
-            use_fakeroot=True,
-            enable_docker_compat=True,
-            forward_env=["SESSION_API_KEY", "OH_ENABLE_VSCODE"],
-            health_check_timeout=180,
-        )
-        return cls(workspace, timeout, default_workdir)
+        sif_path = str(Path(sif_file).resolve(strict=True))
+
+        def start() -> ApptainerSandbox:
+            port = _lease_port()
+            marker_name = "OH_SANDBOX_" + uuid.uuid4().hex.upper()
+            marker_value = secrets.token_hex(32)
+            workspace = None
+            os.environ[marker_name] = marker_value
+            try:
+                workspace = ApptainerWorkspace(
+                    sif_file=sif_path,
+                    host_port=port,
+                    cache_dir=os.environ.get("APPTAINER_CACHEDIR"),
+                    use_fakeroot=True,
+                    enable_docker_compat=True,
+                    enable_gpu=enable_gpu,
+                    forward_env=[*forward_env, marker_name],
+                    health_check_timeout=180,
+                )
+                # Generic /health can succeed against an unrelated listener.
+                identity = workspace.execute_command(f"printenv {marker_name}", cwd="/", timeout=30)
+                if identity.exit_code != 0 or identity.stdout.strip() != marker_value:
+                    raise RuntimeError("Sandbox endpoint identity mismatch")
+                if not allow_network:
+                    probe = workspace.execute_command(
+                        "unshare --user --map-root-user --net -- /bin/true", cwd="/", timeout=30
+                    )
+                    if probe.exit_code != 0:
+                        raise RuntimeError("Offline command namespace unavailable: " + probe.stderr)
+                return cls(workspace, timeout, default_workdir,
+                           allow_network=allow_network, leased_port=port)
+            except BaseException:
+                if workspace is not None:
+                    # This kills this workspace's local process, not the remote endpoint.
+                    workspace.cleanup()
+                _release_port(port)
+                raise
+            finally:
+                os.environ.pop(marker_name, None)
+
+        startup = asyncio.create_task(asyncio.to_thread(start))
+        try:
+            return await asyncio.shield(startup)
+        except asyncio.CancelledError:
+            # Cancelling an asyncio future does not stop its constructor thread.
+            try:
+                sandbox = await startup
+                await sandbox.cleanup()
+            except Exception:
+                pass
+            raise
 
     @property
     def sandbox_id(self) -> str:
@@ -79,6 +161,8 @@ class ApptainerSandbox:
             remaining = self._deadline - time.monotonic()
             if self._closed or remaining <= 0:
                 raise SandboxTerminatedError(self._id)
+            if not self._allow_network:
+                command = "unshare --user --map-root-user --net -- /bin/bash -c " + shlex.quote(command)
             result = await asyncio.to_thread(
                 self._workspace.execute_command,
                 command,
@@ -139,9 +223,11 @@ class ApptainerSandbox:
                 if time.monotonic() > deadline:
                     raise RuntimeError(f"Sandbox listener survived cleanup: {self._id}")
                 await asyncio.sleep(0.2)
+            if self._leased_port is not None:
+                _release_port(self._leased_port)
 
 
-async def apptainer_sandbox_factory(env_dir: Path, timeout: int) -> ApptainerSandbox:
+async def apptainer_sandbox_factory(env_dir: Path, timeout: int, *, allow_network: bool = True) -> ApptainerSandbox:
     """Read an explicit SIF path; do not silently replace task Dockerfiles.
 
     The environment must contain agent-server.sif or a sif.path file naming a
@@ -156,4 +242,10 @@ async def apptainer_sandbox_factory(env_dir: Path, timeout: int) -> ApptainerSan
     workdir = config.get("environment", {}).get("workdir")
     if workdir is not None and (not isinstance(workdir, str) or not workdir.startswith("/")):
         raise ValueError("environment.workdir must be an absolute container path")
-    return await ApptainerSandbox.create(sif, timeout, default_workdir=workdir)
+    gpus = config.get("environment", {}).get("gpus", 0)
+    if isinstance(gpus, bool) or not isinstance(gpus, int) or gpus < 0:
+        raise ValueError("environment.gpus must be a nonnegative integer")
+    # Slurm allocates devices separately. This flag grants visibility, not a quota.
+    return await ApptainerSandbox.create(
+        sif, timeout, default_workdir=workdir, enable_gpu=gpus > 0, allow_network=allow_network
+    )

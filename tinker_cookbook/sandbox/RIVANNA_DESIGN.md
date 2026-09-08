@@ -228,3 +228,39 @@ RL 试验使用 `Qwen/Qwen3-30B-A3B-Instruct-2507`，LoRA rank 8，最多 6 轮�
 - [Apptainer fakeroot 说明](https://apptainer.org/docs/user/1.4/fakeroot.html)
 - [UVA HPC 访问入口](https://rc.virginia.edu/request-manage/ssz-login)
 - [UVA RStudio/Apptainer 指南（归档，供背景参考）](https://archive.rc.virginia.edu/userinfo/howtos/rivanna/launch-rserver/)
+
+## GPU 与 MIG 接入
+
+适配器读取 `task.toml` 的 `environment.gpus`，大于零时传递
+`ApptainerWorkspace(enable_gpu=True)`，由 OpenHands 添加 `apptainer run --nv`。
+在 Slurm 作业中要求已有 `CUDA_VISIBLE_DEVICES` 并原样透传，包括 MIG UUID；
+适配器不申请 GPU，也不把 `gpus` 数值变成设备配额。`gpu_types` 的硬件匹配仍由
+launcher/Slurm allocation 和镜像编译架构负责，不能认为启用开关就完成了调度。
+
+2026-09-08 实时 Slurm 配置的 `gpu-mig` 提供 RTX PRO 6000 `1g.24gb` 切片。
+相应任务镜像需要兼容 Blackwell 的 CUDA 工具链和编译架构。多个容器可共享
+同一作业的可见设备，但它们会竞争同一 MIG 切片资源；MIG 的硬隔离边界是切片，
+不是每个 OpenHands workspace。CPU-only 题默认不启用 GPU 透传。
+
+当前 factory 仍在 driver 所在节点创建容器。CPU 大内存作业不能直接调用另一个
+GPU allocation 的本地 factory；混合训练要么整个 driver 在 GPU 节点运行，
+要么增加按任务路由到 CPU/GPU worker 的远程管理层。后者尚未实现。
+
+
+## 高并发启动与离线评测修正（2026-09-08）
+
+启动时在进程内保留服务端口租约，并从 10000–29999 选取可绑定端口，避开
+本次节点的客户端临时端口范围 32768–60999。每个容器使用不同名称的环境标记，
+通用健康检查后还必须返回自己的标记；身份不匹配时终止其本地进程并报错。
+这避免把另一个容器的健康响应误认为启动成功。端口租约在成功回收后释放。
+多 driver 的全局端口协调尚未实现，但初始身份校验会拒绝错误的端点。
+
+`allow_network=False` 为每次任务命令创建新的 user/network namespace：
+`unshare --user --map-root-user --net -- /bin/bash -c ...`。Agent Server 仍使用
+宿主网络；模型工具命令与 verifier 在无外部网络的子命名空间执行。创建时先
+验证内核允许这种模式，不支持时直接失败。此模式不适合要求跨命令共享本地
+网络服务的任务，也不是完整的容器安全审计结论。
+
+64 个新容器已通过不同端口、同路径独立文件读写、外网不可达和回收检查。
+精确模型 `thinkingmachines/Inkling:peft:262144:sampling-nvfp4` 的 tokenizer、
+renderer 与实际 Tinker 采样均通过预检。相关回归测试 48 项通过。
