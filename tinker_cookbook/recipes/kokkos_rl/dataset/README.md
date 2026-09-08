@@ -1,5 +1,7 @@
 # Kokkos dataset construction
 
+Planned improvements and acceptance criteria are tracked in [TODO.md](TODO.md).
+
 This package turns merged Kokkos ecosystem pull requests into SWE-style, test-verifiable
 Harbor tasks. The pipeline keeps the gold production patch and held-out test patch out of
 the agent image. During grading, protected files are restored before the held-out patch and
