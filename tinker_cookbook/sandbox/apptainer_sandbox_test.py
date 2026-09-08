@@ -290,3 +290,66 @@ def test_cleanup_can_retry_after_failure(tmp_path: Path) -> None:
     asyncio.run(run())
     assert workspace.cleanup.call_count == 2
     assert port not in _LEASED_PORTS and not marker.exists()
+
+
+def test_cancelled_create_retries_cleanup_despite_repeated_cancellation(tmp_path: Path) -> None:
+    import threading
+
+    from tinker_cookbook.sandbox.apptainer_sandbox import _LEASED_PORTS
+
+    entered = threading.Event()
+    finish_startup = threading.Event()
+    retry_entered = threading.Event()
+    finish_cleanup = threading.Event()
+    workspace = Mock()
+    marker_paths: list[Path] = []
+    ports: list[int] = []
+    calls = 0
+
+    def cleanup() -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise RuntimeError("transient cleanup failure")
+        retry_entered.set()
+        assert finish_cleanup.wait(10)
+
+    def construct(**kwargs):
+        marker = Path(kwargs["extra_bind_mounts"][0].split(":")[0])
+        marker_paths.append(marker)
+        ports.append(kwargs["host_port"])
+        workspace.host_port = kwargs["host_port"]
+        workspace.execute_command.return_value = SandboxResult(
+            stdout=marker.read_text(), stderr="", exit_code=0
+        )
+        workspace.cleanup.side_effect = cleanup
+        entered.set()
+        assert finish_startup.wait(10)
+        return workspace
+
+    sif = tmp_path / "image.sif"
+    sif.touch()
+
+    async def run() -> None:
+        task = asyncio.create_task(ApptainerSandbox.create(sif))
+        try:
+            assert await asyncio.to_thread(entered.wait, 10)
+            task.cancel()
+            finish_startup.set()
+            assert await asyncio.to_thread(retry_entered.wait, 10)
+            assert ports[0] in _LEASED_PORTS and marker_paths[0].exists()
+            task.cancel()
+            await asyncio.sleep(0)
+            assert not task.done()
+            finish_cleanup.set()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+        finally:
+            finish_startup.set()
+            finish_cleanup.set()
+        assert ports[0] not in _LEASED_PORTS
+        assert not marker_paths[0].exists()
+        assert calls == 2
+
+    with patch.dict("sys.modules", {"openhands.workspace": Mock(ApptainerWorkspace=construct)}):
+        asyncio.run(run())

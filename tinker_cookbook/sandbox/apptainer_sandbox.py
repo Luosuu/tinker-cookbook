@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import logging
 import math
 import os
 import re
@@ -31,6 +32,7 @@ if TYPE_CHECKING:
 _PORT_LOCK = threading.Lock()
 _LEASED_PORTS: set[int] = set()
 _ENV_CONFIGURED = False
+logger = logging.getLogger(__name__)
 
 
 def _lease_port() -> int:
@@ -185,12 +187,15 @@ class ApptainerSandbox:
         try:
             return await asyncio.shield(startup)
         except asyncio.CancelledError:
-            # Cancelling an asyncio future does not stop its constructor thread.
-            try:
-                sandbox = await startup
-                await sandbox.cleanup()
-            except Exception:
-                pass
+            # Keep ownership until the constructor thread and cleanup finish.
+            # Repeated cancellation must not cancel the sole cleanup owner.
+            cleanup = asyncio.create_task(_cleanup_cancelled_startup(startup))
+            while not cleanup.done():
+                try:
+                    await asyncio.shield(cleanup)
+                except asyncio.CancelledError:
+                    continue
+            cleanup.result()
             raise
 
     @property
@@ -302,6 +307,22 @@ class ApptainerSandbox:
             if self._identity_file is not None:
                 self._identity_file.unlink(missing_ok=True)
             self._cleanup_complete = True
+
+
+async def _cleanup_cancelled_startup(startup: asyncio.Task[ApptainerSandbox]) -> None:
+    try:
+        sandbox = await startup
+    except Exception:
+        # The constructor handles its own failures; no adapter was returned.
+        return
+    while True:
+        try:
+            await sandbox.cleanup()
+            return
+        except Exception:
+            logger.warning("Retrying cleanup of cancelled sandbox %s", sandbox.sandbox_id,
+                           exc_info=True)
+            await asyncio.sleep(1)
 
 
 async def apptainer_sandbox_factory(
