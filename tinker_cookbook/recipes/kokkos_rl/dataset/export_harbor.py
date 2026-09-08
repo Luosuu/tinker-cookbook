@@ -8,6 +8,7 @@ import json
 import shlex
 from pathlib import Path
 
+from tinker_cookbook.recipes.kokkos_rl.dataset import verifier_results
 from tinker_cookbook.recipes.kokkos_rl.dataset.ecosystem import get_repository_profile
 from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
 from tinker_cookbook.recipes.kokkos_rl.dataset.patching import (
@@ -161,29 +162,22 @@ def _test_script(instance: KokkosInstance) -> str:
         build_command += ' "${CMAKE_BUILD_PARALLEL_LEVEL:-1}"'
     protected_paths = tuple(path for path, _block in split_unified_diff(instance.test_patch))
     protected_values = " ".join(shlex.quote(path) for path in protected_paths)
-    return f"""#!/usr/bin/env bash
-set -uo pipefail
-
-repo=/workspace/repo
-reward=/logs/verifier/reward.txt
-mkdir -p /logs/verifier
-echo 0 > "$reward"
-cd "$repo" || exit 0
+    setup = f"""cd /workspace/repo || exit 1
 baseline={shlex.quote(instance.base_commit)}
 
 # Never trust HEAD: the agent may have committed its edits.
 # Fail closed if the original object was deleted; ignore replacement refs.
-git --no-replace-objects cat-file -e "$baseline^{{commit}}" || exit 0
-illegal=$(\n  set -e\n  git --no-replace-objects diff --no-ext-diff --name-only "$baseline" -- || exit 1\n  git ls-files --others --exclude-standard | sed '\\#^build/#d'\n) || exit 0
+git --no-replace-objects cat-file -e "$baseline^{{commit}}" || exit 1
+illegal=$(\n  set -e\n  git --no-replace-objects diff --no-ext-diff --name-only "$baseline" -- || exit 1\n  git ls-files --others --exclude-standard | sed '\\#^build/#d'\n) || exit 1
 if printf '%s\n' "$illegal" | grep -E '(^|/)(tests?|unit_tests?)(/|$)|(^|/)(test_.*|.*_test\\.py)$|(^|/)CMakeLists\\.txt$|^\\.github/|^cmake/'; then
   echo "candidate patch changes protected test/build/CI files" >&2
-  exit 0
+  exit 1
 fi
 
 protected_paths=({protected_values})
 for path in "${{protected_paths[@]}}"; do
   if git --no-replace-objects cat-file -e "$baseline:$path" 2>/dev/null; then
-    git --no-replace-objects checkout "$baseline" -- "$path" || exit 0
+    git --no-replace-objects checkout "$baseline" -- "$path" || exit 1
   else
     rm -f -- "$path"
   fi
@@ -191,28 +185,41 @@ done
 
 if ! git apply --whitespace=nowarn /tests/test.patch; then
   echo "failed to inject hidden tests" >&2
-  exit 0
+  exit 1
 fi
-if ! {build_command}; then
-  exit 0
-fi
-
-run_checked() {{
-  python3 - "$1" <<'KOKKOS_RUNTIME_GUARD'
-{guard_source()}
-KOKKOS_RUNTIME_GUARD
-}}
-
-{_shell_array("f2p_commands", tuple(normalize_test_command(command, test_patch=instance.test_patch, instance=instance) for command in instance.f2p_commands))}
-{_shell_array("p2p_commands", tuple(normalize_test_command(command, test_patch=instance.test_patch, instance=instance) for command in instance.p2p_commands))}
-for command in "${{f2p_commands[@]}}" "${{p2p_commands[@]}}"; do
-  if [[ -n "$command" ]] && ! run_checked "$command"; then
-    exit 0
-  fi
-done
-
-echo 1 > "$reward"
 """
+    checks = [
+        {"id": "setup", "stage": "setup", "command": setup},
+        {"id": "build", "stage": "build", "command": build_command},
+    ]
+    for stage, commands in [("f2p", instance.f2p_commands), ("p2p", instance.p2p_commands)]:
+        checks.extend(
+            {
+                "id": f"{stage}-{index}",
+                "stage": stage,
+                "command": normalize_test_command(
+                    command, test_patch=instance.test_patch, instance=instance
+                ),
+            }
+            for index, command in enumerate(commands)
+        )
+    runner = Path(verifier_results.__file__).read_text()
+    plan = {
+        "verifier_sha256": hashlib.sha256((runner + guard_source()).encode()).hexdigest(),
+        "task": instance.instance_id,
+        "base_commit": instance.base_commit,
+        "test_patch_sha256": hashlib.sha256(instance.test_patch.encode()).hexdigest(),
+        "checks": checks,
+    }
+    # Both modules use only the standard library inside the container.
+    guard = guard_source().split('\nif __name__ == "__main__":')[0]
+    return "#!/usr/bin/env bash\nset -uo pipefail\npython3 - <<'KOKKOS_SUITE'\n" + (
+        "import json\n"
+        + f"exec(compile({guard!r}, '<coverage-guard>', 'exec'))\n"
+        + f"exec(compile({runner!r}, '<verifier-results>', 'exec'))\n"
+        + f"run_suite(json.loads({json.dumps(plan)!r}), coverage_error)\n"
+        + "KOKKOS_SUITE\n"
+    )
 
 
 def _solution_script() -> str:

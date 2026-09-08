@@ -116,6 +116,19 @@ class HarborReward:
                 timeout=self.grader_timeout,
                 max_output_bytes=200_000 if self.grading_log_path is not None else None,
             )
+            diagnostics = None
+            script_path = self.tests_dir / "test.sh"
+            if script_path.exists() and "KOKKOS_SUITE" in script_path.read_text():
+                detailed = await self.sandbox.read_file(
+                    "/logs/verifier/results.json", max_bytes=2_000_000
+                )
+                if detailed.exit_code == 0:
+                    try:
+                        diagnostics = json.loads(detailed.stdout)
+                    except json.JSONDecodeError:
+                        diagnostics = {"complete": False, "error": "Invalid verifier results JSON"}
+                else:
+                    diagnostics = {"complete": False, "error": "Missing verifier results JSON"}
             if self.grading_log_path is not None:
                 self.grading_log_path.parent.mkdir(parents=True, exist_ok=True)
                 self.grading_log_path.write_text(
@@ -124,6 +137,7 @@ class HarborReward:
                             "exit_code": result.exit_code,
                             "stdout": result.stdout,
                             "stderr": result.stderr,
+                            **({"diagnostics": diagnostics} if diagnostics is not None else {}),
                         },
                         indent=2,
                     )
@@ -132,6 +146,14 @@ class HarborReward:
                 raise RuntimeError(
                     "verifier command failed before producing a result: "
                     f"exit={result.exit_code}, stderr={result.stderr[-1000:]}"
+                )
+            if diagnostics is not None and (
+                not isinstance(diagnostics, dict)
+                or not diagnostics.get("complete")
+                or any(row.get("status") == "error" for row in diagnostics.get("checks", []))
+            ):
+                raise RuntimeError(
+                    "Verifier diagnostics incomplete or contain infrastructure/coverage errors"
                 )
             logger.info("test.sh completed with exit_code=%d", result.exit_code)
             if result.stdout:
@@ -143,6 +165,8 @@ class HarborReward:
             reward = await self._parse_reward()
             if reward is None:
                 raise RuntimeError("verifier produced no reward file")
+            if diagnostics is not None and diagnostics.get("reward") != reward:
+                raise RuntimeError("Verifier diagnostics and reward disagree")
             if _WEAVE_AVAILABLE and self.task_name is not None:
                 _trace_harbor_grade(
                     task_name=self.task_name,

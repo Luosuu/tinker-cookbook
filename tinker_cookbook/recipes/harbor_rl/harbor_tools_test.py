@@ -323,3 +323,29 @@ class TestHarborEnvGroupBuilderPickle:
         assert restored.command_timeout == 60
         assert restored.grader_timeout == 30
         assert restored.max_trajectory_tokens == 16 * 1024
+
+
+@pytest.mark.parametrize("invalid", [False, True])
+def test_structured_verifier_diagnostics_are_persisted(tmp_path: Path, invalid: bool) -> None:
+    (tmp_path / "test.sh").write_text("# KOKKOS_SUITE\n")
+    sandbox = FakeSandbox()
+    sandbox.files["/logs/verifier/reward.txt"] = "0"
+    report = {
+        "complete": True,
+        "reward": 0,
+        "checks": [
+            {"id": "f2p-0", "status": "error" if invalid else "failed"},
+            {"id": "p2p-0", "status": "passed"},
+        ],
+    }
+    sandbox.files["/logs/verifier/results.json"] = json.dumps(report)
+    log = tmp_path / "host/verifier.json"
+    reward = HarborReward(
+        tests_dir=tmp_path, sandbox=sandbox, grading_log_path=log, raise_on_grading_error=True
+    )
+    if invalid:
+        with pytest.raises(RuntimeError, match="diagnostics"):
+            asyncio.run(reward([]))
+    else:
+        assert asyncio.run(reward([]))[0] == 0
+    assert json.loads(log.read_text())["diagnostics"] == report

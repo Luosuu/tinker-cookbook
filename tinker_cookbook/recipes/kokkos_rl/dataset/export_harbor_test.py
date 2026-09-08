@@ -28,11 +28,11 @@ def test_export_hides_tests_and_adds_clean_room_guard(tmp_path) -> None:
     assert "/tests/test.sh" not in instruction
 
     test_script = (task_dir / "tests" / "test.sh").read_text()
-    assert 'git --no-replace-objects diff --no-ext-diff --name-only "$baseline"' in test_script
+    assert "git --no-replace-objects diff --no-ext-diff --name-only" in test_script
     assert "git ls-files --others" in test_script
-    assert r"sed '\#^build/#d'" in test_script
+    assert "#^build/#d" in test_script
     assert "git apply --whitespace=nowarn /tests/test.patch" in test_script
-    assert "echo 1" in test_script
+    assert "run_suite" in test_script
 
     metadata = json.loads((task_dir / "metadata.json").read_text())
     assert metadata["instance_id"] == instance.instance_id
@@ -212,3 +212,45 @@ def test_runtime_tasks_use_fixed_verifier_without_changing_published_export(tmp_
         assert ".git/shallow" in (runtime_path / "environment" / "Dockerfile").read_text()
         assert published.read_text() == "historical verifier using HEAD"
     assert not runtime_path.exists()
+
+
+@pytest.mark.parametrize(
+    "f2p,p2p,expected",
+    [
+        (("false", "true"), ("true",), ["failed", "passed", "passed"]),
+        (("true",), ("false",), ["passed", "failed"]),
+        (("echo 'No tests were found'; true",), ("true",), ["error", "passed"]),
+        (("echo 'no tests ran'; exit 5",), ("true",), ["error", "passed"]),
+        (("echo malformed --gtest_filter=Foo.Bar",), ("true",), ["error", "passed"]),
+    ],
+)
+def test_complete_diagnostics_after_test_failure(tmp_path, f2p, p2p, expected):
+    repo, instance = _local_instance(tmp_path)
+    instance = replace(instance, f2p_commands=f2p, p2p_commands=p2p)
+    assert _run_verifier(tmp_path, repo, instance) == "0"
+    report = json.loads((tmp_path / "logs/results.json").read_text())
+    assert report["complete"] and report["count_unit"] == "commands"
+    assert [r["status"] for r in report["checks"][2:]] == expected
+
+
+def test_build_failure_blocks_unexecuted_checks(tmp_path):
+    repo, instance = _local_instance(tmp_path)
+    instance = replace(instance, build_command="false")
+    assert _run_verifier(tmp_path, repo, instance) == "0"
+    report = json.loads((tmp_path / "logs/results.json").read_text())
+    assert report["checks"][1]["status"] == "failed"
+    assert all(
+        r["status"] == "blocked" and r["blocked_by"] == "build" and r["exit_code"] is None
+        for r in report["checks"][2:]
+    )
+
+
+def test_tampering_blocks_build_and_tests(tmp_path):
+    repo, instance = _local_instance(tmp_path)
+    (repo / "CMakeLists.txt").write_text("tampered")
+    assert _run_verifier(tmp_path, repo, instance) == "0"
+    report = json.loads((tmp_path / "logs/results.json").read_text())
+    assert report["checks"][0]["status"] == "failed"
+    assert all(
+        r["status"] == "blocked" and r["blocked_by"] == "setup" for r in report["checks"][1:]
+    )
