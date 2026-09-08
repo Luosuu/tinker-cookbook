@@ -264,3 +264,9 @@ GPU allocation 的本地 factory；混合训练要么整个 driver 在 GPU 节�
 64 个新容器已通过不同端口、同路径独立文件读写、外网不可达和回收检查。
 精确模型 `thinkingmachines/Inkling:peft:262144:sampling-nvfp4` 的 tokenizer、
 renderer 与实际 Tinker 采样均通过预检。相关回归测试 48 项通过。
+
+后续修正：租约判断必须先于任何 bind 探测，避免短暂占用其他正在启动的
+workspace 已租用端口。对 OpenHands 明确报告的启动前端口不可用错误最多
+重选 8 次；身份错误和其他启动错误不会被该重试吞掉。关闭 cwd/home 默认
+挂载后，连续两轮各 64 个容器通过宿主凭据/数据集目录不可见、文件独立、
+外网不可达、正常回收的检查。最终相关测试 49 项通过。
