@@ -64,6 +64,7 @@ class ApptainerSandbox:
         *,
         allow_network: bool = True,
         leased_port: int | None = None,
+        command_env: dict[str, str] | None = None,
     ) -> None:
         self._workspace = workspace
         self._id = f"apptainer-{uuid.uuid4().hex}"
@@ -73,6 +74,7 @@ class ApptainerSandbox:
         self._default_workdir = default_workdir
         self._allow_network = allow_network
         self._leased_port = leased_port
+        self._command_env = dict(command_env or {})
 
     @classmethod
     async def create(
@@ -83,6 +85,7 @@ class ApptainerSandbox:
         *,
         enable_gpu: bool = False,
         allow_network: bool = True,
+        command_env: dict[str, str] | None = None,
     ) -> ApptainerSandbox:
         from openhands.workspace import ApptainerWorkspace
 
@@ -137,6 +140,7 @@ class ApptainerSandbox:
                     default_workdir,
                     allow_network=allow_network,
                     leased_port=port,
+                    command_env=command_env,
                 )
             except BaseException:
                 if workspace is not None:
@@ -196,6 +200,11 @@ class ApptainerSandbox:
             remaining = self._deadline - time.monotonic()
             if self._closed or remaining <= 0:
                 raise SandboxTerminatedError(self._id)
+            if self._command_env:
+                assignments = " ".join(
+                    shlex.quote(f"{k}={v}") for k, v in self._command_env.items()
+                )
+                command = "env -- " + assignments + " /bin/bash -c " + shlex.quote(command)
             if not self._allow_network:
                 command = "unshare --user --map-root-user --net -- /bin/bash -c " + shlex.quote(
                     command
@@ -265,7 +274,11 @@ class ApptainerSandbox:
 
 
 async def apptainer_sandbox_factory(
-    env_dir: Path, timeout: int, *, allow_network: bool = True
+    env_dir: Path,
+    timeout: int,
+    *,
+    allow_network: bool = True,
+    command_env: dict[str, str] | None = None,
 ) -> ApptainerSandbox:
     """Read an explicit SIF path; do not silently replace task Dockerfiles.
 
@@ -286,5 +299,10 @@ async def apptainer_sandbox_factory(
         raise ValueError("environment.gpus must be a nonnegative integer")
     # Slurm allocates devices separately. This flag grants visibility, not a quota.
     return await ApptainerSandbox.create(
-        sif, timeout, default_workdir=workdir, enable_gpu=gpus > 0, allow_network=allow_network
+        sif,
+        timeout,
+        default_workdir=workdir,
+        enable_gpu=gpus > 0,
+        allow_network=allow_network,
+        command_env=command_env,
     )

@@ -43,6 +43,7 @@ def test_factory_reads_task_workdir_and_relative_sif(tmp_path: Path) -> None:
         default_workdir="/workspace/repo",
         enable_gpu=False,
         allow_network=True,
+        command_env=None,
     )
 
 
@@ -195,3 +196,24 @@ def test_prebind_race_retries_with_a_new_port(tmp_path: Path) -> None:
     with patch.dict("sys.modules", {"openhands.workspace": Mock(ApptainerWorkspace=construct)}):
         asyncio.run(ApptainerSandbox.create(sif))
     assert len(ports) == 2
+
+
+def test_command_environment_is_applied_inside_offline_namespace() -> None:
+    import shlex
+
+    workspace = Mock()
+    workspace.execute_command.return_value = SandboxResult(stdout="", stderr="", exit_code=0)
+    sandbox = ApptainerSandbox(
+        workspace, 60, allow_network=False, command_env={"OMP_NUM_THREADS": "4"}
+    )
+    asyncio.run(sandbox.run_command("echo $OMP_NUM_THREADS"))
+    outer = shlex.split(workspace.execute_command.call_args.args[0])
+    assert outer[:4] == ["unshare", "--user", "--map-root-user", "--net"]
+    assert shlex.split(outer[-1]) == [
+        "env",
+        "--",
+        "OMP_NUM_THREADS=4",
+        "/bin/bash",
+        "-c",
+        "echo $OMP_NUM_THREADS",
+    ]

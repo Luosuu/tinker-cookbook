@@ -270,3 +270,10 @@ workspace 已租用端口。对 OpenHands 明确报告的启动前端口不可�
 重选 8 次；身份错误和其他启动错误不会被该重试吞掉。关闭 cwd/home 默认
 挂载后，连续两轮各 64 个容器通过宿主凭据/数据集目录不可见、文件独立、
 外网不可达、正常回收的检查。最终相关测试 49 项通过。
+
+完整 Kokkos 数据集包含会默认使用整个 allocation 的 OpenMP 测试。首轮全量
+Oracle 验证中观测到一个测试启动 128 个线程、使用约 58 核。因此正式 Inkling
+评测通过 `command_env` 显式设置 `OMP_NUM_THREADS=4`、`OMP_PROC_BIND=false`、
+`OPENBLAS_NUM_THREADS=4`，与任务声明的 4 CPU 相匹配；这不是 cpuset 或 CPU
+硬限额。相同环境参数用于重新执行的 NOP/Oracle 基线以及模型工具和 verifier。
+原先 CPU 容量压测的默认策略结果不因本次设置而改变。
