@@ -84,10 +84,10 @@ def test_create_preserves_slurm_device_identifier(
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "MIG-test-device")
 
     def construct(**kwargs):
-        marker = next(k for k in kwargs["forward_env"] if k.startswith("OH_SANDBOX_"))
+        marker = Path(kwargs["extra_bind_mounts"][0].split(":")[0])
         workspace = Mock()
         workspace.execute_command.return_value = SandboxResult(
-            stdout=os.environ[marker], stderr="", exit_code=0
+            stdout=marker.read_text(), stderr="", exit_code=0
         )
         return workspace
 
@@ -186,10 +186,10 @@ def test_prebind_race_retries_with_a_new_port(tmp_path: Path) -> None:
         ports.append(kwargs["host_port"])
         if len(ports) == 1:
             raise RuntimeError(f"Port {ports[-1]} is not available")
-        marker = next(k for k in kwargs["forward_env"] if k.startswith("OH_SANDBOX_"))
+        marker = Path(kwargs["extra_bind_mounts"][0].split(":")[0])
         workspace = Mock()
         workspace.execute_command.return_value = SandboxResult(
-            stdout=os.environ[marker], stderr="", exit_code=0
+            stdout=marker.read_text(), stderr="", exit_code=0
         )
         return workspace
 
@@ -217,3 +217,30 @@ def test_command_environment_is_applied_inside_offline_namespace() -> None:
         "-c",
         "echo $OMP_NUM_THREADS",
     ]
+
+
+def test_identity_does_not_mutate_process_environment_after_configuration(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("tinker_cookbook.sandbox.apptainer_sandbox._ENV_CONFIGURED", True)
+    sif = tmp_path / "test.sif"
+    sif.touch()
+
+    def construct(**kwargs):
+        marker = Path(kwargs["extra_bind_mounts"][0].split(":")[0])
+        workspace = Mock(host_port=kwargs["host_port"])
+        workspace.execute_command.return_value = SandboxResult(
+            stdout=marker.read_text(), stderr="", exit_code=0
+        )
+        return workspace
+
+    async def run():
+        sandbox = await ApptainerSandbox.create(sif)
+        marker = sandbox._identity_file
+        assert marker is not None and marker.exists()
+        await sandbox.cleanup()
+        assert not marker.exists()
+
+    with patch.dict("sys.modules", {"openhands.workspace": Mock(ApptainerWorkspace=construct)}):
+        with patch("os.putenv", side_effect=AssertionError("concurrent environment mutation")):
+            asyncio.run(run())

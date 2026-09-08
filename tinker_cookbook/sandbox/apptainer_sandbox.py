@@ -13,6 +13,7 @@ import re
 import secrets
 import shlex
 import socket
+import tempfile
 import threading
 import time
 import tomllib
@@ -28,6 +29,7 @@ if TYPE_CHECKING:
 
 _PORT_LOCK = threading.Lock()
 _LEASED_PORTS: set[int] = set()
+_ENV_CONFIGURED = False
 
 
 def _lease_port() -> int:
@@ -65,6 +67,7 @@ class ApptainerSandbox:
         allow_network: bool = True,
         leased_port: int | None = None,
         command_env: dict[str, str] | None = None,
+        identity_file: Path | None = None,
     ) -> None:
         self._workspace = workspace
         self._id = f"apptainer-{uuid.uuid4().hex}"
@@ -75,6 +78,7 @@ class ApptainerSandbox:
         self._allow_network = allow_network
         self._leased_port = leased_port
         self._command_env = dict(command_env or {})
+        self._identity_file = identity_file
 
     @classmethod
     async def create(
@@ -102,16 +106,22 @@ class ApptainerSandbox:
             forward_env.append("CUDA_VISIBLE_DEVICES")
 
         # Set once for this worker process; never forward the Tinker API key.
-        os.environ.setdefault("SESSION_API_KEY", secrets.token_urlsafe(32))
-        os.environ["OH_ENABLE_VSCODE"] = "false"
+        global _ENV_CONFIGURED
+        with _PORT_LOCK:
+            if not _ENV_CONFIGURED:
+                os.environ.setdefault("SESSION_API_KEY", secrets.token_urlsafe(32))
+                os.environ["OH_ENABLE_VSCODE"] = "false"
+                _ENV_CONFIGURED = True
         sif_path = str(Path(sif_file).resolve(strict=True))
 
         def start_once() -> ApptainerSandbox:
             port = _lease_port()
-            marker_name = "OH_SANDBOX_" + uuid.uuid4().hex.upper()
             marker_value = secrets.token_hex(32)
+            fd, marker_path = tempfile.mkstemp(prefix="openhands-identity-")
+            identity_file = Path(marker_path)
+            with os.fdopen(fd, "w") as marker:
+                marker.write(marker_value)
             workspace = None
-            os.environ[marker_name] = marker_value
             try:
                 workspace = ApptainerWorkspace(
                     sif_file=sif_path,
@@ -121,11 +131,14 @@ class ApptainerSandbox:
                     enable_docker_compat=True,
                     enable_gpu=enable_gpu,
                     disable_mount_locations=["hostfs", "bind-paths", "cwd", "home"],
-                    forward_env=[*forward_env, marker_name],
+                    forward_env=forward_env,
+                    extra_bind_mounts=[f"{identity_file}:/run/openhands-sandbox-id:ro"],
                     health_check_timeout=180,
                 )
                 # Generic /health can succeed against an unrelated listener.
-                identity = workspace.execute_command(f"printenv {marker_name}", cwd="/", timeout=30)
+                identity = workspace.execute_command(
+                    "cat /run/openhands-sandbox-id", cwd="/", timeout=30
+                )
                 if identity.exit_code != 0 or identity.stdout.strip() != marker_value:
                     raise RuntimeError("Sandbox endpoint identity mismatch")
                 if not allow_network:
@@ -141,15 +154,15 @@ class ApptainerSandbox:
                     allow_network=allow_network,
                     leased_port=port,
                     command_env=command_env,
+                    identity_file=identity_file,
                 )
             except BaseException:
                 if workspace is not None:
                     # This kills this workspace's local process, not the remote endpoint.
                     workspace.cleanup()
                 _release_port(port)
+                identity_file.unlink(missing_ok=True)
                 raise
-            finally:
-                os.environ.pop(marker_name, None)
 
         def start() -> ApptainerSandbox:
             for attempt in range(8):
@@ -271,6 +284,8 @@ class ApptainerSandbox:
                 await asyncio.sleep(0.2)
             if self._leased_port is not None:
                 _release_port(self._leased_port)
+            if self._identity_file is not None:
+                self._identity_file.unlink(missing_ok=True)
 
 
 async def apptainer_sandbox_factory(
