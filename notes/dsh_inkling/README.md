@@ -18,27 +18,105 @@ OpenAI-compatible routes (`baseURL` + `apiKeyEnv` + a hand-declared model catalo
 DSH fork is required to point it at Tinker. The existing desktop profile
 (`~/.dsh/profiles/desktop/cordis.patch.yml`) shows the pattern for a custom `baseURL`.
 
+## Prior work on Rivanna (inventory, 2026-10-05)
+
+Before building anything, note that **most of this pipeline already exists** on Rivanna
+under `/scratch/fad3ew/openhands-smoke/`. Do not rebuild it.
+
+### A working DSH-on-Rivanna integration
+
+`harness-cross-eval-20260924/` contains a complete, previously-run integration:
+
+- `dsh-runtime/deepseek.patch.yml` — a DSH profile already pointed at
+  `thinkingmachines/Inkling-Small:peft:262144` over Tinker's OpenAI-compatible endpoint
+  (`api: openai-completions`, `baseURL: https://tinker.thinkingmachines.dev/services/tinker-prod/oai/api/v1`,
+  `compat: {supportsDeveloperRole: false, maxTokensField: max_tokens}`). It disables
+  `tool-bash`, `tool-fs`, `tool-fs-search`, `tool-web`, `tool-subagent*`, `tool-workflow`,
+  `tool-goal`, `tool-todo`, `tool-skill`, etc., leaving exactly **one** repository tool.
+- `dsh-runtime/deepseek-bridge.mjs` — that tool: a `bash` plugin that talks over a Unix
+  socket to `SandboxInterface.run_command`. The model runs on the host (for credentials);
+  **all repository access stays inside the network-isolated Apptainer sandbox**.
+- `eval_deepseek.py` — the driver: validates the SIF hash against a recorded validated
+  snapshot, asserts NOP=0/oracle=1, checks hidden assets are absent from the sandbox,
+  serves the socket, runs `dsh --profile headless --patch ...`, captures the candidate,
+  and grades with the Harbor verifier.
+- `eval.sbatch` — `module load apptainer/1.4.5 nodejs/24.5.0`, array job. Pinned
+  `@deepseek-ai/dsh@0.1.5-rc.3` (the local DSH is newer, `0.2.0-rc.2`).
+
+This is the correct architecture to extend; it already solves the model-credential,
+sandbox-isolation, candidate-capture and grading problems.
+
+### Validated task images (no SIF translation needed)
+
+- `pi-skill-eval-20260922/tasks/<task>/environment/sif.path` points at
+  `inkling-eval/images/<task>.sif`; `inkling-eval/images/` holds **104 SIFs (~116 GB)**.
+- `v24-release-20261002/images/` holds **99 SIFs (~101 GB)** with a 100-task
+  `runtime-manifest.json` (per-task source/runtime Dockerfile digests, base SIF, and
+  `"translation": "unchanged task commands; compile parallelism 4"`), plus
+  `release-gate.json` reporting `ready: true, accepted: 100/100` with NOP/oracle records.
+
+So the answer to "should we translate Dockerfiles to SIFs?" is **no — it is already
+done and validated**; reuse `v24-release-20261002`.
+
+### A same-model leaderboard baseline (the number to beat)
+
+`v24-leaderboard-full-20261003/` is a completed, audited 400-trial run
+(`progress.json: publishable: true`, 100 tasks × 4 models, 100/100 valid each, 0 errors)
+using a **native Chat Completions tool loop**, 40 turns / 80 tools / 65,536 output tokens,
+pass@1, `reasoning_effort 0.9` + `separate_reasoning: true`:
+
+| Model | Solved |
+| --- | ---: |
+| `thinkingmachines/Inkling-Small:peft:262144` | **52/100 (52%)** |
+| `thinkingmachines/Inkling:peft:262144` | 43/100 (43%) |
+| `zai-org/GLM-5.3:peft:262144` | 56/100 (56%) |
+| `Qwen/Qwen3.8-27B:peft:262144` | 45/100 (45%) |
+
+**Inkling-Small's harness-independent native baseline is 52%**, not the 50.0% in the
+self-training corpus. Use the 52% row as the comparison target, and budget-match any DSH
+number to 40 turns / 80 tools / 65,536 output tokens.
+
+### Cross-harness comparison already protocolled
+
+`harness-engineering-closeout-20261001/harness-compare-protocol/` defines arms
+(`native_sampler`, `native_chat`, `pi_legacy`, `pi_protocol`, `pi_protocol_prompt`,
+`claude_legacy`, `claude_budget_control`) with a frozen design (`seed`, `max_attempts`,
+`task_digest`, `code_sha256`, `comparability`). `FULL100_REPORT.md` records a Claude Code
+100-task pass@4 run (25/100 pass@4, 47/400 pass@1) whose integration was diagnosed as
+unhealthy (all 400 sessions ended on thinking-only or unexecuted MCP-call syntax — see
+`TERMINATION_DIAGNOSIS.md`). Its known comparability gap is exactly DSH's: **the stock
+pi-ai provider did not expose Tinker's `reasoning_effort` / `separate_reasoning`, so model
+identity matched but inference parameters did not.**
+
 ## Environment facts established
 
 Verified against `fad3ew@login.hpc.virginia.edu` on 2026-10-05:
 
-- **Access**: reuse the operator's existing ControlMaster session
-  (`ssh -o ControlPath=<socket>`); the login node is reached at `login.hpc.virginia.edu`
-  (30.200.1.121). Key auth is not available non-interactively, so the multiplexed session
-  is the only path and it must stay alive.
+- **Access**: the operator's ControlMaster session works, and an ed25519 key
+  (`~/.ssh/id_ed25519`) has been installed into the remote `authorized_keys`, so
+  `ssh -i ~/.ssh/id_ed25519 fad3ew@login.hpc.virginia.edu` now authenticates
+  non-interactively (**verified**). Prefer this over the multiplexed socket, which expires
+  when the operator's terminal closes.
 - **Slurm** is not on the default `PATH`: `/opt/slurm/25.05.6_mam/bin`. Partitions
   include `interactive`, `standard`, `gpu`, `bii`, `bii-gpu`, `bii-largemem`. The
   operator's queue is heavily loaded, so any work here competes for quota.
 - **Apptainer**: `module load apptainer/1.5.0` is the default but **`apptainer pull`
   fails** with `proot error: ptrace(TRACEME): Operation not permitted` on both the login
-  node and compute nodes. **`apptainer/1.4.5` pulls successfully.** `exec` works on both.
-  Pin `1.4.5` for any image build.
+  node and compute nodes. **`apptainer/1.4.5` pulls successfully** (and is what the prior
+  sbatch scripts already use). `exec` works on both.
+- **No Docker/podman/buildah on Rivanna.** `apptainer build` does **not** accept a
+  Dockerfile directly (`invalid header keyword found: from`); a `Bootstrap: docker` def
+  file works (verified: built an Ubuntu 24.04 SIF on a compute node). This only matters if
+  a new image is ever needed — the validated SIFs already exist.
 - **Offline mode prerequisites hold**: `unshare --user --map-root-user --net` works inside
   and outside the container, `--fakeroot` works, `/dev/fuse` and loop devices exist. So
   the adapter's `allow_network=False` path is viable here.
-- The login node **can** reach container registries and `github.com`; no proxy is needed.
-- Not yet present on Rivanna: the current cookbook checkout, the v2 task payload, and
-  `TINKER_API_KEY`.
+- **Node**: `module load nodejs/24.5.0` is available for the DSH runtime.
+- The login node **can** reach container registries, `github.com`, and the Tinker endpoint.
+- Task payloads carry `environment/sif.path` pointers, which is exactly what
+  `apptainer_sandbox_factory` reads.
+- `TINKER_API_KEY` lives in `/scratch/fad3ew/openhands-smoke/inkling-eval.env` (mode 600);
+  the prior driver loads it on the host only and never passes it into the sandbox.
 
 ## Analysis baseline (done)
 
@@ -60,64 +138,75 @@ the first knobs are write-forcing, scratch-probe cost, and build-loop cost.
 
 Each step is gated on the previous one's evidence. Harness edits are the only intended
 variable; the model, task payload, grader and turn accounting stay fixed within a
-comparison.
+comparison. Steps 0 and 1 are largely **already done** by the prior work above, so the
+plan starts by *reusing and upgrading* rather than building.
 
-### Step 0 — reproducible local plumbing
+### Step 0 — adopt the existing integration (mostly done)
 
-- Freeze and record: DSH version, model id, task payload digest, grader revision.
-- A DSH profile that routes to Tinker's OpenAI-compatible endpoint with Inkling-Small and
-  a declared model catalog.
-- Confirm `dsh --profile <p> "..."` runs a one-shot task locally against a trivial
-  workspace before touching sandboxes.
+- Reuse `harness-cross-eval-20260924/`: profile, socket bridge, driver, sbatch.
+- **Upgrade the DSH version** from pinned `0.1.5-rc.3` to a current line, and check whether
+  the newer `dsh-llm-pi-ai` can express Tinker's `reasoning_effort` /
+  `separate_reasoning`. The 0.2.0-rc.2 README documents `reasoningEfforts`,
+  `compat` (including how a thinking level travels) and `thinkingTokenBudgetField`
+  ("selects the reasoning-budget parameter" for self-hosted Chat Completions), none of
+  which the 0.1.5 profile used. **This is the main comparability fix** and it is on the
+  critical path: without it a DSH score is not comparable to the 52% native baseline.
+- Reuse `/scratch/fad3ew/openhands-smoke/inkling-eval.env` for `TINKER_API_KEY` on the
+  host only.
 
-### Step 1 — Rivanna execution path
+### Step 1 — execution path (done; verify, do not rebuild)
 
-- Pin `apptainer/1.4.5`; build one task SIF from the exported Dockerfile on a compute node
-  (not the login node), with `APPTAINER_CACHEDIR` on scratch.
-- Validate the SIF by importing and starting the OpenHands agent server, checking the task
-  workdir, and running a no-change baseline (grader must score 0) plus the packaged Oracle
-  (must score 1). **An infrastructure error is not a failed-test result.**
-- Then wire `apptainer_sandbox_factory` into the evaluation driver. The adapter reads
-  `environment/sif.path` or `environment/agent-server.sif`, so task payloads need one of
-  those pointers.
-- Keep concurrency inside one Slurm allocation and record the allocation's CPU/memory;
-  the adapter grants visibility, not quotas.
+- Reuse the **validated** `v24-release-20261002` SIFs and their `release-gate.json`
+  (`ready: true`, 100/100 accepted, NOP=0/oracle=1). Do **not** re-translate Dockerfiles.
+- Reuse task payloads with `environment/sif.path`; `apptainer_sandbox_factory` reads them
+  directly.
+- Pin `apptainer/1.4.5` and `nodejs/24.5.0` in sbatch, as the prior scripts do.
+- Spot-check that the recorded SIF hashes still match before any run (the prior driver
+  already refuses to proceed otherwise — keep that check).
 
 ### Step 2 — baseline and harness loop
 
-- Measure the DSH baseline on a fixed task subset with a frozen split seed.
-- Iterate one harness change at a time; each change is a single-variable comparison on the
-  same tasks, with the same sandbox backend kept for the whole run (backend changes make
-  results uninterpretable).
-- Report pass@1 and per-task deltas, and separate the 32 always-fail tasks from the 37
-  mixed ones rather than averaging them together.
+- Re-run the DSH arm to establish its pass@1 on the same 100 tasks, budget-matched to
+  40 turns / 80 tools / 65,536 output tokens, and compare against **52%** (Inkling-Small
+  native Chat Completions), not 50%.
+- Iterate one harness change at a time. The failure-mode analysis below nominates the
+  first candidates: a write-forcing mechanism, scratch-probe cost, and build-loop cost.
+- Reuse the frozen `harness-compare-protocol` design (seed, task digest, slots) so arms
+  stay comparable; register DSH as an arm rather than inventing a new protocol.
+- Report pass@1 and per-task deltas; separate always-fail tasks from mixed ones rather
+  than averaging them together.
 
 ### Step 3 — analysis of DSH trajectories
 
-- Re-run `analyze_trajectories.py` against DSH-produced corpora to compare failure modes
-  against this baseline.
-- The comparison that matters: did the empty-patch share fall, and did the mean turn of
-  first repository write drop?
+- The prior driver writes `events.jsonl` (every bash call and result) plus the DSH
+  session log, so a DSH corpus is already analysable.
+- Normalize DSH events into the corpus shape `analyze_trajectories.py` consumes, then
+  compare: did the empty-patch share fall, and did the mean turn of first repository write
+  drop?
 
 ## Guardrails
 
-- **Answer-lookup must not grow.** The environment is network-disabled by default and the
-  exported image is stripped to the base commit with remotes/refs/reflogs removed; the
-  verifier pins the commit SHA and ignores Git replacement refs. Do not set
-  `allow_network=True`.
-- **Do not mix backends** within a comparison.
+- **Answer-lookup must not grow.** The environment is network-disabled (`allow_network=False`)
+  and the exported image is stripped to the base commit with remotes/refs/reflogs removed;
+  the verifier pins the commit SHA and ignores Git replacement refs. The prior driver
+  additionally asserts `/tests` and `/solution` are absent from the sandbox — keep that.
+- **Do not pass the model credential into the sandbox.** The prior architecture keeps DSH
+  and `TINKER_API_KEY` on the host and exposes only a socket bridge.
+- **Do not mix harness arms or sandbox backends** within a comparison.
 - **Never retry an incorrect solution as an infrastructure failure.**
 - Keep credentials in the environment or `.env`, never in artifacts.
-- Results are estimates from one corpus; a 20-point loss is worth attacking, but any
-  claimed gain must survive the same task split.
+- **Budget-match before claiming a win.** The original DSH pilot ran 75 model turns
+  against a 40-turn reference and 80 tool calls; a solution found after the reference cap
+  is an exploratory success, not a budget-matched improvement.
 
 ## Open questions
 
-1. Does Tinker's OpenAI-compatible endpoint render Inkling-Small identically to the native
-   SDK path? The cookbook README warns server rendering can differ, so a paired transport
-   comparison is needed before treating DSH numbers as comparable to the native baseline.
-2. Which tool surface should DSH expose for this benchmark — DSH's native `bash`/`fs`
-   tools, or a single bash tool matching the baseline harness? A different tool surface
-   changes two things at once and breaks single-variable attribution.
-3. Slurm capacity: the operator's queue is already deep. Confirm an allocation policy
-   before launching any capacity measurement.
+1. **Reasoning parameters.** Can current DSH express Tinker's numeric `reasoning_effort:
+   0.9` with `separate_reasoning: true`? This is the known comparability gap; resolve it
+   before trusting any DSH score against the 52% row.
+2. **Tool surface.** The prior profile already reduces DSH to a single `bash` tool, which
+   matches the baseline harness — good for attribution. Keep it fixed while iterating
+   harness behavior, and treat tool-surface changes as their own arm.
+3. **Slurm capacity.** The operator's queue is already deep. The prior full runs used
+   `bii-largemem`/CPU partitions at 4-8 concurrency and ~2 h jobs; confirm an allocation
+   policy before launching anything wide.

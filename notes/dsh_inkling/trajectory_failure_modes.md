@@ -21,6 +21,14 @@ The score is **not** limited by the model failing to understand the tasks, and i
 single largest bucket is 166/400 (41.5%) of episodes that hit the 40-turn cap and still
 would not have passed.
 
+> **Which baseline to compare against.** This corpus scores 50.0%, but the audited
+> 100-task, 40-turn / 80-tool native Chat Completions run
+> (`v24-leaderboard-full-20261003`, `publishable: true`, 0 errors) scores
+> **52/100 = 52%** for the same model. The two differ in harness and collection protocol,
+> so use **52%** as the number a DSH arm must beat, and read this corpus for its
+> *failure-mode structure* rather than as the target score. See
+> [`README.md`](README.md#prior-work-on-rivanna-inventory-2026-10-05).
+
 | stop reason | n | share | pass rate | mean turns | mean sampled tokens |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | `completed` | 130 | 32.5% | **85.4%** | 29.2 | 6,019 |
