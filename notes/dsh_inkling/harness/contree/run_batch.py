@@ -38,6 +38,7 @@ async def run_one(
     concurrency_slot: int,
     timeout: float,
     prepare_only: bool,
+    cpu_affinity: int | None,
 ) -> dict:
     output = run_dir / "results" / task
     command = [
@@ -66,6 +67,8 @@ async def run_one(
     ]
     if prepare_only:
         command.append("--prepare-only")
+    if cpu_affinity is not None:
+        command += ["--cpu-affinity", str(cpu_affinity)]
     started = time.monotonic()
     process = await asyncio.create_subprocess_exec(
         *command,
@@ -130,6 +133,14 @@ async def main() -> None:
     parser.add_argument("--concurrency", type=int, default=8)
     parser.add_argument("--episode-timeout", type=float, default=5400)
     parser.add_argument("--prepare-only", action="store_true")
+    parser.add_argument(
+        "--cpu-affinity",
+        type=int,
+        default=0,
+        help="Pin each episode's commands to one CPU. Required on 4 GB sandboxes because "
+        "the exported verifier builds with --parallel and ignores "
+        "CMAKE_BUILD_PARALLEL_LEVEL. Pass -1 to disable.",
+    )
     args = parser.parse_args()
 
     tasks = [line.strip() for line in args.tasks_file.read_text().splitlines() if line.strip()]
@@ -163,6 +174,7 @@ async def main() -> None:
                 concurrency_slot=index % args.concurrency,
                 timeout=args.episode_timeout,
                 prepare_only=args.prepare_only,
+                cpu_affinity=None if args.cpu_affinity < 0 else args.cpu_affinity,
             )
             return index, summary
 

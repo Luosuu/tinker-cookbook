@@ -18,6 +18,7 @@ import asyncio
 import hashlib
 import json
 import os
+import shlex
 import socket
 import sys
 import tempfile
@@ -85,6 +86,46 @@ def _yaml_block(text: str) -> str:
     return ">-\n" + "\n".join("      " + line for line in lines)
 
 
+class AffinitySandbox:
+    """Confine every command on a sandbox to one CPU.
+
+    Wraps a `SandboxInterface` so callers need no knowledge of the constraint. Grading
+    goes through `HarborReward`, which calls `run_command` directly, so wrapping the
+    sandbox is the only way to confine the verifier's `--parallel` build as well as the
+    agent's commands.
+    """
+
+    def __init__(self, inner, cpu: int) -> None:
+        self._inner = inner
+        self._cpu = cpu
+
+    def _wrap(self, command: str) -> str:
+        # Non-login shell: the sandbox itself runs commands through `sh -c`, so a login
+        # shell would add profile-sourcing side effects that the reference never had.
+        return f"taskset -c {self._cpu} bash -c {shlex.quote(command)}"
+
+    @property
+    def sandbox_id(self) -> str:
+        return self._inner.sandbox_id
+
+    async def run_command(self, command, workdir=None, timeout=60, max_output_bytes=None):
+        return await self._inner.run_command(
+            self._wrap(command), workdir=workdir, timeout=timeout, max_output_bytes=max_output_bytes
+        )
+
+    async def read_file(self, path, max_bytes=None, timeout=60):
+        return await self._inner.read_file(path, max_bytes=max_bytes, timeout=timeout)
+
+    async def write_file(self, path, content, executable=False, timeout=60):
+        return await self._inner.write_file(path, content, executable=executable, timeout=timeout)
+
+    async def send_heartbeat(self, timeout: int = 30) -> None:
+        await self._inner.send_heartbeat(timeout)
+
+    async def cleanup(self) -> None:
+        await self._inner.cleanup()
+
+
 async def run(
     *,
     task: str,
@@ -107,6 +148,7 @@ async def run(
     grader_timeout: int,
     sandbox_timeout: int,
     build_parallelism: int,
+    cpu_affinity: int | None,
     prepare_only: bool,
 ) -> dict:
     # Resolve before anything changes directory: the DSH launcher is spawned with cwd set
@@ -164,6 +206,8 @@ async def run(
     calls = 0
     try:
         sandbox = await factory(harbor_task.task_dir / "environment", sandbox_timeout)
+        if cpu_affinity is not None:
+            sandbox = AffinitySandbox(sandbox, cpu_affinity)
         (output / "preflight.json").write_text(
             json.dumps(
                 {
@@ -342,7 +386,19 @@ def main() -> None:
     parser.add_argument("--command-timeout", type=int, default=900)
     parser.add_argument("--grader-timeout", type=int, default=1200)
     parser.add_argument("--sandbox-timeout", type=int, default=3600)
-    parser.add_argument("--build-parallelism", type=int, default=8)
+    # A ConTree sandbox reports 4 CPUs but only 4 GB. The factory writes this value into
+    # the sandbox environment, and the exported verifier honours it for its own build, so
+    # a value above 1 makes the grader OOM (`cc1plus: Killed signal terminated`) on the
+    # larger unit-test targets. Serial is slower but actually finishes; the reference ran
+    # 4 only because its sandbox had 16 GB.
+    parser.add_argument("--build-parallelism", type=int, default=1)
+    parser.add_argument(
+        "--cpu-affinity",
+        type=int,
+        default=None,
+        help="Pin commands to this CPU index. Required on 4 GB sandboxes: the exported "
+        "verifier builds with --parallel and ignores CMAKE_BUILD_PARALLEL_LEVEL.",
+    )
     parser.add_argument("--prepare-only", action="store_true")
     args = parser.parse_args()
     if args.env_file.is_file():
