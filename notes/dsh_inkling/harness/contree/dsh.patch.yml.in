@@ -74,6 +74,17 @@
 - id: tool-skill
   disabled: true
 
+
+# The reference shows the model up to 12,000 characters of tool output, keeping the first
+# third and the last two thirds. DSH's pruner defaults to a 8,192-character trigger that
+# retains only head 4,096 plus tail 1,024. Reading a large Kokkos header is exactly the
+# case where that difference decides whether the model sees the code it needs.
+- id: tool-result-pruner
+  config:
+    thresholdChars: 12000
+    headChars: 4000
+    tailChars: 8000
+
 - insert:
     - id: hpc-sandbox-bash
       name: ${DSH_BRIDGE_PLUGIN}
