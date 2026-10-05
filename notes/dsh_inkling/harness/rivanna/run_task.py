@@ -65,12 +65,18 @@ class ProxyServer:
         self._process = await asyncio.create_subprocess_exec(
             str(self._python),
             str(self._script),
-            "--port", str(self._port),
-            "--upstream", self._upstream,
-            "--env-file", str(self._env_file),
-            "--max-requests", str(self._max_requests),
-            "--max-input-tokens", "5000000",
-            "--transcript", str(self._transcript),
+            "--port",
+            str(self._port),
+            "--upstream",
+            self._upstream,
+            "--env-file",
+            str(self._env_file),
+            "--max-requests",
+            str(self._max_requests),
+            "--max-input-tokens",
+            "5000000",
+            "--transcript",
+            str(self._transcript),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
@@ -136,22 +142,27 @@ async def run(
         sif_sha256 = hashlib.file_digest(stream, "sha256").hexdigest()
 
     output.mkdir(parents=True, exist_ok=True)
-    (output / "config.json").write_text(json.dumps({
-        "harness": "deepseek-harness",
-        "task": task,
-        "sif": str(sif),
-        "sif_sha256": sif_sha256,
-        "model": "thinkingmachines/Inkling-Small:peft:262144",
-        "upstream": upstream,
-        "reference_inference": {"reasoning_effort": 0.9, "separate_reasoning": True},
-        "budget": {
-            "max_model_requests": max_turns,
-            "max_tool_calls": max_tool_calls,
-            "max_sampled_tokens": max_tokens,
-            "max_wall_seconds": wall_seconds,
-        },
-        "network_in_sandbox": False,
-    }, indent=2))
+    (output / "config.json").write_text(
+        json.dumps(
+            {
+                "harness": "deepseek-harness",
+                "task": task,
+                "sif": str(sif),
+                "sif_sha256": sif_sha256,
+                "model": "thinkingmachines/Inkling-Small:peft:262144",
+                "upstream": upstream,
+                "reference_inference": {"reasoning_effort": 0.9, "separate_reasoning": True},
+                "budget": {
+                    "max_model_requests": max_turns,
+                    "max_tool_calls": max_tool_calls,
+                    "max_sampled_tokens": max_tokens,
+                    "max_wall_seconds": wall_seconds,
+                },
+                "network_in_sandbox": False,
+            },
+            indent=2,
+        )
+    )
 
     started = time.monotonic()
     sandbox = None
@@ -181,17 +192,26 @@ async def run(
         )
         if isolation.exit_code != 0:
             raise RuntimeError("hidden assets or credentials visible in sandbox")
-        (output / "preflight.json").write_text(json.dumps({
-            "sif_sha256": sif_sha256,
-            "hidden_assets_absent": True,
-            "instruction_sha256": hashlib.sha256(harbor_task.instruction.encode()).hexdigest(),
-        }, indent=2))
+        (output / "preflight.json").write_text(
+            json.dumps(
+                {
+                    "sif_sha256": sif_sha256,
+                    "hidden_assets_absent": True,
+                    "instruction_sha256": hashlib.sha256(
+                        harbor_task.instruction.encode()
+                    ).hexdigest(),
+                },
+                indent=2,
+            )
+        )
 
         with tempfile.TemporaryDirectory(prefix="dsh-bridge-", dir="/tmp") as temp:
             socket_path = str(Path(temp) / "rpc.sock")
             with (output / "events.jsonl").open("x") as events:
 
-                async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+                async def handle(
+                    reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+                ) -> None:
                     nonlocal calls
                     try:
                         request = json.loads(await reader.readline())
@@ -199,7 +219,9 @@ async def run(
                         if not isinstance(command, str):
                             raise ValueError("invalid command")
                         calls += 1
-                        events.write(json.dumps({"type": "bash", "index": calls, "command": command}) + "\n")
+                        events.write(
+                            json.dumps({"type": "bash", "index": calls, "command": command}) + "\n"
+                        )
                         events.flush()
                         answer = await sandbox.run_command(
                             command, timeout=command_timeout, max_output_bytes=16384
@@ -209,9 +231,11 @@ async def run(
                             "stdout": answer.stdout[:16384],
                             "stderr": answer.stderr[:16384],
                         }
-                        events.write(json.dumps({"type": "bash_result", "index": calls, **response}) + "\n")
+                        events.write(
+                            json.dumps({"type": "bash_result", "index": calls, **response}) + "\n"
+                        )
                         events.flush()
-                    except Exception as exc:  # noqa: BLE001 - reported to the harness
+                    except Exception as exc:
                         response = {"error": f"{type(exc).__name__}: {exc}"}
                         events.write(json.dumps({"type": "bridge_error", **response}) + "\n")
                         events.flush()
@@ -243,20 +267,26 @@ async def run(
                     resolved_patch.write_text(patch_text)
 
                     env = dict(os.environ)
-                    env.update({
-                        "DSH_HOME": str(output / "dsh-home"),
-                        "HPC_BRIDGE_SOCKET": socket_path,
-                        "HPC_MAX_TOOL_CALLS": str(max_tool_calls),
-                        "DSH_PROXY_KEY": "proxy-local",
-                        "TINKER_API_KEY": _read_key(env_file),
-                    })
-                    with (output / "stdout.log").open("x") as stdout, \
-                         (output / "stderr.log").open("x") as stderr:
+                    env.update(
+                        {
+                            "DSH_HOME": str(output / "dsh-home"),
+                            "HPC_BRIDGE_SOCKET": socket_path,
+                            "HPC_MAX_TOOL_CALLS": str(max_tool_calls),
+                            "DSH_PROXY_KEY": "proxy-local",
+                            "TINKER_API_KEY": _read_key(env_file),
+                        }
+                    )
+                    with (
+                        (output / "stdout.log").open("x") as stdout,
+                        (output / "stderr.log").open("x") as stderr,
+                    ):
                         process = await asyncio.create_subprocess_exec(
                             node,
                             str(runtime / "node_modules/@deepseek-ai/dsh/lib/bin.js"),
-                            "--profile", "headless",
-                            "--patch", str(resolved_patch),
+                            "--profile",
+                            "headless",
+                            "--patch",
+                            str(resolved_patch),
                             harbor_task.instruction,
                             cwd=str(runtime),
                             env=env,
@@ -277,7 +307,8 @@ async def run(
                             # record the status and continue to grading rather than
                             # discarding a run that may already hold a correct patch.
                             harness_status = (
-                                "finished" if process.returncode == 0
+                                "finished"
+                                if process.returncode == 0
                                 else f"exit_{process.returncode}"
                             )
                 server.close()
@@ -294,7 +325,7 @@ async def run(
             task_name=harbor_task.task_name,
             grading_log_path=output / "grading.json",
         )([])
-    except Exception as exc:  # noqa: BLE001 - recorded as the episode outcome
+    except Exception as exc:
         error = f"{type(exc).__name__}: {exc}"
     finally:
         if sandbox is not None:

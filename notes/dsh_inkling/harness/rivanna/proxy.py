@@ -23,11 +23,11 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
 import threading
-from collections.abc import Iterable
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.error import HTTPError, URLError
@@ -100,12 +100,13 @@ def _inject_reference_inference(body: bytes) -> bytes:
     payload["separate_reasoning"] = REFERENCE_SEPARATE_REASONING
     # The reference samples at temperature 1; the harness must not diverge here either.
     payload["temperature"] = 1
+    # Token accounting is what enforces the reference input-token budget, so request usage
+    # explicitly rather than depending on the caller to ask for it.
+    if payload.get("stream"):
+        options = payload.setdefault("stream_options", {})
+        if isinstance(options, dict):
+            options["include_usage"] = True
     return json.dumps(payload).encode()
-
-
-def _iter_lines(stream: Iterable[bytes]) -> Iterable[bytes]:
-    for chunk in stream:
-        yield chunk
 
 
 def _join_upstream(base: str, path: str) -> str:
@@ -149,7 +150,7 @@ class Handler(BaseHTTPRequestHandler):
     budget = Budget(0, 0)
     transcript = None
 
-    def log_message(self, fmt: str, *args: object) -> None:  # noqa: A002 - stdlib signature
+    def log_message(self, fmt: str, *args: object) -> None:
         if os.environ.get("PROXY_VERBOSE"):
             super().log_message(fmt, *args)
 
@@ -240,7 +241,7 @@ class Handler(BaseHTTPRequestHandler):
             headers=self._upstream_headers(),
         )
         try:
-            upstream = urlopen(request)  # noqa: S310 - fixed operator-supplied upstream
+            upstream = urlopen(request)
         except HTTPError as error:
             detail = error.read()
             self.send_response(error.code)
@@ -258,62 +259,70 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(detail)
             return
 
+        # Decide from the request, not only the response: Tinker's SSE reply carries no
+        # content-type, so trusting the response header buffers a stream and loses its
+        # usage frames.
         streaming = "text/event-stream" in (upstream.headers.get("content-type") or "")
+        if not streaming and method == "POST" and "/chat/completions" in self.path:
+            with contextlib.suppress(TypeError, ValueError):
+                streaming = bool(json.loads(body).get("stream"))
         if streaming:
             self.send_response(upstream.status)
             self.send_header("content-type", "text/event-stream")
             self.send_header("cache-control", "no-cache")
             self.send_header("connection", "close")
             self.end_headers()
-            tail = b""
-            for chunk in _iter_lines(upstream):
-                tail = (tail + chunk)[-65536:]
+            # Usage can arrive on any chunk and the payload is unbounded, so parse each
+            # SSE frame as it passes rather than scanning a trailing buffer.
+            pending = b""
+            for chunk in upstream:
+                pending += chunk
+                while b"\n" in pending:
+                    line, pending = pending.split(b"\n", 1)
+                    self._observe_sse_line(line)
                 try:
                     self.wfile.write(chunk)
                     self.wfile.flush()
                 except (BrokenPipeError, ConnectionResetError):
                     break
-            self._record_stream_usage(tail)
         else:
             payload = upstream.read()
-            try:
+            with contextlib.suppress(TypeError, ValueError):
                 self.budget.record_usage(json.loads(payload).get("usage"))
-            except (TypeError, ValueError):
-                pass
             self.send_response(upstream.status)
-            self.send_header("content-type", upstream.headers.get("content-type", "application/json"))
+            self.send_header(
+                "content-type", upstream.headers.get("content-type", "application/json")
+            )
             self.send_header("content-length", str(len(payload)))
             self.end_headers()
             self.wfile.write(payload)
 
-    def _record_stream_usage(self, tail: bytes) -> None:
-        """Recover usage from the tail of an SSE stream without buffering it."""
-        usage = None
-        for line in tail.split(b"\n"):
-            if not line.startswith(b"data:"):
-                continue
-            chunk = line[5:].strip()
-            if chunk in (b"", b"[DONE]"):
-                continue
-            try:
-                parsed = json.loads(chunk)
-            except ValueError:
-                continue
-            if parsed.get("usage"):
-                usage = parsed["usage"]
-        if usage:
-            self.budget.record_usage(usage)
-            if self.transcript is not None:
-                self.transcript.write(
-                    json.dumps({"event": "usage", "usage": usage, "budget": self.budget.snapshot()})
-                    + "\n"
-                )
-                self.transcript.flush()
+    def _observe_sse_line(self, line: bytes) -> None:
+        """Record usage from one SSE frame, if it carries any."""
+        if not line.startswith(b"data:"):
+            return
+        chunk = line[5:].strip()
+        if chunk in (b"", b"[DONE]"):
+            return
+        try:
+            parsed = json.loads(chunk)
+        except ValueError:
+            return
+        usage = parsed.get("usage")
+        if not usage:
+            return
+        self.budget.record_usage(usage)
+        if self.transcript is not None:
+            self.transcript.write(
+                json.dumps({"event": "usage", "usage": usage, "budget": self.budget.snapshot()})
+                + "\n"
+            )
+            self.transcript.flush()
 
-    def do_POST(self) -> None:  # noqa: N802 - stdlib signature
+    def do_POST(self) -> None:
         self._relay("POST")
 
-    def do_GET(self) -> None:  # noqa: N802 - stdlib signature
+    def do_GET(self) -> None:
         self._relay("GET")
 
 

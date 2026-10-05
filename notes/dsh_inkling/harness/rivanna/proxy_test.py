@@ -16,6 +16,7 @@ from notes.dsh_inkling.harness.rivanna.proxy import (
     REFERENCE_REASONING_EFFORT,
     REFERENCE_SEPARATE_REASONING,
     Budget,
+    Handler,
     _inject_reference_inference,
     _join_upstream,
 )
@@ -31,9 +32,7 @@ def test_injects_reference_inference_parameters() -> None:
 
 def test_reference_inference_overrides_harness_values() -> None:
     """A harness that sends its own values must not be able to drift the comparison."""
-    body = json.dumps(
-        {"model": "m", "reasoning_effort": "high", "temperature": 0.2}
-    ).encode()
+    body = json.dumps({"model": "m", "reasoning_effort": "high", "temperature": 0.2}).encode()
     payload = json.loads(_inject_reference_inference(body))
     assert payload["reasoning_effort"] == REFERENCE_REASONING_EFFORT
     assert payload["temperature"] == 1
@@ -47,6 +46,17 @@ def test_injection_preserves_other_fields() -> None:
     assert payload["model"] == "m"
     assert payload["max_tokens"] == 7
     assert payload["messages"] == [{"role": "user", "content": "x"}]
+
+
+def test_injects_usage_request_for_streaming_calls() -> None:
+    """Without include_usage the provider omits the frame that carries token counts."""
+    body = json.dumps({"model": "m", "stream": True}).encode()
+    assert json.loads(_inject_reference_inference(body))["stream_options"]["include_usage"]
+
+
+def test_does_not_add_stream_options_to_non_streaming_calls() -> None:
+    body = json.dumps({"model": "m"}).encode()
+    assert "stream_options" not in json.loads(_inject_reference_inference(body))
 
 
 def test_injection_handles_empty_body() -> None:
@@ -96,3 +106,26 @@ def test_budget_records_usage() -> None:
 )
 def test_upstream_join_never_doubles_version(base: str, path: str, expected: str) -> None:
     assert _join_upstream(base, path) == expected
+
+
+def test_stream_usage_is_observed_per_frame() -> None:
+    """Usage arrives mid-stream, often before a large content tail.
+
+    A trailing-buffer scan loses it, which silently disables the input-token budget, so
+    the per-frame observer is the behaviour under test.
+    """
+    handler = Handler.__new__(Handler)
+    handler.budget = Budget(max_requests=10, max_input_tokens=10**9)
+    handler.transcript = None
+
+    handler._observe_sse_line(b'data: {"choices":[{"delta":{"content":"hello"}}]}')
+    handler._observe_sse_line(
+        b'data: {"choices":[{"delta":{}}],"usage":{"prompt_tokens":7,"completion_tokens":3}}'
+    )
+    # Frames without usage, and non-data lines, must not disturb the accounting.
+    handler._observe_sse_line(b": keepalive")
+    handler._observe_sse_line(b"data: [DONE]")
+
+    snapshot = handler.budget.snapshot()
+    assert snapshot["input_tokens"] == 7
+    assert snapshot["output_tokens"] == 3
