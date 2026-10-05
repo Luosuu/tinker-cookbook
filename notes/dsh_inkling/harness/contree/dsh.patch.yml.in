@@ -74,6 +74,15 @@
 - id: tool-skill
   disabled: true
 
+# Session-title generation issues one extra model request per episode. The reference
+# harness has no such call, and the proxy counts every upstream request against the same
+# 40-request budget, so leaving it on spends a turn the baseline never spent.
+- id: session-title-first-prompt-llm
+  disabled: true
+- id: session-title-llm
+  disabled: true
+- id: session-title
+  disabled: true
 
 # The reference shows the model up to 12,000 characters of tool output, keeping the first
 # third and the last two thirds. DSH's pruner defaults to a 8,192-character trigger that
