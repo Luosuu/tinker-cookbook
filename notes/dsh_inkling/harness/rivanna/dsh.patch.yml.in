@@ -18,6 +18,29 @@
             contextWindow: 262144
             maxOutputTokens: 16384
 
+# Match the reference harness persona exactly. DSH ships its own identity line and a
+# "Current runtime context" user message describing harness file policy; the reference
+# sends neither, so both must be turned off or the prompt differs from the baseline.
+- id: system-prompt
+  config:
+    includeHarnessIdentity: false
+    includeRuntimeContext: false
+    personaPrefix: ${DSH_PERSONA}
+    personaSuffix: ''
+
+# Plan mode prepends a "stay in plan mode, do not edit" section and exposes an
+# exit_plan_mode tool the reference harness does not have. For a task whose whole
+# objective is producing a patch, that is a direct handicap rather than a neutral default.
+- id: plan-mode
+  disabled: true
+
+# Agent instructions inject an extra user-role message carrying DSH house rules
+# (issue-tracker conventions, delegation advice, and similar). The reference harness
+# sends the task instruction alone, so leaving this on would add prompt content the
+# baseline never saw.
+- id: agent-instructions
+  disabled: true
+
 # The reference harness exposes exactly one repository tool. Keeping the tool surface
 # identical to the native baseline is what makes a harness-behaviour change attributable.
 - id: tool-bash

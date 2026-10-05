@@ -28,11 +28,13 @@ mkdir -p "$OUT"
 exec "$BASE/.venv/bin/python" "$I/driver/run_task.py" "$TASK" "$OUT" \
   --python "$BASE/.venv/bin/python" \
   --tasks-root "$I/tasks" \
+  --code-root "$I/code" \
   --runtime "$I/dsh-runtime" \
   --proxy-script "$I/proxy/proxy.py" \
   --env-file "$BASE/inkling-eval.env" \
   --upstream "https://tinker.thinkingmachines.dev/services/tinker-prod/oai/api/v1" \
   --profile-patch "$I/dsh-runtime/dsh.patch.yml.in" \
+  --persona-file "${DSH_PERSONA_FILE:-$I/dsh-runtime/persona-reference.txt}" \
   --node node \
   --max-turns "${DSH_MAX_TURNS:-40}" \
   --max-tool-calls "${DSH_MAX_TOOL_CALLS:-80}" \

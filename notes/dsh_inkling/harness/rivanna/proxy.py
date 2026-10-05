@@ -23,6 +23,7 @@ Usage::
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import threading
@@ -120,6 +121,27 @@ def _join_upstream(base: str, path: str) -> str:
     return base + path
 
 
+def _message_digest(messages: list[dict]) -> list[dict]:
+    """Compact per-message view for prompt-equivalence auditing.
+
+    Full bodies are large and contain the whole repository excerpt; this keeps the role,
+    length, and a leading excerpt so the prompt can be compared against the reference
+    without storing every byte twice.
+    """
+    out = []
+    for message in messages:
+        content = message.get("content")
+        text = content if isinstance(content, str) else json.dumps(content)
+        out.append(
+            {
+                "role": message.get("role"),
+                "chars": len(text or ""),
+                "head": (text or "")[:160],
+            }
+        )
+    return out
+
+
 class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     upstream = ""
@@ -192,7 +214,22 @@ class Handler(BaseHTTPRequestHandler):
             body = _inject_reference_inference(body)
             if self.transcript is not None:
                 self.transcript.write(
-                    json.dumps({"event": "request", "budget": self.budget.snapshot()}) + "\n"
+                    json.dumps(
+                        {
+                            "event": "request",
+                            "budget": self.budget.snapshot(),
+                            "request_sha256": hashlib.sha256(body).hexdigest(),
+                            "message_roles": [
+                                m.get("role") for m in json.loads(body).get("messages", [])
+                            ][:4],
+                            "tools": [
+                                (t.get("function") or {}).get("name")
+                                for t in json.loads(body).get("tools", [])
+                            ],
+                            "messages": _message_digest(json.loads(body).get("messages", [])),
+                        }
+                    )
+                    + "\n"
                 )
                 self.transcript.flush()
 

@@ -22,7 +22,10 @@ import tempfile
 import time
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[4]
+# The cookbook checkout to import. An editable install may already be on sys.path, but
+# pinning it explicitly keeps the run reproducible and stops a stale checkout from being
+# used silently.
+DEFAULT_CODE_ROOT = Path(__file__).resolve().parents[4]
 
 
 def _free_port() -> int:
@@ -101,10 +104,12 @@ async def run(
     output: Path,
     tasks_root: Path,
     runtime: Path,
+    code_root: Path,
     proxy_script: Path,
     env_file: Path,
     upstream: str,
     profile_patch: Path,
+    persona_file: Path,
     python: Path,
     node: str,
     max_turns: int,
@@ -115,7 +120,7 @@ async def run(
     grader_timeout: int,
     sandbox_timeout: int,
 ) -> dict:
-    sys.path.insert(0, str(REPO_ROOT))
+    sys.path.insert(0, str(code_root))
     from tinker_cookbook.recipes.harbor_rl.harbor_env import load_harbor_tasks_from_dir
     from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborReward
     from tinker_cookbook.recipes.kokkos_rl.rl.candidate_artifact import capture_candidate
@@ -154,6 +159,7 @@ async def run(
     reward = 0.0
     details: dict = {}
     error: str | None = None
+    harness_status = "not_started"
     try:
         sandbox = await apptainer_sandbox_factory(
             harbor_task.task_dir / "environment",
@@ -226,9 +232,13 @@ async def run(
                     max_requests=max_turns,
                     transcript=output / "proxy-budget.jsonl",
                 ) as proxy:
-                    patch_text = profile_patch.read_text().replace(
-                        "${DSH_BRIDGE_PLUGIN}", str(runtime / "sandbox-bridge.mjs")
-                    ).replace("${DSH_PROXY_BASE_URL}", proxy.base_url)
+                    persona = persona_file.read_text().strip()
+                    patch_text = (
+                        profile_patch.read_text()
+                        .replace("${DSH_BRIDGE_PLUGIN}", str(runtime / "sandbox-bridge.mjs"))
+                        .replace("${DSH_PROXY_BASE_URL}", proxy.base_url)
+                        .replace("${DSH_PERSONA}", _yaml_block(persona))
+                    )
                     resolved_patch = output / "dsh.patch.yml"
                     resolved_patch.write_text(patch_text)
 
@@ -258,16 +268,23 @@ async def run(
                         except TimeoutError:
                             process.kill()
                             await process.wait()
-                            raise RuntimeError("DSH wall-time budget exhausted") from None
-                        if process.returncode != 0:
-                            raise RuntimeError(
-                                f"DSH exit={process.returncode}; see stderr.log"
+                            harness_status = "wall_timeout"
+                        else:
+                            # A non-zero exit is expected when the episode ends at the
+                            # model-request cap: the proxy answers 429, which the harness
+                            # reports as a terminal error. The reference harness stops at
+                            # the same cap and still grades the candidate on disk, so
+                            # record the status and continue to grading rather than
+                            # discarding a run that may already hold a correct patch.
+                            harness_status = (
+                                "finished" if process.returncode == 0
+                                else f"exit_{process.returncode}"
                             )
                 server.close()
                 await server.wait_closed()
 
-        # Grading happens even when the harness ended at a cap: the candidate on disk is
-        # the artifact under test, exactly as in the reference harness.
+        # Grading happens even when the harness ended at a cap or errored: the candidate on
+        # disk is the artifact under test, exactly as in the reference harness.
         await capture_candidate(sandbox, task=harbor_task, results_dir=output)
         reward, details = await HarborReward(
             tests_dir=harbor_task.task_dir / "tests",
@@ -285,6 +302,7 @@ async def run(
 
     summary = {
         "task_name": task,
+        "harness_status": harness_status,
         "reward": reward,
         "reward_details": details,
         "turns_used": calls,
@@ -293,6 +311,12 @@ async def run(
     }
     (output / "summary.json").write_text(json.dumps(summary, indent=2))
     return summary
+
+
+def _yaml_block(text: str) -> str:
+    """Indent a persona so it is a valid YAML folded scalar value."""
+    lines = text.strip().splitlines() or [""]
+    return ">-\n" + "\n".join("      " + line for line in lines)
 
 
 def _read_key(env_file: Path) -> str:
@@ -308,11 +332,18 @@ def main() -> None:
     parser.add_argument("task")
     parser.add_argument("output", type=Path)
     parser.add_argument("--tasks-root", type=Path, required=True)
+    parser.add_argument("--code-root", type=Path, default=DEFAULT_CODE_ROOT)
     parser.add_argument("--runtime", type=Path, required=True)
     parser.add_argument("--proxy-script", type=Path, required=True)
     parser.add_argument("--env-file", type=Path, required=True)
     parser.add_argument("--upstream", required=True)
     parser.add_argument("--profile-patch", type=Path, required=True)
+    parser.add_argument(
+        "--persona-file",
+        type=Path,
+        required=True,
+        help="System-prompt persona. A harness variant changes behaviour by changing this.",
+    )
     parser.add_argument("--python", type=Path, default=Path(sys.executable))
     parser.add_argument("--node", default="node")
     parser.add_argument("--max-turns", type=int, default=40)
