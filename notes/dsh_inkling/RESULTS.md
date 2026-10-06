@@ -111,8 +111,19 @@ not, seed 20261005), same profile and budget, persona the only variable:
 
 +3 tasks (+10 points), 4 gained against 1 lost. Exact McNemar two-sided **p = 0.375** —
 suggestive, not significant. The persona moved behaviour in the intended direction
-(3.2 → 3.5 builds per episode) but modestly, so the mechanism may be weaker than the
-correlation implied.
+(3.2 → 3.5 builds per episode) but modestly.
+
+**The full 100-task run did not replicate it.** Against `full02`, with the persona the only
+changed variable:
+
+| run | persona | solved |
+| --- | --- | ---: |
+| `full02` | reference | **53/100** |
+| `full03` | build-first | 52/100 |
+
+9 gained against 10 lost, exact McNemar p = 1.000. The 30-task subset result was noise:
+with 13-16 of 30 solved, a ±3 swing sits well inside the interval. Recorded as a negative
+result — the persona is not adopted and the +3 must not be cited as a win.
 
 ### Act-early persona
 
@@ -126,6 +137,9 @@ the subset is too small to resolve anything, and this variant is not pursued.
 
 ## Status
 
-The objective — outperform 52/100 — is met numerically but not statistically. The
-build-first variant is the leading candidate at +3 on 30 tasks; the full 100-task run is
-the decisive test and is in progress.
+The objective — outperform 52/100 — is met numerically (`full02`, 53/100) but not
+statistically: 23 discordant pairs against the reference, exact McNemar p = 1.000.
+
+The one harness variant tried did not improve on that. Two lessons are firm regardless:
+the measurement platform works and is auditable end to end, and a 30-task subset cannot
+resolve a three-task effect, so future variants must be judged on the full set.
