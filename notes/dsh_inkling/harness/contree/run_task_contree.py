@@ -143,6 +143,7 @@ async def run(
     cache_path: Path,
     max_turns: int,
     max_tool_calls: int,
+    nudge_after: int,
     wall_seconds: int,
     command_timeout: int,
     grader_timeout: int,
@@ -290,6 +291,7 @@ async def run(
                                 "DSH_HOME": str(output / "dsh-home"),
                                 "HPC_BRIDGE_SOCKET": socket_path,
                                 "HPC_MAX_TOOL_CALLS": str(max_tool_calls),
+                                "HPC_NUDGE_AFTER": str(nudge_after),
                                 "DSH_PROXY_KEY": "proxy-local",
                                 "TINKER_API_KEY": os.environ.get("TINKER_API_KEY", "proxy-local"),
                             }
@@ -382,6 +384,13 @@ def main() -> None:
     parser.add_argument("--node", default="node")
     parser.add_argument("--max-turns", type=int, default=40)
     parser.add_argument("--max-tool-calls", type=int, default=80)
+    parser.add_argument(
+        "--nudge-after",
+        type=int,
+        default=0,
+        help="Read-streak length that triggers a reminder on the tool result. 0 disables it, "
+        "which is the default: it measured ten points WORSE on the full 100 tasks.",
+    )
     parser.add_argument("--wall-seconds", type=int, default=3600)
     parser.add_argument("--command-timeout", type=int, default=900)
     parser.add_argument("--grader-timeout", type=int, default=1200)
