@@ -227,6 +227,66 @@ rather than trusting a single draw.
 That is the next investment, and it is worth making before any further harness change,
 because right now no change can be credited or rejected.
 
+## Bottleneck analysis (forensic, on the pooled control runs)
+
+Every claim below is measured on the 200 control episodes of `full02` + `full07`, which are
+the same configuration and therefore pool legitimately.
+
+### The loss is not primarily a budget shortage
+
+| group | n | pass rate |
+| --- | ---: | ---: |
+| ended at the 40-request cap | 62 | 32.3% |
+| finished on their own | 38 | 86.8% |
+
+That looks like a budget story, but two checks say otherwise:
+
+- **No episode hit the wall-clock limit.** All 62 capped episodes stopped on the request
+  budget, not on time. Capped mean wall time 712 s against 651 s for finished ones.
+- **16 of 31 failures that saw a compile error still had ≥15 tool calls left.** They were
+  not run out of road; they stopped using it.
+
+Median calls remaining after a first compile error is 15, and the maximum is 38.
+
+### It is not wasted turns on broken probes
+
+Agent-authored `/tmp` probe compiles fail 45% of the time, which looks like a smoking gun.
+It is not: across 3,552 tool calls only 8.9% are failures of any kind, and the probe
+category is 117 calls total. There is no large pool of turns being burned on errors.
+
+### It is not parallelism or serialized builds
+
+Serializing builds to fit ConTree's 4 GB costs 1.83× on a representative target (2.4 s vs
+1.3 s), and the agent already avoids heavy builds: 318 explicit `ninja` target invocations
+against only 40 whole-project builds. Wall time is not the binding constraint.
+
+### It is not the tool-output window
+
+The pruner never fires. The driver caps each tool result at 16,384 bytes and only 0.7% of
+results reach that cap, so 8,192 / 12,000 / 16,384 thresholds are all effectively
+unreachable. Changing this window cannot matter, which is consistent with `full02` and
+`full07` being indistinguishable.
+
+### What it actually looks like
+
+After a first compile error, 18 of 27 failures **never invoke a build again**, spending a
+mean of 9.1 further reads against 1.9 edits. The model responds to a failed build by going
+back to reading, not by tightening the edit. That is a behavioural pattern, not a resource
+limit, and it is the largest thing visible in the traces.
+
+Quantitatively the headroom is: 62 capped episodes at 32.3%, and 11 episodes that end at
+the cap having never attempted a write at all (0% pass). If the capped group reached even
+the finished group's rate the score would rise by roughly 30 points, so the ceiling is not
+the issue — conversion within the budget is.
+
+### Why no intervention has moved it
+
+The two prompt-level attempts (a persona and a mid-trajectory reminder) both add text at
+runtime and neither helped. Given the ±7-point noise floor, neither was ever going to be
+detected unless it was large. The next honest step is not another prompt tweak; it is
+enough repeated measurement to see whether any of these moves at all, and then targeting
+the "revert to reading after a failed build" behaviour directly.
+
 ## Status
 
 The objective — outperform 52/100 — is **met numerically but not statistically, and no
