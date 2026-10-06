@@ -89,12 +89,18 @@
 # max_tool_output_chars=16384 and kept the first third with the last two thirds, while the
 # pruner defaults to an 8,192-character trigger retaining only 4,096 head plus 1,024 tail.
 # Reading a large Kokkos header is exactly where that difference decides whether the model
-# sees the code it needs. Head and tail mirror the reference's one-third / two-thirds split.
+# sees the code it needs.
+#
+# The plugin rejects any config where headChars + len(PRUNE_MARKER) + tailChars exceeds
+# thresholdChars, and the marker is 39 code points, so the retained budget is
+# 16384 - 39 = 16345 split one-third / two-thirds. Getting this arithmetic wrong makes the
+# plugin fail to load, which silently falls back to the defaults rather than erroring
+# visibly — see the guard test in run_task_contree_test.py.
 - id: tool-result-pruner
   config:
     thresholdChars: 16384
-    headChars: 5449
-    tailChars: 10900
+    headChars: 5448
+    tailChars: 10897
 
 - insert:
     - id: hpc-sandbox-bash
