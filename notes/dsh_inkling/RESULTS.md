@@ -183,6 +183,50 @@ the subset is too small to resolve anything, and this variant is not pursued.
 - A repetition breaker: capped empty-patch episodes average a 0.025 repeated-command share
   with none above 50%, so there is no looping to break.
 
+## The measurement was not powerful enough (most important finding)
+
+`full02` and `full07` are **the same experiment run twice**:
+
+- First-request payloads are byte-identical (same `sha256`), so the prompt, tool schema
+  and instruction match exactly.
+- The nudge was absent from both (0/30 sampled sessions each).
+- The pruner never fired in either: the driver caps tool results at 16,384 bytes and the
+  pruner threshold is at or above that, so no session contains a prune marker (0/30 each).
+  `full02`'s config was `4000 + 39 + 8000 = 12039 > 12000` and therefore rejected, but the
+  plugin's absence changed nothing because it could not trigger anyway.
+
+They scored **53/100 and 45/100**. An 8-point spread from configuration-identical runs.
+
+Consequences:
+
+| apparent effect | measured | verdict |
+| --- | --- | --- |
+| pruner 5120 → 16384 visible chars | 53 vs 45 | indistinguishable from noise |
+| build-first persona | 53 vs 52 | indistinguishable from noise |
+| read-streak nudge | 53 vs 43 | within noise; the p = 0.0525 was computed against one baseline draw and overstates the evidence |
+
+Every harness comparison in this project is therefore **underpowered**. A single 100-task
+run has a 95% interval of roughly ±7 points, and the task-level paired view puts the sd of
+a difference at ~4-7 points. Against a reference of 52/100, the pooled same-configuration
+DSH estimate is 98/200 = 49.0%, a difference of −3 points that is well inside that
+interval.
+
+**What this means for the objective.** DSH and the native harness are, on this evidence,
+at parity, and the honest statement is that no intervention tried so far has been shown to
+change the score in either direction. Claiming the `full06` nudge was harmful, as an
+earlier version of this file did, was overconfident.
+
+### What a real comparison needs
+
+Detecting a 5-point effect at 80% power needs roughly 1,500 episodes per arm at this
+per-task variance, or far fewer if the comparison is *paired* on the same tasks with
+multiple samples per task. The practical route is repeated sampling: run each
+configuration several times over the same 100 tasks and compare paired task-level means,
+rather than trusting a single draw.
+
+That is the next investment, and it is worth making before any further harness change,
+because right now no change can be credited or rejected.
+
 ## Status
 
 The objective — outperform 52/100 — is **met numerically but not statistically, and no
