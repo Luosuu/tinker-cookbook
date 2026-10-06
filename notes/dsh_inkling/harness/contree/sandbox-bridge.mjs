@@ -33,15 +33,12 @@ export function apply(ctx) {
 
   ctx.tools.register(defineTool({
     name: 'bash',
-    description:
-      'Run a shell command in the isolated task container. The working directory and ' +
-      'filesystem persist across calls. Use this to inspect, edit, compile, and debug ' +
-      'the repository.',
+    description: "Execute a bash command in the sandbox environment.\n\n        Use this to run shell commands, install packages, edit files, etc.\n        ",
     parameters: {
       command: {
         type: 'string',
         required: true,
-        description: 'Shell command to execute inside the task container.',
+        description: 'The bash command to execute.',
       },
     },
     output: {

@@ -147,3 +147,24 @@ def test_bridge_executes_and_returns_a_tool_result(tmp_path: Path) -> None:
     result = _run_bridge_against_stub(tmp_path)
     assert result.returncode == 0, result.stderr
     assert "BRIDGE_OK" in result.stdout, result.stdout
+
+
+REFERENCE_TOOL_DESCRIPTION = (
+    "Execute a bash command in the sandbox environment.\n\n"
+    "        Use this to run shell commands, install packages, edit files, etc.\n"
+    "        "
+)
+
+
+def test_bridge_matches_the_reference_tool_spec() -> None:
+    """The tool schema the model sees must match the reference's, byte for byte.
+
+    The first version described the tool as a way to "inspect, edit, compile, and debug",
+    which is not what the reference harness said. Since the tool description is part of the
+    prompt, a difference here changes the comparison without being visible in the score.
+    """
+    source = BRIDGE.read_text()
+    assert json.dumps(REFERENCE_TOOL_DESCRIPTION) in source, (
+        "bridge tool description drifted from the reference tool spec"
+    )
+    assert "The bash command to execute." in source
