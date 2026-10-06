@@ -77,22 +77,24 @@
 # Session-title generation issues one extra model request per episode. The reference
 # harness has no such call, and the proxy counts every upstream request against the same
 # 40-request budget, so leaving it on spends a turn the baseline never spent.
-- id: session-title-first-prompt-llm
-  disabled: true
+# `session-title-llm` is the entry id that resolves to the
+# `@deepseek-ai/dsh-session-title-first-prompt-llm` plugin, which is the one that actually
+# issues a title request; `session-title` is its non-LLM fallback. Both are disabled.
 - id: session-title-llm
   disabled: true
 - id: session-title
   disabled: true
 
-# The reference shows the model up to 12,000 characters of tool output, keeping the first
-# third and the last two thirds. DSH's pruner defaults to a 8,192-character trigger that
-# retains only head 4,096 plus tail 1,024. Reading a large Kokkos header is exactly the
-# case where that difference decides whether the model sees the code it needs.
+# Match the reference's tool-output budget. The audited baseline passed
+# max_tool_output_chars=16384 and kept the first third with the last two thirds, while the
+# pruner defaults to an 8,192-character trigger retaining only 4,096 head plus 1,024 tail.
+# Reading a large Kokkos header is exactly where that difference decides whether the model
+# sees the code it needs. Head and tail mirror the reference's one-third / two-thirds split.
 - id: tool-result-pruner
   config:
-    thresholdChars: 12000
-    headChars: 4000
-    tailChars: 8000
+    thresholdChars: 16384
+    headChars: 5460
+    tailChars: 10920
 
 - insert:
     - id: hpc-sandbox-bash
