@@ -93,8 +93,8 @@
 - id: tool-result-pruner
   config:
     thresholdChars: 16384
-    headChars: 5460
-    tailChars: 10920
+    headChars: 5449
+    tailChars: 10900
 
 - insert:
     - id: hpc-sandbox-bash

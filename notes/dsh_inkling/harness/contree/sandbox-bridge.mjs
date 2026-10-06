@@ -55,7 +55,7 @@ export function apply(ctx) {
           socket.destroy();
           execution.signal?.removeEventListener('abort', aborted);
           if (error) reject(error);
-          else resolve(value);
+          else resolve(value + nudge);
         };
         const aborted = () => finish(new Error('Sandbox call aborted'));
         execution.signal?.addEventListener('abort', aborted, { once: true });
