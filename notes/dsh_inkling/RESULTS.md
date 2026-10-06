@@ -93,6 +93,36 @@ python -m notes.dsh_inkling.analyze_run /tmp/dsh-contree/full02
 The Rivanna path and its environment facts are in
 [`harness/rivanna/RUNBOOK.md`](harness/rivanna/RUNBOOK.md).
 
+## Read-streak nudge
+
+A bridge-level nudge appends a short reminder to the tool result after 12 consecutive
+commands that neither edit nor build. It is free: it rides on a result the model already
+receives, so it cannot consume the request budget. `HPC_NUDGE_AFTER=0` disables it.
+
+Verified on a live run: 31 of 48 sessions received at least one nudge, so it fires. Its
+effect on the score is not yet established — the run carrying it (`full06`) was still in
+flight when this was written, at 39/100 completed.
+
+## Two failures that invalidated whole runs
+
+Both were silent, and both are now guarded by tests in
+[`harness/contree/run_task_contree_test.py`](harness/contree/run_task_contree_test.py).
+
+1. **A rejected plugin config does not stop the run.** The pruner rejects any config where
+   `headChars + len(marker) + tailChars > thresholdChars`, and the marker is 39 code
+   points. Both attempts were over budget, so the pruner failed to load in all 200
+   episodes of `full02` and `full03` and the runs used the 8192 defaults while the docs
+   claimed 16384.
+
+2. **A half-applied bridge edit hung every episode.** The nudge was added in two pieces
+   and only one landed, leaving `nudge` referenced but undefined. The tool callback threw,
+   no result reached the harness, and every episode stalled forever after its first
+   request with node idle in `kevent`. It presented as 12 episodes frozen at exactly one
+   request, and bisecting against the previous bridge revision confirmed the cause.
+
+The lesson both share: in this harness a broken component degrades quietly rather than
+failing loudly, so a run's own logs must be checked before its score is believed.
+
 ## Harness variants tested
 
 ### Build-first persona
