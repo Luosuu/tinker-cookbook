@@ -93,8 +93,39 @@ python -m notes.dsh_inkling.analyze_run /tmp/dsh-contree/full02
 The Rivanna path and its environment facts are in
 [`harness/rivanna/RUNBOOK.md`](harness/rivanna/RUNBOOK.md).
 
+## Harness variants tested
+
+### Build-first persona
+
+Motivated by the capped population: episodes that stop at the request cap and succeed
+average 5.2 builds, while those that stop at the cap and fail average 2.3, so the failing
+group keeps reading instead of compiling.
+
+Controlled A/B on a 30-task stratified subset (15 tasks the reference solves, 15 it does
+not, seed 20261005), same profile and budget, persona the only variable:
+
+| arm | persona | solved |
+| --- | --- | ---: |
+| A | reference | 13/30 |
+| B | build-first | **16/30** |
+
++3 tasks (+10 points), 4 gained against 1 lost. Exact McNemar two-sided **p = 0.375** —
+suggestive, not significant. The persona moved behaviour in the intended direction
+(3.2 → 3.5 builds per episode) but modestly, so the mechanism may be weaker than the
+correlation implied.
+
+### Act-early persona
+
+6/12 on the dev subset against 7/12 for the reference persona. No evidence of improvement;
+the subset is too small to resolve anything, and this variant is not pursued.
+
+### Rejected
+
+- A repetition breaker: capped empty-patch episodes average a 0.025 repeated-command share
+  with none above 50%, so there is no looping to break.
+
 ## Status
 
-The objective — outperform 52/100 — is met numerically but not statistically. The next
-round should target the capped-episode population, where 62 episodes hold 32.3% pass rate
-and the finished population already reaches 86.8%.
+The objective — outperform 52/100 — is met numerically but not statistically. The
+build-first variant is the leading candidate at +3 on 30 tasks; the full 100-task run is
+the decisive test and is in progress.
