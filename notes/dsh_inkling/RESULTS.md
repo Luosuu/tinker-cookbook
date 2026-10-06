@@ -99,9 +99,27 @@ A bridge-level nudge appends a short reminder to the tool result after 12 consec
 commands that neither edit nor build. It is free: it rides on a result the model already
 receives, so it cannot consume the request budget. `HPC_NUDGE_AFTER=0` disables it.
 
-Verified on a live run: 31 of 48 sessions received at least one nudge, so it fires. Its
-effect on the score is not yet established — the run carrying it (`full06`) was still in
-flight when this was written, at 39/100 completed.
+Verified to fire: 31 of 48 sessions received at least one nudge.
+
+**It hurts, and is rejected.** Against `full02`, with the nudge the only changed variable:
+
+| run | nudge | solved |
+| --- | --- | ---: |
+| `full02` | off | **53/100** |
+| `full06` | on | 43/100 |
+
+16 tasks lost against 6 gained, exact McNemar two-sided p = 0.0525. A ten-point drop with
+a p-value at the conventional threshold is strong evidence the nudge is harmful, not
+merely unhelpful.
+
+The most plausible mechanism is that the reminder interrupts an otherwise productive
+exploration plan: it fires on a *streak*, which cannot distinguish an agent that is stuck
+from one that is reading a large header before making a single correct edit. Episodes are
+also visibly longer under the nudge, so it consumes wall-clock without buying turns.
+
+The correlation that motivated it — capped failures average 2.3 builds against 5.2 for
+capped successes — was a property of outcomes, not a lever: pushing the model to build
+more does not make it build *the right thing*.
 
 ## Two failures that invalidated whole runs
 
@@ -167,9 +185,31 @@ the subset is too small to resolve anything, and this variant is not pursued.
 
 ## Status
 
-The objective — outperform 52/100 — is met numerically (`full02`, 53/100) but not
-statistically: 23 discordant pairs against the reference, exact McNemar p = 1.000.
+The objective — outperform 52/100 — is **met numerically but not statistically, and no
+harness variant has improved on it.**
 
-The one harness variant tried did not improve on that. Two lessons are firm regardless:
-the measurement platform works and is auditable end to end, and a 30-task subset cannot
-resolve a three-task effect, so future variants must be judged on the full set.
+| run | harness | solved | note |
+| --- | --- | ---: | --- |
+| reference | native Chat Completions (Rivanna) | **52/100** | the target |
+| `full02` | DSH, reference persona, pruner silently at defaults | **53/100** | tie: 23 discordant, p = 1.000 |
+| `full03` | + build-first persona | 52/100 | wash: 9 gained / 10 lost, p = 1.000 |
+| `full06` | + read-streak nudge | 43/100 | **worse**: 6 gained / 16 lost, p = 0.0525 |
+
+Best DSH result is 53/100, one task above the reference and well inside noise. Two
+variants were tested and both were rejected, one of them clearly harmful. The honest
+reading is that DSH, once its prompt, inference parameters and budget are matched to the
+reference, performs at parity with the native harness — which is itself a meaningful
+result, because three separate configuration gaps initially made it look far worse.
+
+### What is left
+
+The loss is concentrated in episodes that exhaust the 40-request budget: 62 of 100 in
+`full02`, passing 32.3%, against 86.8% for the 38 that finish on their own. Neither a
+persona nudge nor a mid-trajectory reminder moved that; both are prompt-level interventions
+and the model appears to be near its ceiling within this budget.
+
+The untested levers are structural rather than prompt-level: giving the agent a cheaper
+build/test loop (the build cost is what makes early editing expensive), or changing what
+the harness shows the model at the point it would otherwise stall. Any such change must be
+judged on the full 100 tasks, since a 30-task subset was already shown to produce a
+spurious +3.
