@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import asyncio
 import sys
-from dataclasses import replace
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
@@ -24,11 +23,10 @@ from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos_openai import (
 
 
 def _config(tasks_dir: str, output_path: str, cache_path: str, max_concurrency: int) -> CLIConfig:
-    config = CLIConfig()
-    # Match the audited baseline budget exactly: 40 model turns, 80 tool calls, 65,536
-    # sampled tokens, effort 0.9 with separate reasoning, temperature 1, no network.
-    return replace(
-        config,
+    # chz dataclasses are not stdlib dataclasses, so construct directly rather than
+    # using dataclasses.replace. Match the audited baseline budget exactly: 40 model
+    # turns, 80 tool calls, 65,536 sampled tokens, effort 0.9, temperature 1, no network.
+    return CLIConfig(
         model_name="thinkingmachines/Inkling-Small:peft:262144",
         tasks_dir=tasks_dir,
         output_path=output_path,
@@ -48,7 +46,8 @@ def _config(tasks_dir: str, output_path: str, cache_path: str, max_concurrency: 
         max_tool_output_chars=16384,
         max_cost_usd_per_task=None,
         estimate_cost=False,
-        sandbox_timeout=7200,
+        # ConTree rejects anything above 3600 (instance_max_timeout).
+        sandbox_timeout=3600,
         command_timeout=900,
         grader_timeout=1200,
         max_concurrency=max_concurrency,
