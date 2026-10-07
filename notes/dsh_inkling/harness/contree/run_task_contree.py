@@ -158,15 +158,74 @@ async def run(
     runtime = runtime.resolve()
     code_root = code_root.resolve()
     sys.path.insert(0, str(code_root))
-    from tinker_cookbook.recipes.harbor_rl.harbor_env import load_harbor_tasks_from_dir
+    from tinker_cookbook.recipes.kokkos_rl.rl.tasks import prepared_kokkos_tasks
+
+    # Load through prepared_kokkos_tasks so the verifier is the regenerated, guarded one.
+    # The published payload's own test.sh grants reward 1 when its gtest filter selects
+    # zero tests, which silently awards a pass for an unmodified repository. The context
+    # must stay open for the whole episode because it owns the temporary task copy.
+    with prepared_kokkos_tasks(tasks_root) as prepared:
+        by_name = {t.task_name: t for t in prepared}
+        if task not in by_name:
+            raise SystemExit(f"unknown task {task}")
+        harbor_task = by_name[task]
+        return await _run_episode(
+            task=task,
+            output=output,
+            harbor_task=harbor_task,
+            runtime=runtime,
+            proxy_script=proxy_script,
+            env_file=env_file,
+            upstream=upstream,
+            profile_patch=profile_patch,
+            persona_file=persona_file,
+            python=python,
+            node=node,
+            cache_path=cache_path,
+            max_turns=max_turns,
+            max_tool_calls=max_tool_calls,
+            wall_seconds=wall_seconds,
+            command_timeout=command_timeout,
+            grader_timeout=grader_timeout,
+            sandbox_timeout=sandbox_timeout,
+            build_parallelism=build_parallelism,
+            cpu_affinity=cpu_affinity,
+            nudge_after=nudge_after,
+            verify_nudge=verify_nudge,
+            prepare_only=prepare_only,
+        )
+
+
+async def _run_episode(
+    *,
+    task,
+    output,
+    harbor_task,
+    runtime,
+    proxy_script,
+    env_file,
+    upstream,
+    profile_patch,
+    persona_file,
+    python,
+    node,
+    cache_path,
+    max_turns,
+    max_tool_calls,
+    wall_seconds,
+    command_timeout,
+    grader_timeout,
+    sandbox_timeout,
+    build_parallelism,
+    cpu_affinity,
+    nudge_after,
+    verify_nudge,
+    prepare_only,
+) -> dict:
     from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborReward
     from tinker_cookbook.recipes.kokkos_rl.rl.candidate_artifact import capture_candidate
     from tinker_cookbook.sandbox.contree_sandbox import ContreeDockerfileSandboxFactory
 
-    by_name = {t.task_name: t for t in load_harbor_tasks_from_dir(tasks_root)}
-    if task not in by_name:
-        raise SystemExit(f"unknown task {task}")
-    harbor_task = by_name[task]
     dockerfile = harbor_task.task_dir / "environment" / "Dockerfile"
     dockerfile_sha = hashlib.sha256(dockerfile.read_bytes()).hexdigest()
 

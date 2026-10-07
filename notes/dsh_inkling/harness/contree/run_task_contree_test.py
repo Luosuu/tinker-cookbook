@@ -200,3 +200,20 @@ def test_reported_budget_is_the_binding_request_limit() -> None:
     assert "model requests" in source
     # The old wording quoted the tool-call cap.
     assert "Budget spent: ${calls}/${MAX_TOOL_CALLS}" not in source
+
+
+def test_driver_uses_the_guarded_verifier() -> None:
+    """The published payload's own test.sh awards reward 1 when zero tests run.
+
+    Its gtest filter (`*CoreUnitTest_Serial1*`) matches no test name, so an unmodified
+    repository scores a pass. `prepared_kokkos_tasks` regenerates a guarded verifier whose
+    filter is real and whose coverage check fails on a zero-test selection. Using the raw
+    payload inflated this project's scores by roughly 12 points per run before it was
+    caught, so the driver must go through the prepared copy.
+    """
+    source = (HERE / "run_task_contree.py").read_text()
+    assert "prepared_kokkos_tasks" in source, (
+        "the driver must not grade with the raw published test.sh"
+    )
+    # And it must not load tasks directly from the payload.
+    assert "load_harbor_tasks_from_dir" not in source

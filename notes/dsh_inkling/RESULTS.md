@@ -418,6 +418,58 @@ So testing is what a model does when it already believes it is finished — a co
 confidence, not a cause of success. Instructing the model to run tests would not reproduce
 the 78.9%, and this candidate is rejected on that basis.
 
+## A verifier bug in my own harness inflated every DSH score
+
+This is the most serious defect found in the project, and it invalidates all DSH numbers
+reported above.
+
+The published task payload's `tests/test.sh` grades with
+
+```
+--gtest_filter='*CoreUnitTest_Serial1*'
+```
+
+which matches **zero** test names, and then does `echo 1 > "$reward"` because nothing
+failed. An unmodified repository therefore scores a pass. Verified directly: a
+"solved" episode built the test binary, ran `0 tests from 0 test suites`, and was awarded
+reward 1.
+
+| evidence | count |
+| --- | ---: |
+| DSH "solved" episodes | 347 |
+| of those whose grading ran zero tests | **86 (25%)** |
+| native-arm solved episodes with zero tests | 0 of 50 |
+
+The native arm was never affected because `eval_kokkos_openai` loads tasks through
+`prepared_kokkos_tasks()`, which regenerates a guarded verifier using a real filter
+(`serial.task_*`) plus a coverage check that fails on a zero-test selection. My DSH driver
+called `load_harbor_tasks_from_dir()` on the raw payload instead. That single line made the
+two arms incomparable: I was grading DSH against a broken verifier and the baseline against
+a fixed one.
+
+### Re-scored honestly
+
+| run | reported | vacuous | honest |
+| --- | ---: | ---: | ---: |
+| `full02` | 53 | 11 | 42 |
+| `full07` | 45 | 11 | 34 |
+| `full08` | 48 | 12 | 36 |
+| `full11` | 48 | 12 | 36 |
+| `full12` | 55 | 14 | 41 |
+| `full13` | 53 | 14 | 39 |
+| `full14` | 45 | 12 | 33 |
+| **mean** | **49.6** | | **37.3** |
+
+DSH's honest mean is **37.3/100**, not 49.6. Against the native loop's 50.0% on the same
+sandbox, DSH is roughly **13 points worse**, not at parity. Every claim in this file that
+DSH "reaches parity" was an artifact.
+
+### Fixed and guarded
+
+The driver now goes through `prepared_kokkos_tasks`, and a verification episode confirms
+the difference: the guarded verifier ran **35 tests from 1 test suite** where the published
+one ran zero. A guard test asserts the driver never grades with the raw payload.
+
 ## Status
 
 **The objective is met numerically but not statistically.** Final picture, with the native
