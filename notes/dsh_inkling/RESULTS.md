@@ -602,6 +602,55 @@ variable (did the model understand the task) drives both the statistic and the o
 Only within-task comparisons have survived.
 
 
+## The strongest mechanism found: incomplete file coverage
+
+This is the first analysis in the project to survive task control with a strong effect, and
+it points somewhere different from every earlier failure story.
+
+The task payloads ship the reference solution (`solution/gold.patch`), so for every episode
+it is possible to ask whether its patch touched the same *files* the reference fix touches.
+Coverage is computed from `+++ b/...` paths only, never from content.
+
+| gold-file coverage | episodes | pass rate |
+| --- | ---: | ---: |
+| < 0.5 | 66 | **3%** |
+| ≥ 0.5 | 234 | **62%** |
+| ≥ 0.75 | 198 | 67% |
+| = 1.0 (all required files) | 185 | 68% |
+
+The task-controlled test is the one that matters, because three earlier correlations
+reversed under it:
+
+- 27 tasks have mixed outcomes across the three draws
+- the passing draw had the higher coverage in **12**, the lower in **0**, tied in 15
+- exact two-sided sign test **p = 0.0005**
+
+Zero reversals is what makes this different from build count, patch size and build timing.
+Looking at it from the failure side: 61% of failed episodes miss at least one file the
+reference patch touches, against 16% of solved episodes.
+
+### What this says about the failure mode
+
+98% of failed patches touch at least one correct file, so **localisation is not the
+problem**. The model finds the right neighbourhood and then produces an incomplete fix: it
+edits the obvious file and misses the companion change (a header, a `.cppm` module
+interface, a second overload). Failed patches are also *larger* on average (10,855 bytes
+against 6,511), so the model is not under-editing in volume — it is editing more files less
+completely.
+
+### The limit of the claim
+
+Coverage is a property of file paths, so a model could touch every required file and still
+be wrong. The causal check is weaker than the correlation: among 21 mixed tasks with
+non-empty patches, the passing draw edited a file no failing draw touched in only 38%. So
+coverage is a strong *predictor* and a plausible mechanism, but the corpus cannot show that
+forcing the model to touch more files would raise the score — the same trap as the nudge.
+
+What it does establish is the shape of the remaining work: this is not a search or
+localisation problem, it is a completeness problem, and no prompt-level intervention tried
+so far has addressed it.
+
+
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (49.3% against
