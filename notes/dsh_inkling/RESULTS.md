@@ -4,17 +4,27 @@ Model: `thinkingmachines/Inkling-Small:peft:262144`. Budget: 40 model requests, 
 calls, 65,536 sampled tokens, temperature 1, `reasoning_effort` 0.9 with
 `separate_reasoning`, network-disabled sandbox. Metric: pass@1 over all 100 frozen tasks.
 
+This file records what was measured, what was rejected, and what is still unknown. Where an
+earlier conclusion was overturned the correction is kept rather than deleted, because the
+sequence of mistakes is itself the useful result.
+
 ## Headline
 
-| Run | Harness | Sandbox | Solved | vs reference |
-| --- | --- | --- | ---: | --- |
-| reference | native Chat Completions tool loop | Rivanna Apptainer | **52/100** | — |
-| `full01` | DSH | ConTree | 47/100 | −5 |
-| `full02` | DSH + budget/fidelity fixes | ConTree | **53/100** | **+1** |
+**DSH reaches parity with the native harness. It does not beat it, and no harness change
+tried in this project has been shown to beat it.**
 
-**The +1 is a tie, not a demonstrated improvement.** 23 discordant pairs (12 gained, 11
-lost), exact McNemar two-sided p = 1.000; the 95% interval on the difference spans roughly
-−8 to +10 points. Report it as parity with a working iteration platform, not as a win.
+| arm | draws | solved | mean | grading |
+| --- | --- | ---: | ---: | --- |
+| native loop, ConTree (paired control) | 1 | 50/100 | 50.0% | guarded |
+| **DSH, correctly graded** | 2 | 55, 46 | **50.5%** | guarded |
+| DSH legacy runs | 7 | — | 37.3-49.6, unknown | **broken** |
+
+Paired on all 100 tasks and the same environment: **+0.5 points**, 13 tasks won against 13
+lost, exact McNemar p = 1.000, 95% CI −6.7 to +7.7.
+
+The single draw that first looked like +5.0 did not survive one replicate. That pattern — an
+apparent effect vanishing on repetition — is the most common outcome in this project, and is
+why measurement power matters more here than any individual number.
 
 ## What the runs establish
 
@@ -101,16 +111,13 @@ receives, so it cannot consume the request budget. `HPC_NUDGE_AFTER=0` disables 
 
 Verified to fire: 31 of 48 sessions received at least one nudge.
 
-**It hurts, and is rejected.** Against `full02`, with the nudge the only changed variable:
+**Rejected, but not for the original reason.** Against `full02` it measured 53 → 43, 16
+tasks lost against 6 gained, p = 0.0525, which was written up here as harm.
 
-| run | nudge | solved |
-| --- | --- | ---: |
-| `full02` | off | **53/100** |
-| `full06` | on | 43/100 |
-
-16 tasks lost against 6 gained, exact McNemar two-sided p = 0.0525. A ten-point drop with
-a p-value at the conventional threshold is strong evidence the nudge is harmful, not
-merely unhelpful.
+That reading was wrong. Running the same *configuration* twice later showed 53 against 45 —
+an 8-point spread from sampling alone — so the p-value had been computed against a single
+baseline draw and overstated the evidence. The nudge is rejected as **indistinguishable
+from noise**, not as harmful. See "The measurement was not powerful enough".
 
 The most plausible mechanism is that the reminder interrupts an otherwise productive
 exploration plan: it fires on a *streak*, which cannot distinguish an agent that is stuck
@@ -517,133 +524,33 @@ from no fix, so their true scores lie somewhere between the reported 49.6 and th
 
 ## Status
 
-**The objective is met numerically but not statistically.** Final picture, with the native
-baseline measured on the same sandbox:
+The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (50.5% against
+50.0% paired, p = 1.000), and every harness variant tried was either rejected or never
+established.
 
-| arm | runs | solved | mean |
-| --- | ---: | ---: | ---: |
-| native loop, Rivanna (original target) | 1 | 52/100 | 52.0% |
-| native loop, ConTree (paired control) | 1 | 50/100 | 50.0% |
-| DSH control | 4 | 53, 45, 48, 48 | **48.5%** |
-| DSH + verify nudge | 3 | 55, 53, 45 | **51.0%** |
+What the project did produce:
 
-Paired against the DSH control over 300 treatment episodes: **+2.5 points**, 27 tasks won
-against 20 lost, exact McNemar p = 0.382, 95% CI −2.6 to +7.6.
+1. **A verifier bug in my own driver** that made the two arms incomparable for most of the
+   work. Fixed, guarded, and the reason only `full20` onward is usable.
+2. **The failure mechanism**, measured within tasks over 600+ episodes: verification
+   strength orders success monotonically (63.9% with a real build, 51.9% with an ad-hoc
+   compile, 30.1% with neither), and capped failures split into 28% that never edit and 72%
+   that edit without finishing.
+3. **Nine configuration and resource defects**, each of which looked like a model effect:
+   missing inference parameters, a mismatched prompt and tool schema, a grader OOM, a
+   wrong budget figure, dead token accounting, and two silent failures where a component
+   degraded instead of erroring.
+4. **Trustworthy measurement**, for the first time: the verifier is correct and
+   `compare_runs.py` supplies paired, task-controlled comparison with an explicit noise
+   floor.
 
-The third treatment draw settled it downward. At two draws the effect looked like +5.5
-points; at three it is +2.5. Treatment draws (55, 53, 45) and control draws (53, 45, 48,
-48) occupy the same band, and pooled the seven runs average 49.6% with sd 4.1.
+### The remaining path
 
-**The verify nudge is therefore not a demonstrated improvement.** It is not rejected the
-way the read-streak nudge was — the mechanism consistently moves, and its sign has never
-been negative — but it has not earned the claim either.
+Not more prompt text. The nudge experiments show that adding instructions at the point of
+failure moves the target variable but not the score, because the budget is fixed and
+verification costs turns. The moves worth trying are structural:
 
-### Why the mechanism moved but the score did not
-
-The nudge helps on both sides of the cap, yet still fails to beat control overall, because
-it also nudges more episodes into the capped category:
-
-| arm | capped episodes | pass rate when capped | pass rate when finished |
-| --- | ---: | ---: | ---: |
-| control | 246/400 (61.5%) | 28.0% | 81.2% |
-| verify nudge | 197/299 (65.9%) | **32.5%** | **87.3%** |
-
-Both conditional pass rates rise — 4.5 and 6.1 points — which is exactly what a
-verify-before-finishing intervention should do. But the share of episodes that exhaust the
-40-request budget also rises from 61.5% to 65.9%, and a capped episode passes far less
-often. The two effects very nearly cancel.
-
-That is a coherent mechanism rather than a null result: telling the model to build before
-finishing makes it verify more (the measured intermediate variable moves), and verification
-helps, but building also costs the turns that would have been spent finishing. Under a
-fixed 40-request budget this is a zero-sum trade.
-
-It also suggests the next thing to try, which is not another prompt: the nudge's benefit is
-visible only once the turn budget stops binding. Either the budget or the cost of
-verification has to change for the mechanism to show up in the score.
-
-### Concurrency must be held constant, and the backend has a settling time
-
-`full17` was meant to be the fair 4-CPU test at matched total load (5 concurrent episodes
-x 4 CPUs = 20 vCPUs, the same envelope as the 10 x 2 runs). It was launched immediately
-after the oversubscribed `full15`/`full16` pair and never recovered normal behaviour: at
-32 episodes it had a **36% pass rate among finished episodes**, against 82% for every
-single run.
-
-A targeted recovery check afterwards — one 2-CPU episode on a task known to be solvable —
-passed in 218 s with reward 1.0, which is the normal profile. So the backend itself is
-healthy; the degradation was contention from the immediately preceding oversubscription,
-and it persisted well past the point where those jobs had ended.
-
-`full17` is therefore also discarded. The operational rule this establishes:
-
-- Hold total concurrency (episodes x CPUs per episode) fixed across compared runs. The
-  comparable runs all sat at 16-24 vCPUs.
-- Leave a settling gap after any oversubscribed batch before trusting the next run.
-- Check the **within-group pass rate**, not just the aggregate. Capped/finished counts and
-  build health looked normal in all three degraded runs; only the pass rate among finished
-  episodes revealed the problem.
-
-### Four CPUs is a trap: it OOMs the verifier
-
-I briefly raised the default to four CPUs per episode after measuring the full
-`Kokkos_CoreUnitTest_Serial1` target at 100 s on 4 CPUs against 344 s on 1 and 176 s on 2,
-with no OOM in that isolated test. That measurement was correct and the conclusion drawn
-from it was wrong.
-
-The isolated test built one target in a quiet sandbox. Under a real run the exported
-verifier runs its own `cmake --build ... --parallel`, and with four CPUs visible that build
-goes four-way inside a 4 GB sandbox:
-
-| run | CPUs/ep | grading logs with `cc1plus: Killed signal` | solved |
-| --- | --- | ---: | ---: |
-| `full11` | 2 | 2 | 48/100 |
-| `full18` | 4 | **12** | 12/47 at the point of abort |
-
-A killed compiler means a correct patch scores zero, and the failure is silent — it looks
-like a test failure, not an infrastructure error. The default is reverted to two CPUs and a
-guard test now pins it, because the "faster" setting is genuinely faster on small targets
-and will look attractive again.
-
-The general lesson, consistent with the rest of this project: a resource limit measured in
-isolation does not transfer to the real workload, and the real workload's own parallel build
-is the thing that has to be sized.
-
-### What was rejected
-
-| variant | result |
-| --- | --- |
-| read-streak nudge | 43/100 vs 53 control; later shown to be noise |
-| build-first persona | 52 vs 53; indistinguishable |
-| tool-output window (5120 → 16384) | could never fire; pruner was unreachable |
-| **verify nudge** | +2.5 points over 3 draws; not established |
-
-### The binding constraint is measurement power
-
-Running one configuration twice produced 53 and 45. A single 100-task run carries a 95%
-interval near ±7 points, and every effect this harness produces is smaller than that. With
-per-task variance dominating, detecting a 5-point effect needs roughly 6-8 runs per arm at
-this sample size, not 2-3.
-
-The one analysis that survives the noise floor is the **within-task mechanism**, because it
-pools 606 episodes rather than comparing aggregates:
-
-| strongest verification used (editors only) | episodes | pass rate |
-| --- | ---: | ---: |
-| ran the project build | 385 | **64.7%** |
-| ad-hoc `g++` only | — | ~52% |
-| neither | — | ~30% |
-
-A 34-point within-task spread, and it is what motivated the intervention. The nudge moved
-its own intermediate variable (build rate among editors 61.5% → 66.3%), which is why it is
-kept as an opt-in flag rather than deleted, but the score effect did not follow at this
-sample size.
-
-### Honest conclusion
-
-DSH, once its prompt, inference parameters, tool schema and budget are matched to the
-native harness, performs **at parity** with it: 48.5% average control versus 50.0% native
-on the same tasks and sandbox, with the best individual runs (55 and 52) also comparable.
-No harness change tried in this project has produced a statistically demonstrated
-improvement. Three configuration defects that each *looked* like a large effect were found
-and fixed along the way, and those were real — they are why early runs scored 47 or worse.
+- make the verification loop cheaper, so the mechanism can pay off inside the budget;
+- change what the harness shows the model when it would otherwise stall, rather than adding
+  a reminder;
+- judge any candidate on repeated draws with `compare_runs.py`, never on one.
