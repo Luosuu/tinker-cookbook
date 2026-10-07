@@ -522,6 +522,41 @@ from no fix, so their true scores lie somewhere between the reported 49.6 and th
 37.3, and no legacy-versus-native comparison is trustworthy.
 
 
+### The largest addressable loss: episodes that never edit the repository
+
+On the 200 correctly-graded episodes (`full20` + `full21`), 101 solved and 99 failed. Of the
+failures:
+
+| group | count | share of failures |
+| --- | ---: | ---: |
+| produced an empty patch | **34** | 34% |
+| produced a non-empty patch | 65 | 66% |
+
+Every one of the 34 empty-patch episodes was **capped** (mean 40.0 requests used). Classified
+by what they did to the filesystem:
+
+| behaviour | count |
+| --- | ---: |
+| wrote only to `/tmp` scratch files, never the repository | 9 |
+| never wrote anything at all | 25 |
+| edited the repository (empty patch would be a capture bug) | **0** |
+
+So these are 17% of all episodes producing a guaranteed zero, and none of them is a capture
+or grading artifact — they genuinely never touched the code. They are the clearest single
+target in the corpus, because unlike the coin-flip band they cannot be rescued by luck.
+
+This is the same population the earlier capped-failure split identified (86 of 310 in the
+legacy runs), now confirmed on correctly-graded data.
+
+### Patch size does not predict success
+
+A raw correlation suggested smaller patches were better: empty 0%, under 1 KB 83%, 5-20 KB
+44%. The within-task check reverses it — among the 17 tasks with mixed outcomes across the
+two draws, the passing draw had the *smaller* patch in only 5 and the larger in 12. The
+aggregate was confounded by task difficulty, exactly as the build-count correlation was.
+Patch size is not a lever and is recorded here only so it is not re-proposed.
+
+
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (50.5% against
