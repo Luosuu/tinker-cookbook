@@ -16,15 +16,16 @@ tried in this project has been shown to beat it.**
 | arm | draws | solved | mean | grading |
 | --- | --- | ---: | ---: | --- |
 | native loop, ConTree (paired control) | 1 | 50/100 | 50.0% | guarded |
-| **DSH, correctly graded** | 2 | 55, 46 | **50.5%** | guarded |
+| **DSH, correctly graded** | 3 | 55, 46, 46 | **49.0%** | guarded |
 | DSH legacy runs | 7 | — | 37.3-49.6, unknown | **broken** |
 
-Paired on all 100 tasks and the same environment: **+0.5 points**, 13 tasks won against 13
-lost, exact McNemar p = 1.000, 95% CI −6.7 to +7.7.
+Paired on the 99 tasks all three draws and the native arm completed: **−0.7 points**,
+16 tasks won against 17 lost, exact McNemar p = 1.000, 95% CI −7.8 to +6.4.
 
-The single draw that first looked like +5.0 did not survive one replicate. That pattern — an
-apparent effect vanishing on repetition — is the most common outcome in this project, and is
-why measurement power matters more here than any individual number.
+The single draw that first looked like +5.0 did not survive replication: three draws of the
+same configuration spread 55, 46, 46. That pattern — an apparent effect vanishing on
+repetition — is the most common outcome in this project, and is why measurement power
+matters more here than any individual number.
 
 ## What the runs establish
 
@@ -603,9 +604,9 @@ Only within-task comparisons have survived.
 
 ## Status
 
-The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (50.5% against
-50.0% paired, p = 1.000), and every harness variant tried was either rejected or never
-established.
+The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (49.0% against
+50.0% paired over three draws, p = 1.000), and every harness variant tried was either
+rejected or never established.
 
 What the project did produce:
 
