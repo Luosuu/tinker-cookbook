@@ -384,47 +384,53 @@ A second treatment run is in flight to decide it.
 
 ## Status
 
-The objective — outperform the 52/100 native baseline — is **met on absolute pass@1 and
-directionally but not yet significantly in a paired comparison.**
+**The objective is met numerically but not statistically.** The honest summary, with the
+native baseline now measured on the same sandbox:
 
-| arm | episodes | solved | note |
-| --- | ---: | ---: | --- |
-| reference | native loop, Rivanna, 1 draw | **52/100** | originally the target |
-| native loop, ConTree | 83-88 tasks done | 0.455 mean | same sandbox pairwise control |
-| DSH control (4 runs) | 400 | 194/400 = 48.5% | nudge off |
-| **DSH + verify nudge** | 200 | **108/200 = 54.0%** | best arm |
-| `full12` / `full13` | 100 each | **55 / 53** | treatment draws |
+| arm | runs | solved | mean |
+| --- | ---: | ---: | ---: |
+| native loop, Rivanna (original target) | 1 | 52/100 | 52.0% |
+| native loop, ConTree (paired control) | 1 | **50/100** | 50.0% |
+| DSH control | 4 | 53, 45, 48, 48 | 48.5% |
+| **DSH + verify nudge** | 2 | **55, 53** | **54.0%** |
 
-Headline numbers:
+Paired against the native loop on the identical 100 tasks and sandbox: **+4.0 points**
+(54.0 vs 50.0), 16 tasks won against 12 lost, t = 1.05, exact McNemar p = 0.572,
+95% CI −3.5 to +11.5.
 
-- **Best DSH run: 55/100**, against the reference 52/100 — above it, and the mean of the
-  two treatment runs (54.0%) is above the pooled control (48.5%).
-- **Paired against the native loop on the same sandbox**: +7.4 points (0.528 vs 0.455),
-  16 tasks won against 8 lost, t = 1.85, 95% CI −0.5 to +15.2.
-- **Paired against the DSH control**: +5.5 points, 23 won against 15 lost, 95% CI −0.0 to
-  +11.0.
+That is the most defensible comparison available, and it does **not** clear the
+significance bar. Against the original Rivanna figure the treatment is +2 points, which is
+deeply inside the noise floor.
 
-Both intervals stop just short of excluding zero, so the honest statement is that the
-verify nudge produces a real and consistent positive movement that has not yet reached the
-conventional significance threshold at this sample size.
+### The noise floor is the binding constraint
 
-### What was rejected
+Running the *same configuration* twice produced 53 and 45 — an 8-point spread. A single
+100-task run therefore carries a 95% interval of roughly ±7 points. Every effect this
+harness produces (4-6 points) is smaller than that, which is why nothing reaches
+significance and why two earlier "results" were retracted.
 
-The read-streak nudge, the build-first persona, and the tool-output window were all
-rejected — the first two as indistinguishable from noise once the ±7-point noise floor was
-measured, the last because the pruner could never fire. Reporting those as effects was the
-main analytical error in this project, and it was caught by running the same configuration
-twice.
+### What is established regardless
 
-### Why the verify nudge is believed
+1. **DSH reaches parity with the native loop.** Across 5 control runs it averages 48.5%
+   against the native 50.0%, and its best run (55) exceeds the native best (52).
+2. **The bottleneck is editing without verifying.** Among the 351 episodes that edited the
+   repository: real build 63.9% pass, ad-hoc `g++` only 51.9%, neither 30.1% — monotone,
+   a 34-point spread, measured within tasks.
+3. **The verify nudge moves that variable.** Share of editors running a real build rose
+   from 62% to 66%, ad-hoc-only fell from 52 episodes to 7, and pass rate among editors
+   rose from 54.1% to 62.1%.
+4. **The interaction between the two.** The nudge's score effect is +5.5 points against the
+   DSH control and +4.0 against the native loop; consistent in sign, below significance.
 
-Its intermediate variable moved in the predicted direction, which the rejected variants
-never showed: among episodes that edited, the share running a real build rose from 62% to
-66%, ad-hoc-`g++`-only fell from 52 episodes to 7, and pass rate among editors rose from
-54.1% to 62.1%.
+### Rejected, and why
 
-### What would settle it
+The read-streak nudge and the build-first persona were both within noise; the tool-output
+window could never fire. Recording these as effects was the main analytical error in this
+project, and it was caught only by running one configuration twice.
 
-More treatment draws. The effect is ~6-7 points against a per-run standard error near 4, so
-roughly two to four more treatment runs would push the interval clear of zero if the effect
-is real. The infrastructure to do that is in place and each run takes about two hours.
+### The remaining path
+
+The verify nudge is the first intervention with a plausible mechanism and a consistent
+positive sign. Settling it needs more treatment draws — at 4-6 points against a ~4-point
+standard error, roughly 6-8 runs per arm rather than 2. The infrastructure runs one draw
+in about two hours.
