@@ -349,38 +349,40 @@ was noise too). What has changed is that the effect size is now large enough to 
 a 25-point within-task difference needs far fewer episodes than the 5-point effects that
 were previously being chased, so a targeted experiment can settle it.
 
-## The edit-without-build nudge: first positive signal
+## The edit-without-build nudge
 
 The nudge is triggered by the *measured* failure pattern rather than a generic streak: it
 fires at most once, only after the episode has edited the repository and has not yet
 obtained real compiler or test feedback on that edit.
 
-| arm | episodes | solved |
-| --- | ---: | ---: |
-| control (4 runs, nudge off) | 400 | 194/400 = 48.5% |
-| verify nudge (`full12`, `full13`) | 200 | **108/200 = 54.0%** |
+| arm | runs | episodes | solved |
+| --- | ---: | ---: | ---: |
+| control (nudge off) | 4 | 400 | 194/400 = 48.5% |
+| verify nudge | 3 | 300 | **153/300 = 51.0%** |
 
-Paired by task: **+5.5 points**, 23 tasks won against 15 lost, exact McNemar p = 0.256,
-95% CI −0.0 to +11.0 points. The interval just touches zero, so this is the strongest
-result in the project but still not a demonstrated effect at the conventional threshold.
+Paired by task: **+2.5 points**, 27 tasks won against 20 lost, exact McNemar p = 0.382,
+95% CI −2.6 to +7.6.
 
-The two treatment runs scored 55 and 53, against control runs of 53, 45, 48 and 48. The
-treatment distribution is tighter and higher; the control distribution is what carries the
-noise.
+At two runs (`full12`, `full13`) this looked like +5.5 points and was recorded as the first
+positive result. The third run (`full14`) scored 45 and the effect fell to +2.5. Treatment
+draws (55, 53, 45) and control draws (53, 45, 48, 48) occupy the same band; pooled, the
+seven runs average 49.6% with sd 4.1.
+
+So the nudge is **not a demonstrated improvement**. It is not rejected the way the
+read-streak nudge was — its mechanism consistently moves and its sign was never negative —
+but it has not earned the claim, and the earlier "+5.5, first positive signal" reading was
+two above-average draws against a control mean dragged down by a single 45.
 
 ### The mechanism moved as intended
 
-| arm | editors | ran a real build | ad-hoc `g++` only | neither |
-| --- | ---: | ---: | ---: | ---: |
-| control | 351 | 62% | 52 | 83 |
-| verify nudge | 87 | **66%** | 7 | 23 |
+| arm | editors | ran a real build | pass rate among editors |
+| --- | ---: | ---: | ---: |
+| control (4 runs) | 351 | 61.5% | 54.1% |
+| verify nudge (3 runs) | 255 | **66.3%** | 58.8% |
 
-Pass rate among editors rose from 54.1% to 62.1%, which is the pathway the intervention was
-designed to move. That the intermediate variable shifted in the predicted direction is
-materially stronger evidence than the score alone, because it is the mechanism rather than
-an aggregate.
-
-A second treatment run is in flight to decide it.
+The intermediate variable moved in the predicted direction across all three treatment runs,
+which the rejected variants never showed. It is the reason the nudge is kept as an opt-in
+flag rather than deleted, even though its score effect is not established.
 
 ## Status
 
