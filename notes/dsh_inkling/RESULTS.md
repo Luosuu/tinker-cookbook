@@ -358,11 +358,15 @@ obtained real compiler or test feedback on that edit.
 | arm | episodes | solved |
 | --- | ---: | ---: |
 | control (4 runs, nudge off) | 400 | 194/400 = 48.5% |
-| `full12` (verify nudge) | 100 | **55/100 = 55.0%** |
+| verify nudge (`full12`, `full13`) | 200 | **108/200 = 54.0%** |
 
-Paired by task: **+6.5 points**, 23 tasks won against 16 lost, exact McNemar p = 0.337,
-95% CI −0.5 to +13.5 points. The interval very nearly excludes zero and the direction is
-positive, but on one treatment run this is a signal, not a demonstrated effect.
+Paired by task: **+5.5 points**, 23 tasks won against 15 lost, exact McNemar p = 0.256,
+95% CI −0.0 to +11.0 points. The interval just touches zero, so this is the strongest
+result in the project but still not a demonstrated effect at the conventional threshold.
+
+The two treatment runs scored 55 and 53, against control runs of 53, 45, 48 and 48. The
+treatment distribution is tighter and higher; the control distribution is what carries the
+noise.
 
 ### The mechanism moved as intended
 
