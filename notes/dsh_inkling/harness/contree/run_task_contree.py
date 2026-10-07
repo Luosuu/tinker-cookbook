@@ -146,6 +146,8 @@ async def run(
     nudge_after: int,
     verify_nudge: bool,
     coverage_nudge: bool,
+    echo_changed: bool,
+    verify_rearm: bool,
     wall_seconds: int,
     command_timeout: int,
     grader_timeout: int,
@@ -194,6 +196,8 @@ async def run(
             nudge_after=nudge_after,
             verify_nudge=verify_nudge,
             coverage_nudge=coverage_nudge,
+            echo_changed=echo_changed,
+            verify_rearm=verify_rearm,
             prepare_only=prepare_only,
         )
 
@@ -223,6 +227,8 @@ async def _run_episode(
     nudge_after,
     verify_nudge,
     coverage_nudge,
+    echo_changed,
+    verify_rearm,
     prepare_only,
 ) -> dict:
     from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborReward
@@ -360,6 +366,8 @@ async def _run_episode(
                                 "HPC_NUDGE_AFTER": str(nudge_after),
                                 "HPC_VERIFY_NUDGE": "1" if verify_nudge else "0",
                                 "HPC_COVERAGE_NUDGE": "1" if coverage_nudge else "0",
+                                "HPC_ECHO_CHANGED": "1" if echo_changed else "0",
+                                "HPC_VERIFY_REARM": "1" if verify_rearm else "0",
                                 "DSH_PROXY_KEY": "proxy-local",
                                 "TINKER_API_KEY": os.environ.get("TINKER_API_KEY", "proxy-local"),
                             }
@@ -490,6 +498,18 @@ def main() -> None:
         action="store_true",
         help="Remind the model when it has edited only one file late in the budget. "
         "Patches covering under half the reference fix's files pass far less often.",
+    )
+    parser.add_argument(
+        "--echo-changed",
+        action="store_true",
+        help="Append the list of edited repository files to every tool result. Factual "
+        "self-state rather than an instruction.",
+    )
+    parser.add_argument(
+        "--verify-rearm",
+        action="store_true",
+        help="Re-arm the build reminder after every build. Targets the failing episodes "
+        "that make three or more edits and never build at all.",
     )
     parser.add_argument("--prepare-only", action="store_true")
     args = parser.parse_args()

@@ -42,6 +42,8 @@ async def run_one(
     nudge_after: int,
     verify_nudge: bool,
     coverage_nudge: bool,
+    echo_changed: bool,
+    verify_rearm: bool,
 ) -> dict:
     output = run_dir / "results" / task
     command = [
@@ -77,6 +79,10 @@ async def run_one(
         command.append("--verify-nudge")
     if coverage_nudge:
         command.append("--coverage-nudge")
+    if echo_changed:
+        command.append("--echo-changed")
+    if verify_rearm:
+        command.append("--verify-rearm")
     started = time.monotonic()
     process = await asyncio.create_subprocess_exec(
         *command,
@@ -153,6 +159,16 @@ async def main() -> None:
         help="Enable the single-file coverage reminder.",
     )
     parser.add_argument(
+        "--echo-changed",
+        action="store_true",
+        help="Append the edited-file list to every tool result.",
+    )
+    parser.add_argument(
+        "--verify-rearm",
+        action="store_true",
+        help="Re-arm the build reminder after each build.",
+    )
+    parser.add_argument(
         "--nudge-after",
         type=int,
         default=0,
@@ -201,6 +217,8 @@ async def main() -> None:
                 nudge_after=args.nudge_after,
                 verify_nudge=args.verify_nudge,
                 coverage_nudge=args.coverage_nudge,
+                echo_changed=args.echo_changed,
+                verify_rearm=args.verify_rearm,
             )
             return index, summary
 

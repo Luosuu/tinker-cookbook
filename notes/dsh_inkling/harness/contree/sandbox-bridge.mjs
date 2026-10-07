@@ -51,6 +51,22 @@ const VERIFY_NUDGE = process.env.HPC_VERIFY_NUDGE === '1';
 const COVERAGE_NUDGE = process.env.HPC_COVERAGE_NUDGE === '1';
 const COVERAGE_AT = Number(process.env.HPC_COVERAGE_AT || '30');
 
+// Changed-set echo: append the repository files this episode has edited to every tool
+// result, once it has edited at least one. This is factual rather than instructional -- it
+// states what the model has changed, not what it should do -- because four reminders have
+// already failed and a stale working set is a plausible reason. Episodes that inspect
+// their own diff reach 90% gold-file coverage against 71% for those that never do, but
+// only 8% ever run that check.
+const ECHO_CHANGED = process.env.HPC_ECHO_CHANGED === '1';
+
+// Re-arming verify reminder: the once-only verify nudge could not help an episode that
+// built early and then edited repeatedly without building again, which is a real
+// population -- 17 of 72 failing episodes with three or more edits never built at all, and
+// one corpus example made 8 edits in 40 calls with zero builds. This variant re-arms after
+// each build and fires again once the episode has made N edits since that build.
+const VERIFY_REARM = process.env.HPC_VERIFY_REARM === '1';
+const EDITS_BEFORE_NUDGE = Number(process.env.HPC_EDITS_BEFORE_NUDGE || '3');
+
 const WRITE_PATTERN = /cat\s*>|tee\s|sed\s+-i|patch\s+-|git\s+apply|>>?\s*\/workspace|<<\s*'?[A-Z]+'?/;
 const BUILD_PATTERN = /\b(cmake|ninja|ctest|make)\b/;
 
@@ -61,6 +77,8 @@ export function apply(ctx) {
   let verified = false;
   let verifyNudged = false;
   let coverageNudged = false;
+  let editsSinceBuild = 0;
+  let rearmNudges = 0;
   const editedPaths = new Set();
 
   ctx.tools.register(defineTool({
@@ -92,7 +110,12 @@ export function apply(ctx) {
           editedPaths.add(path[0]);
         }
       }
-      if (isBuild) verified = true;
+      if (isBuild) {
+        verified = true;
+        // Re-arm the reminder: a build resets the count of unverified edits.
+        editsSinceBuild = 0;
+      }
+      if (isWrite) editsSinceBuild += 1;
       const mutating = isWrite || isBuild;
       readStreak = mutating ? 0 : readStreak + 1;
 
@@ -105,6 +128,13 @@ export function apply(ctx) {
           `Budget spent: ${calls}/${MAX_REQUESTS} model requests. Make your best edit now and build it; ` +
           `an edit you can compile and correct beats more reading.`
         : '';
+
+      // Factual echo of the changed set, on every result once an edit has happened.
+      if (ECHO_CHANGED && editedPaths.size > 0) {
+        const list = [...editedPaths].sort().join("\n  ");
+        nudge +=
+          `\n\n[harness] Repository files edited so far (${editedPaths.size}):\n  ${list}`;
+      }
 
       // Fires at most once, late, and only when the episode has edited a single file.
       if (
@@ -120,6 +150,21 @@ export function apply(ctx) {
           `related header, module interface or overload, and patches that touch only one ` +
           `file rarely pass. Before continuing, re-read the files you found earlier and ` +
           `check whether your change also needs to be applied or declared elsewhere.`;
+      }
+
+      // Re-arming variant: fires whenever N edits have accumulated since the last build.
+      if (
+        VERIFY_REARM &&
+        editsSinceBuild >= EDITS_BEFORE_NUDGE &&
+        rearmNudges < 4
+      ) {
+        rearmNudges += 1;
+        editsSinceBuild = 0;
+        nudge +=
+          `\n\n[harness] ${editsSinceBuild + EDITS_BEFORE_NUDGE} consecutive edits with no ` +
+          `build. Budget spent: ${calls}/${MAX_REQUESTS} model requests. Compile now and ` +
+          `read the compiler output before making further changes; unverified edits cannot ` +
+          `be corrected.`;
       }
 
       // Fires at most once, and only after an edit has gone unverified by a real build.
