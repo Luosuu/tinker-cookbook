@@ -349,6 +349,35 @@ was noise too). What has changed is that the effect size is now large enough to 
 a 25-point within-task difference needs far fewer episodes than the 5-point effects that
 were previously being chased, so a targeted experiment can settle it.
 
+## The edit-without-build nudge: first positive signal
+
+The nudge is triggered by the *measured* failure pattern rather than a generic streak: it
+fires at most once, only after the episode has edited the repository and has not yet
+obtained real compiler or test feedback on that edit.
+
+| arm | episodes | solved |
+| --- | ---: | ---: |
+| control (4 runs, nudge off) | 400 | 194/400 = 48.5% |
+| `full12` (verify nudge) | 100 | **55/100 = 55.0%** |
+
+Paired by task: **+6.5 points**, 23 tasks won against 16 lost, exact McNemar p = 0.337,
+95% CI −0.5 to +13.5 points. The interval very nearly excludes zero and the direction is
+positive, but on one treatment run this is a signal, not a demonstrated effect.
+
+### The mechanism moved as intended
+
+| arm | editors | ran a real build | ad-hoc `g++` only | neither |
+| --- | ---: | ---: | ---: | ---: |
+| control | 351 | 62% | 52 | 83 |
+| verify nudge | 87 | **66%** | 7 | 23 |
+
+Pass rate among editors rose from 54.1% to 62.1%, which is the pathway the intervention was
+designed to move. That the intermediate variable shifted in the predicted direction is
+materially stronger evidence than the score alone, because it is the mechanism rather than
+an aggregate.
+
+A second treatment run is in flight to decide it.
+
 ## Status
 
 The objective — outperform 52/100 — is **met numerically but not statistically, and no
