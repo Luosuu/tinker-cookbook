@@ -309,6 +309,25 @@ pass 8.2%.
 Because the comparison is within tasks that share a configuration, task difficulty cannot
 explain it. This is the strongest signal in the whole project so far.
 
+### Verification quality orders success monotonically
+
+Restricting to the 351 episodes that edited the repository, by the strongest form of
+verification each used:
+
+| strongest verification | episodes | pass rate |
+| --- | ---: | ---: |
+| ran the project build (`cmake --build` / `ninja` / `ctest`) | 216 | **63.9%** |
+| only an ad-hoc `g++` compile of its own snippet | 52 | 51.9% |
+| neither | 83 | 30.1% |
+
+Monotone in verification strength, and the endpoints differ by 34 points. This is a
+cleaner statement of the same finding: it is not "building" as a ritual that matters but
+whether the episode ever obtained real compiler or test feedback on its own edit.
+
+The 83 episodes in the bottom row are the actionable population. They are editors that
+finished, or were capped, without ever asking the compiler whether their change was
+correct. They end their trajectories on `grep`, `sed`, `cat` and `find` — still reading.
+
 ### It is not an obstruction in the harness
 
 The build loop itself works: of 689 build invocations, 556 (81%) succeed and 133 fail.
