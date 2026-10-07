@@ -429,6 +429,28 @@ It also suggests the next thing to try, which is not another prompt: the nudge's
 visible only once the turn budget stops binding. Either the budget or the cost of
 verification has to change for the mechanism to show up in the score.
 
+### Concurrency must be held constant, and the backend has a settling time
+
+`full17` was meant to be the fair 4-CPU test at matched total load (5 concurrent episodes
+x 4 CPUs = 20 vCPUs, the same envelope as the 10 x 2 runs). It was launched immediately
+after the oversubscribed `full15`/`full16` pair and never recovered normal behaviour: at
+32 episodes it had a **36% pass rate among finished episodes**, against 82% for every
+single run.
+
+A targeted recovery check afterwards — one 2-CPU episode on a task known to be solvable —
+passed in 218 s with reward 1.0, which is the normal profile. So the backend itself is
+healthy; the degradation was contention from the immediately preceding oversubscription,
+and it persisted well past the point where those jobs had ended.
+
+`full17` is therefore also discarded. The operational rule this establishes:
+
+- Hold total concurrency (episodes x CPUs per episode) fixed across compared runs. The
+  comparable runs all sat at 16-24 vCPUs.
+- Leave a settling gap after any oversubscribed batch before trusting the next run.
+- Check the **within-group pass rate**, not just the aggregate. Capped/finished counts and
+  build health looked normal in all three degraded runs; only the pass rate among finished
+  episodes revealed the problem.
+
 ### What was rejected
 
 | variant | result |
