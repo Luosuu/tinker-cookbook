@@ -166,3 +166,23 @@ def test_bridge_matches_the_reference_tool_spec() -> None:
     )
     # The reference tool takes a bare string parameter with no description.
     assert "{ type: 'string', required: true }" in source
+
+
+def test_cpu_affinity_default_is_two() -> None:
+    """Four CPUs makes the verifier's parallel build OOM on a 4 GB ConTree sandbox.
+
+    Measured: 4 CPUs builds a small target faster, which is why it was briefly the
+    default, but the exported verifier's full `--parallel` build then dies with
+    `cc1plus: Killed signal terminated` and scores correct patches as zero. A run
+    configured that way showed 12 grading OOMs against 2 for the 2-CPU configuration.
+    """
+    import inspect
+
+    from notes.dsh_inkling.harness.contree import run_batch, run_task_contree
+
+    for module in (run_batch, run_task_contree):
+        source = inspect.getsource(module)
+        assert 'default="0,1"' in source, (
+            f"{module.__name__} must pin to two CPUs; four OOMs the verifier"
+        )
+        assert 'default="0,1,2,3"' not in source

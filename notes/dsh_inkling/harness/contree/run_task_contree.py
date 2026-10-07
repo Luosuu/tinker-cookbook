@@ -405,11 +405,13 @@ def main() -> None:
     parser.add_argument("--build-parallelism", type=int, default=1)
     parser.add_argument(
         "--cpu-affinity",
-        default="0,1,2,3",
+        default="0,1",
         help="Comma-separated CPU list to pin commands to. Needed on 4 GB sandboxes "
         "because the exported verifier builds with --parallel and ignores "
-        "CMAKE_BUILD_PARALLEL_LEVEL. Measured on the full Serial1 test target: "
-        "1 CPU 344s, 2 CPUs 176s, 4 CPUs 100s, all without OOM.",
+        "CMAKE_BUILD_PARALLEL_LEVEL. Measured: the full Serial1 target builds in "
+        "344s on 1 CPU and 176s on 2. Four CPUs is faster on small targets but "
+        "makes the verifier's own parallel build OOM (cc1plus killed), so 2 is the "
+        "safe default.",
     )
     parser.add_argument(
         "--verify-nudge",

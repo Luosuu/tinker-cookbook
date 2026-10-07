@@ -451,6 +451,31 @@ and it persisted well past the point where those jobs had ended.
   build health looked normal in all three degraded runs; only the pass rate among finished
   episodes revealed the problem.
 
+### Four CPUs is a trap: it OOMs the verifier
+
+I briefly raised the default to four CPUs per episode after measuring the full
+`Kokkos_CoreUnitTest_Serial1` target at 100 s on 4 CPUs against 344 s on 1 and 176 s on 2,
+with no OOM in that isolated test. That measurement was correct and the conclusion drawn
+from it was wrong.
+
+The isolated test built one target in a quiet sandbox. Under a real run the exported
+verifier runs its own `cmake --build ... --parallel`, and with four CPUs visible that build
+goes four-way inside a 4 GB sandbox:
+
+| run | CPUs/ep | grading logs with `cc1plus: Killed signal` | solved |
+| --- | --- | ---: | ---: |
+| `full11` | 2 | 2 | 48/100 |
+| `full18` | 4 | **12** | 12/47 at the point of abort |
+
+A killed compiler means a correct patch scores zero, and the failure is silent — it looks
+like a test failure, not an infrastructure error. The default is reverted to two CPUs and a
+guard test now pins it, because the "faster" setting is genuinely faster on small targets
+and will look attractive again.
+
+The general lesson, consistent with the rest of this project: a resource limit measured in
+isolation does not transfer to the real workload, and the real workload's own parallel build
+is the thing that has to be sized.
+
 ### What was rejected
 
 | variant | result |

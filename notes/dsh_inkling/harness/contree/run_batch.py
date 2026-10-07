@@ -152,9 +152,9 @@ async def main() -> None:
     )
     parser.add_argument(
         "--cpu-affinity",
-        default="0,1,2,3",
-        help="Comma-separated CPU list per episode. Measured on the full Serial1 test "
-        "target: 1 CPU 344s, 2 CPUs 176s, 4 CPUs 100s, none OOM on a 4 GB sandbox.",
+        default="0,1",
+        help="Comma-separated CPU list per episode. 2 CPUs is the safe default: four "
+        "is faster on small targets but makes the verifier's own parallel build OOM.",
     )
     args = parser.parse_args()
 
