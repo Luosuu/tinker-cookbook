@@ -149,11 +149,8 @@ def test_bridge_executes_and_returns_a_tool_result(tmp_path: Path) -> None:
     assert "BRIDGE_OK" in result.stdout, result.stdout
 
 
-REFERENCE_TOOL_DESCRIPTION = (
-    "Execute a bash command in the sandbox environment.\n\n"
-    "        Use this to run shell commands, install packages, edit files, etc.\n"
-    "        "
-)
+# From eval_kokkos_openai.BASH_TOOL, which is the tool the audited 52/100 baseline used.
+REFERENCE_TOOL_DESCRIPTION = "Execute a bash command in the sandbox environment."
 
 
 def test_bridge_matches_the_reference_tool_spec() -> None:
@@ -167,4 +164,5 @@ def test_bridge_matches_the_reference_tool_spec() -> None:
     assert json.dumps(REFERENCE_TOOL_DESCRIPTION) in source, (
         "bridge tool description drifted from the reference tool spec"
     )
-    assert "The bash command to execute." in source
+    # The reference tool takes a bare string parameter with no description.
+    assert "{ type: 'string', required: true }" in source

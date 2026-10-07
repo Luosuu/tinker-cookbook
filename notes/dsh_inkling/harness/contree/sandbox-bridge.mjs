@@ -33,13 +33,9 @@ export function apply(ctx) {
 
   ctx.tools.register(defineTool({
     name: 'bash',
-    description: "Execute a bash command in the sandbox environment.\n\n        Use this to run shell commands, install packages, edit files, etc.\n        ",
+    description: "Execute a bash command in the sandbox environment.",
     parameters: {
-      command: {
-        type: 'string',
-        required: true,
-        description: 'The bash command to execute.',
-      },
+      command: { type: 'string', required: true },
     },
     output: {
       schema: { type: 'string' },
