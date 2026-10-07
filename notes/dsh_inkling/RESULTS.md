@@ -557,6 +557,31 @@ aggregate was confounded by task difficulty, exactly as the build-count correlat
 Patch size is not a lever and is recorded here only so it is not re-proposed.
 
 
+### Both harnesses share the same binding constraint
+
+The native loop's failure profile is almost identical to DSH's, which says the ceiling
+belongs to the model-plus-budget, not to the harness:
+
+| arm | capped | pass when capped | finished | pass when finished |
+| --- | ---: | ---: | ---: | ---: |
+| native loop | 57/100 | 28% | 43/100 | 79% |
+| DSH (2 draws) | 134/200 | 35% | 66/200 | 82% |
+
+Both spend roughly 57-67% of episodes against the 40-request cap and pass about 28-35% of
+those, while finishing episodes pass about 80%. Neither harness converts capped episodes
+well, and DSH's small advantage sits almost entirely in the capped group.
+
+This reframes what a harness change can achieve. Since the native loop — a completely
+different scaffold — hits the same wall, the constraint is not the prompt, the tool schema,
+or the context handling. It is that this model, on these tasks, needs more than 40 requests
+to finish roughly two thirds of the time, and the parts of the work it does inside those
+requests convert at only about 30%.
+
+A harness change can therefore only win by making the same 40 requests go further. The
+version of that measured here — the verify-nudge, which moves where the requests are spent —
+did not clear the noise floor.
+
+
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (50.5% against
