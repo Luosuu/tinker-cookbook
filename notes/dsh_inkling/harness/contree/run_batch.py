@@ -152,9 +152,9 @@ async def main() -> None:
     )
     parser.add_argument(
         "--cpu-affinity",
-        default="0,1",
-        help="Comma-separated CPU list per episode. Two CPUs halve the test-target build "
-        "(176s vs 344s) without OOM on a 4 GB sandbox. Pass 'none' to disable.",
+        default="0,1,2,3",
+        help="Comma-separated CPU list per episode. Measured on the full Serial1 test "
+        "target: 1 CPU 344s, 2 CPUs 176s, 4 CPUs 100s, none OOM on a 4 GB sandbox.",
     )
     args = parser.parse_args()
 
