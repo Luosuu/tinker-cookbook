@@ -470,6 +470,26 @@ The driver now goes through `prepared_kokkos_tasks`, and a verification episode 
 the difference: the guarded verifier ran **35 tests from 1 test suite** where the published
 one ran zero. A guard test asserts the driver never grades with the raw payload.
 
+### First correctly-graded comparison
+
+After the verifier fix, `full20` is the first DSH run graded by the guarded verifier, with
+0 of 100 grading artifacts showing a zero-test selection.
+
+| arm | solved | pass@1 |
+| --- | ---: | ---: |
+| native loop (ConTree) | 50/100 | 50.0% |
+| **DSH (correctly graded)** | **55/100** | **55.0%** |
+
+Paired on the same 100 tasks and sandbox: **+5.0 points**, 11 tasks won against 6 lost,
+t = 1.22, exact McNemar p = 0.332, 95% CI −3.1 to +13.1.
+
+This is the first number in the project that is both correctly graded and above the
+baseline. It is still not statistically demonstrated, and it rests on a single treatment
+draw, so the same caution applies as everywhere else: two draws of one configuration have
+already differed by 8 points. It is, however, the cleanest starting point the project has
+had, because the measurement is now trustworthy.
+
+
 ## Status
 
 **The objective is met numerically but not statistically.** Final picture, with the native
