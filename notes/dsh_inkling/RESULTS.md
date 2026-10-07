@@ -490,24 +490,29 @@ The driver now goes through `prepared_kokkos_tasks`, and a verification episode 
 the difference: the guarded verifier ran **35 tests from 1 test suite** where the published
 one ran zero. A guard test asserts the driver never grades with the raw payload.
 
-### First correctly-graded comparison
+### Correctly-graded comparison: DSH is at parity
 
-After the verifier fix, `full20` is the first DSH run graded by the guarded verifier, with
-0 of 100 grading artifacts showing a zero-test selection.
+With the verifier fixed, two clean draws were run under the prepared configuration, which
+is the same one the native arm used.
 
-| arm | solved | pass@1 |
-| --- | ---: | ---: |
-| native loop (ConTree) | 50/100 | 50.0% |
-| **DSH (correctly graded)** | **55/100** | **55.0%** |
+| arm | draws | solved | mean |
+| --- | --- | ---: | ---: |
+| native loop (ConTree) | 1 | 50/100 | 50.0% |
+| DSH | 2 | **55, 46** | **50.5%** |
 
-Paired on the same 100 tasks and sandbox: **+5.0 points**, 11 tasks won against 6 lost,
-t = 1.22, exact McNemar p = 0.332, 95% CI −3.1 to +13.1.
+Paired on all 100 tasks and the same environment: **+0.5 points**, 13 tasks won against 13
+lost, t = 0.14, exact McNemar p = 1.000, 95% CI −6.7 to +7.7.
 
-This is the first number in the project that is both correctly graded and above the
-baseline. It is still not statistically demonstrated, and it rests on a single treatment
-draw, so the same caution applies as everywhere else: two draws of one configuration have
-already differed by 8 points. It is, however, the cleanest starting point the project has
-had, because the measurement is now trustworthy.
+That is parity to within a rounding error, and the single-draw impression of +5.0
+(`full20` alone) did not survive one replicate — the same lesson as everywhere else in this
+project. The honest statement is:
+
+**DSH matches the native harness on SWE-kokkos-bench for Inkling-Small. It does not beat
+it, and no harness change tried here has been shown to beat it.**
+
+The legacy runs cannot be used either way: their verifier could not distinguish a real fix
+from no fix, so their true scores lie somewhere between the reported 49.6 and the re-scored
+37.3, and no legacy-versus-native comparison is trustworthy.
 
 
 ## Status
