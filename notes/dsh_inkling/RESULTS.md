@@ -405,6 +405,30 @@ points; at three it is +2.5. Treatment draws (55, 53, 45) and control draws (53,
 way the read-streak nudge was — the mechanism consistently moves, and its sign has never
 been negative — but it has not earned the claim either.
 
+### Why the mechanism moved but the score did not
+
+The nudge helps on both sides of the cap, yet still fails to beat control overall, because
+it also nudges more episodes into the capped category:
+
+| arm | capped episodes | pass rate when capped | pass rate when finished |
+| --- | ---: | ---: | ---: |
+| control | 246/400 (61.5%) | 28.0% | 81.2% |
+| verify nudge | 197/299 (65.9%) | **32.5%** | **87.3%** |
+
+Both conditional pass rates rise — 4.5 and 6.1 points — which is exactly what a
+verify-before-finishing intervention should do. But the share of episodes that exhaust the
+40-request budget also rises from 61.5% to 65.9%, and a capped episode passes far less
+often. The two effects very nearly cancel.
+
+That is a coherent mechanism rather than a null result: telling the model to build before
+finishing makes it verify more (the measured intermediate variable moves), and verification
+helps, but building also costs the turns that would have been spent finishing. Under a
+fixed 40-request budget this is a zero-sum trade.
+
+It also suggests the next thing to try, which is not another prompt: the nudge's benefit is
+visible only once the turn budget stops binding. Either the budget or the cost of
+verification has to change for the mechanism to show up in the score.
+
 ### What was rejected
 
 | variant | result |
