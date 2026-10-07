@@ -682,6 +682,35 @@ information arrives rather than repeating it more loudly — the current reminde
 request 30 of 40, after the model has committed to its approach.
 
 
+### What the 130 capped failures actually look like
+
+Decomposing them by whether the patch was complete and whether the episode ever ran a test:
+
+| touched all required files? | ran a test? | count |
+| --- | --- | ---: |
+| no | no | 83 |
+| **yes** | **no** | **41** |
+| yes | yes | 6 |
+| no | yes | 0 |
+
+Two populations dominate, and neither is "ran out of budget on the final step":
+
+- **83 incomplete or empty patches.** These are the completeness failures analysed above.
+  53 of them produced an empty patch at all.
+- **41 complete patches that were never tested.** The model changed every file the
+  reference changes, and never asked whether its change worked. That is the verification
+  failure, and it is the more surprising group: the work looks finished from the outside.
+
+Only 6 capped failures both completed the file set and exercised a test. So a larger budget
+would plausibly help the 83 — they were still assembling the fix — but the 41 had the
+material and simply did not check it. More turns would not obviously help those, because
+nothing in the trajectory suggests they were about to test.
+
+This is why four prompt-level interventions have produced nothing: they all tried to
+influence *what the model does*, while the loss is concentrated in two structural gaps —
+assembling a complete change, and checking one.
+
+
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (49.3% against
