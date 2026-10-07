@@ -135,10 +135,7 @@ def main() -> None:
             f"  {treatment}: {result['treatment_solved']}/{result['treatment_episodes']} episodes "
             f"({result['treatment_mean']:.3f} mean task reward)"
         )
-        print(
-            f"  mean paired delta: {result['mean_delta']:+.3f} "
-            f"(sd {result['se']:.3f})"
-        )
+        print(f"  mean paired delta: {result['mean_delta']:+.3f} (sd {result['se']:.3f})")
         if result["ci95"]:
             lo, hi = result["ci95"]
             print(f"  95% CI: {lo:+.3f} to {hi:+.3f}")

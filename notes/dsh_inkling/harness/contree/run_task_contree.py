@@ -87,7 +87,7 @@ def _yaml_block(text: str) -> str:
 
 
 class AffinitySandbox:
-    """Confine every command on a sandbox to one CPU.
+    """Confine every command on a sandbox to a fixed CPU set.
 
     Wraps a `SandboxInterface` so callers need no knowledge of the constraint. Grading
     goes through `HarborReward`, which calls `run_command` directly, so wrapping the
@@ -95,14 +95,14 @@ class AffinitySandbox:
     agent's commands.
     """
 
-    def __init__(self, inner, cpu: int) -> None:
+    def __init__(self, inner, cpus: str) -> None:
         self._inner = inner
-        self._cpu = cpu
+        self._cpus = cpus
 
     def _wrap(self, command: str) -> str:
         # Non-login shell: the sandbox itself runs commands through `sh -c`, so a login
         # shell would add profile-sourcing side effects that the reference never had.
-        return f"taskset -c {self._cpu} bash -c {shlex.quote(command)}"
+        return f"taskset -c {self._cpus} bash -c {shlex.quote(command)}"
 
     @property
     def sandbox_id(self) -> str:
@@ -149,7 +149,7 @@ async def run(
     grader_timeout: int,
     sandbox_timeout: int,
     build_parallelism: int,
-    cpu_affinity: int | None,
+    cpu_affinity: str | None,
     prepare_only: bool,
 ) -> dict:
     # Resolve before anything changes directory: the DSH launcher is spawned with cwd set
@@ -403,10 +403,11 @@ def main() -> None:
     parser.add_argument("--build-parallelism", type=int, default=1)
     parser.add_argument(
         "--cpu-affinity",
-        type=int,
-        default=None,
-        help="Pin commands to this CPU index. Required on 4 GB sandboxes: the exported "
-        "verifier builds with --parallel and ignores CMAKE_BUILD_PARALLEL_LEVEL.",
+        default="0,1",
+        help="Comma-separated CPU list to pin commands to. Needed on 4 GB sandboxes "
+        "because the exported verifier builds with --parallel and ignores "
+        "CMAKE_BUILD_PARALLEL_LEVEL. Measured on the full Serial1 test target: one "
+        "CPU takes 344s, two take 176s with no OOM, so two is the default.",
     )
     parser.add_argument("--prepare-only", action="store_true")
     args = parser.parse_args()

@@ -38,7 +38,7 @@ async def run_one(
     concurrency_slot: int,
     timeout: float,
     prepare_only: bool,
-    cpu_affinity: int | None,
+    cpu_affinity: str | None,
     nudge_after: int,
 ) -> dict:
     output = run_dir / "results" / task
@@ -182,7 +182,7 @@ async def main() -> None:
                 concurrency_slot=index % args.concurrency,
                 timeout=args.episode_timeout,
                 prepare_only=args.prepare_only,
-                cpu_affinity=None if args.cpu_affinity < 0 else args.cpu_affinity,
+                cpu_affinity=None if args.cpu_affinity == "none" else args.cpu_affinity,
                 nudge_after=args.nudge_after,
             )
             return index, summary
