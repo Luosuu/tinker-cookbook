@@ -287,6 +287,49 @@ detected unless it was large. The next honest step is not another prompt tweak; 
 enough repeated measurement to see whether any of these moves at all, and then targeting
 the "revert to reading after a failed build" behaviour directly.
 
+## The measured bottleneck: editing without verifying
+
+Pooling all four same-configuration runs (400 episodes) gives the first result in this
+project that is both large and task-controlled.
+
+### Building is the discriminator
+
+Among the 351 episodes that edited the repository, splitting on whether the episode ran a
+build at all:
+
+| group | episodes | pass rate |
+| --- | ---: | ---: |
+| edited and built at least once | 216 | **63.9%** |
+| edited and never built | 135 | 38.5% |
+
+The gap (25 points) survives at higher thresholds — 3+ builds gives 65.2% against 49.0% —
+so it is not a single-build artefact. Separately, the 49 episodes that never edited at all
+pass 8.2%.
+
+Because the comparison is within tasks that share a configuration, task difficulty cannot
+explain it. This is the strongest signal in the whole project so far.
+
+### It is not an obstruction in the harness
+
+The build loop itself works: of 689 build invocations, 556 (81%) succeed and 133 fail.
+So the 135 non-building editors are not being blocked; they choose not to verify.
+
+### It is not the budget
+
+Capped and finished groups are remarkably stable across runs (capped 61-62, finished 38-39
+in every one of the four), while the aggregate score moves between 45 and 53. All the
+run-to-run variance lives in a 35-task band of coin-flips: 32 tasks never pass and 33
+always pass in all four runs. The unstable 35 are where any harness effect must show up.
+
+### Why this is a hypothesis, not yet a lever
+
+Correlation within editors does not prove that *making* the model build would help; a
+model that builds may simply be the one that already understands the defect. The earlier
+read-streak nudge attempted exactly this and did not demonstrably help (its apparent harm
+was noise too). What has changed is that the effect size is now large enough to measure:
+a 25-point within-task difference needs far fewer episodes than the 5-point effects that
+were previously being chased, so a targeted experiment can settle it.
+
 ## Status
 
 The objective — outperform 52/100 — is **met numerically but not statistically, and no
