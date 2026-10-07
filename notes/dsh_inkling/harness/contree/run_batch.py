@@ -143,11 +143,9 @@ async def main() -> None:
     )
     parser.add_argument(
         "--cpu-affinity",
-        type=int,
-        default=0,
-        help="Pin each episode's commands to one CPU. Required on 4 GB sandboxes because "
-        "the exported verifier builds with --parallel and ignores "
-        "CMAKE_BUILD_PARALLEL_LEVEL. Pass -1 to disable.",
+        default="0,1",
+        help="Comma-separated CPU list per episode. Two CPUs halve the test-target build "
+        "(176s vs 344s) without OOM on a 4 GB sandbox. Pass 'none' to disable.",
     )
     args = parser.parse_args()
 
