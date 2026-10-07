@@ -145,6 +145,7 @@ async def run(
     max_tool_calls: int,
     nudge_after: int,
     verify_nudge: bool,
+    coverage_nudge: bool,
     wall_seconds: int,
     command_timeout: int,
     grader_timeout: int,
@@ -192,6 +193,7 @@ async def run(
             cpu_affinity=cpu_affinity,
             nudge_after=nudge_after,
             verify_nudge=verify_nudge,
+            coverage_nudge=coverage_nudge,
             prepare_only=prepare_only,
         )
 
@@ -220,6 +222,7 @@ async def _run_episode(
     cpu_affinity,
     nudge_after,
     verify_nudge,
+    coverage_nudge,
     prepare_only,
 ) -> dict:
     from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborReward
@@ -356,6 +359,7 @@ async def _run_episode(
                                 "HPC_MAX_REQUESTS": str(max_turns),
                                 "HPC_NUDGE_AFTER": str(nudge_after),
                                 "HPC_VERIFY_NUDGE": "1" if verify_nudge else "0",
+                                "HPC_COVERAGE_NUDGE": "1" if coverage_nudge else "0",
                                 "DSH_PROXY_KEY": "proxy-local",
                                 "TINKER_API_KEY": os.environ.get("TINKER_API_KEY", "proxy-local"),
                             }
@@ -480,6 +484,12 @@ def main() -> None:
         action="store_true",
         help="Once the episode edits without compiling, remind it to build. Targets the "
         "measured bottleneck: editors that never build pass far less often.",
+    )
+    parser.add_argument(
+        "--coverage-nudge",
+        action="store_true",
+        help="Remind the model when it has edited only one file late in the budget. "
+        "Patches covering under half the reference fix's files pass far less often.",
     )
     parser.add_argument("--prepare-only", action="store_true")
     args = parser.parse_args()

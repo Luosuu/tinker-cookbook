@@ -41,6 +41,16 @@ const NUDGE_EVERY = Number(process.env.HPC_NUDGE_EVERY || '4');
 // nagged.
 const VERIFY_NUDGE = process.env.HPC_VERIFY_NUDGE === '1';
 
+// Coverage reminder: fires once, late in the budget, if the episode has edited only one
+// file. Grounded in the strongest surviving measurement: patches covering under half the
+// files the reference fix touches pass 3%, while those covering half or more pass 62%, and
+// the task-controlled sign test gives 12 against 0 (p = 0.0005). 61% of failures miss at
+// least one required file, and 68% of those files the model had already referenced earlier
+// and dropped. Failed patches are also larger than solved ones, so this is a completeness
+// problem rather than an under-editing one.
+const COVERAGE_NUDGE = process.env.HPC_COVERAGE_NUDGE === '1';
+const COVERAGE_AT = Number(process.env.HPC_COVERAGE_AT || '30');
+
 const WRITE_PATTERN = /cat\s*>|tee\s|sed\s+-i|patch\s+-|git\s+apply|>>?\s*\/workspace|<<\s*'?[A-Z]+'?/;
 const BUILD_PATTERN = /\b(cmake|ninja|ctest|make)\b/;
 
@@ -50,6 +60,8 @@ export function apply(ctx) {
   let edited = false;
   let verified = false;
   let verifyNudged = false;
+  let coverageNudged = false;
+  const editedPaths = new Set();
 
   ctx.tools.register(defineTool({
     name: 'bash',
@@ -74,7 +86,12 @@ export function apply(ctx) {
 
       const isWrite = WRITE_PATTERN.test(command);
       const isBuild = BUILD_PATTERN.test(command);
-      if (isWrite) edited = true;
+      if (isWrite) {
+        edited = true;
+        for (const path of command.matchAll(/[\w./-]*\/(?:core|containers|algorithms|simd|tpls)\/[\w./-]+/g)) {
+          editedPaths.add(path[0]);
+        }
+      }
       if (isBuild) verified = true;
       const mutating = isWrite || isBuild;
       readStreak = mutating ? 0 : readStreak + 1;
@@ -88,6 +105,22 @@ export function apply(ctx) {
           `Budget spent: ${calls}/${MAX_REQUESTS} model requests. Make your best edit now and build it; ` +
           `an edit you can compile and correct beats more reading.`
         : '';
+
+      // Fires at most once, late, and only when the episode has edited a single file.
+      if (
+        COVERAGE_NUDGE &&
+        !coverageNudged &&
+        calls >= COVERAGE_AT &&
+        editedPaths.size <= 1
+      ) {
+        coverageNudged = true;
+        nudge +=
+          `\n\n[harness] You have edited ${editedPaths.size} file(s) and used ${calls}/${MAX_REQUESTS} ` +
+          `model requests. Most fixes in this repository require a companion change in a ` +
+          `related header, module interface or overload, and patches that touch only one ` +
+          `file rarely pass. Before continuing, re-read the files you found earlier and ` +
+          `check whether your change also needs to be applied or declared elsewhere.`;
+      }
 
       // Fires at most once, and only after an edit has gone unverified by a real build.
       if (VERIFY_NUDGE && edited && !verified && !verifyNudged) {

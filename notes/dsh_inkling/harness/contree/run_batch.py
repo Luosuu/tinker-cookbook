@@ -41,6 +41,7 @@ async def run_one(
     cpu_affinity: str | None,
     nudge_after: int,
     verify_nudge: bool,
+    coverage_nudge: bool,
 ) -> dict:
     output = run_dir / "results" / task
     command = [
@@ -74,6 +75,8 @@ async def run_one(
     command += ["--nudge-after", str(nudge_after)]
     if verify_nudge:
         command.append("--verify-nudge")
+    if coverage_nudge:
+        command.append("--coverage-nudge")
     started = time.monotonic()
     process = await asyncio.create_subprocess_exec(
         *command,
@@ -145,6 +148,11 @@ async def main() -> None:
         "measured bottleneck: editors that never build pass far less often.",
     )
     parser.add_argument(
+        "--coverage-nudge",
+        action="store_true",
+        help="Enable the single-file coverage reminder.",
+    )
+    parser.add_argument(
         "--nudge-after",
         type=int,
         default=0,
@@ -192,6 +200,7 @@ async def main() -> None:
                 cpu_affinity=None if args.cpu_affinity == "none" else args.cpu_affinity,
                 nudge_after=args.nudge_after,
                 verify_nudge=args.verify_nudge,
+                coverage_nudge=args.coverage_nudge,
             )
             return index, summary
 

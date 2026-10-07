@@ -651,6 +651,37 @@ localisation problem, it is a completeness problem, and no prompt-level interven
 so far has addressed it.
 
 
+### The coverage nudge: fired as designed, moved nothing
+
+The coverage mechanism above motivated a reminder that fires once, late, when the episode
+has edited one or fewer repository files. It fired in **62 of 100 episodes**.
+
+| arm | draws | solved | mean gold coverage |
+| --- | --- | ---: | ---: |
+| control | 3 | 55, 46, 47 | 72.3% |
+| coverage nudge | 1 | 49 | 69.8% |
+
+Paired: **−0.3 points**, 15 tasks won against 16 lost, exact McNemar p = 1.0000, 95% CI
+−7.1 to +6.4.
+
+This is a cleaner rejection than the verify nudge. The verify nudge at least moved its
+intermediate variable (build rate among editors rose 61.5% → 66.3%) while the score stayed
+flat. This one moved nothing at all: gold-file coverage went from 72.3% to 69.8%, and the
+share of patches covering at least half the required files fell from 77% to 75%.
+
+So the coverage correlation, despite being the strongest and only task-controlled signal in
+the project (12 against 0, p = 0.0005), does not convert into a lever the same way. Two
+readings remain open and the corpus cannot separate them:
+
+- completeness is a *symptom* of understanding the task, in which case no instruction can
+  manufacture it; or
+- the reminder arrived too late and too cheaply to change the model's plan.
+
+The second is testable and the first is not, which is the argument for changing when the
+information arrives rather than repeating it more loudly — the current reminder arrives at
+request 30 of 40, after the model has committed to its approach.
+
+
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (49.3% against
