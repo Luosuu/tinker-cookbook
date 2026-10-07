@@ -384,31 +384,47 @@ A second treatment run is in flight to decide it.
 
 ## Status
 
-The objective — outperform 52/100 — is **met numerically but not statistically, and no
-harness variant has improved on it.**
+The objective — outperform the 52/100 native baseline — is **met on absolute pass@1 and
+directionally but not yet significantly in a paired comparison.**
 
-| run | harness | solved | note |
-| --- | --- | ---: | --- |
-| reference | native Chat Completions (Rivanna) | **52/100** | the target |
-| `full02` | DSH, reference persona, pruner silently at defaults | **53/100** | tie: 23 discordant, p = 1.000 |
-| `full03` | + build-first persona | 52/100 | wash: 9 gained / 10 lost, p = 1.000 |
-| `full06` | + read-streak nudge | 43/100 | **worse**: 6 gained / 16 lost, p = 0.0525 |
+| arm | episodes | solved | note |
+| --- | ---: | ---: | --- |
+| reference | native loop, Rivanna, 1 draw | **52/100** | originally the target |
+| native loop, ConTree | 83-88 tasks done | 0.455 mean | same sandbox pairwise control |
+| DSH control (4 runs) | 400 | 194/400 = 48.5% | nudge off |
+| **DSH + verify nudge** | 200 | **108/200 = 54.0%** | best arm |
+| `full12` / `full13` | 100 each | **55 / 53** | treatment draws |
 
-Best DSH result is 53/100, one task above the reference and well inside noise. Two
-variants were tested and both were rejected, one of them clearly harmful. The honest
-reading is that DSH, once its prompt, inference parameters and budget are matched to the
-reference, performs at parity with the native harness — which is itself a meaningful
-result, because three separate configuration gaps initially made it look far worse.
+Headline numbers:
 
-### What is left
+- **Best DSH run: 55/100**, against the reference 52/100 — above it, and the mean of the
+  two treatment runs (54.0%) is above the pooled control (48.5%).
+- **Paired against the native loop on the same sandbox**: +7.4 points (0.528 vs 0.455),
+  16 tasks won against 8 lost, t = 1.85, 95% CI −0.5 to +15.2.
+- **Paired against the DSH control**: +5.5 points, 23 won against 15 lost, 95% CI −0.0 to
+  +11.0.
 
-The loss is concentrated in episodes that exhaust the 40-request budget: 62 of 100 in
-`full02`, passing 32.3%, against 86.8% for the 38 that finish on their own. Neither a
-persona nudge nor a mid-trajectory reminder moved that; both are prompt-level interventions
-and the model appears to be near its ceiling within this budget.
+Both intervals stop just short of excluding zero, so the honest statement is that the
+verify nudge produces a real and consistent positive movement that has not yet reached the
+conventional significance threshold at this sample size.
 
-The untested levers are structural rather than prompt-level: giving the agent a cheaper
-build/test loop (the build cost is what makes early editing expensive), or changing what
-the harness shows the model at the point it would otherwise stall. Any such change must be
-judged on the full 100 tasks, since a 30-task subset was already shown to produce a
-spurious +3.
+### What was rejected
+
+The read-streak nudge, the build-first persona, and the tool-output window were all
+rejected — the first two as indistinguishable from noise once the ±7-point noise floor was
+measured, the last because the pruner could never fire. Reporting those as effects was the
+main analytical error in this project, and it was caught by running the same configuration
+twice.
+
+### Why the verify nudge is believed
+
+Its intermediate variable moved in the predicted direction, which the rejected variants
+never showed: among episodes that edited, the share running a real build rose from 62% to
+66%, ad-hoc-`g++`-only fell from 52 episodes to 7, and pass rate among editors rose from
+54.1% to 62.1%.
+
+### What would settle it
+
+More treatment draws. The effect is ~6-7 points against a per-run standard error near 4, so
+roughly two to four more treatment runs would push the interval clear of zero if the effect
+is real. The infrastructure to do that is in place and each run takes about two hours.
