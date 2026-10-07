@@ -186,3 +186,17 @@ def test_cpu_affinity_default_is_two() -> None:
             f"{module.__name__} must pin to two CPUs; four OOMs the verifier"
         )
         assert 'default="0,1,2,3"' not in source
+
+
+def test_reported_budget_is_the_binding_request_limit() -> None:
+    """The bridge must quote the request cap, not the tool-call cap.
+
+    Across 700 episodes no run reached the 80 tool-call cap while 453 hit the 40-request
+    cap, and the two counts track at 0.99 calls per request. Quoting 80 therefore
+    understates consumption by half.
+    """
+    source = BRIDGE.read_text()
+    assert "HPC_MAX_REQUESTS" in source
+    assert "model requests" in source
+    # The old wording quoted the tool-call cap.
+    assert "Budget spent: ${calls}/${MAX_TOOL_CALLS}" not in source

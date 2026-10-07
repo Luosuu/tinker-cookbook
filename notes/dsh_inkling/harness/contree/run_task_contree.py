@@ -292,6 +292,9 @@ async def run(
                                 "DSH_HOME": str(output / "dsh-home"),
                                 "HPC_BRIDGE_SOCKET": socket_path,
                                 "HPC_MAX_TOOL_CALLS": str(max_tool_calls),
+                                # The binding budget is the request cap, and the bridge
+                                # must quote it rather than the tool-call cap.
+                                "HPC_MAX_REQUESTS": str(max_turns),
                                 "HPC_NUDGE_AFTER": str(nudge_after),
                                 "HPC_VERIFY_NUDGE": "1" if verify_nudge else "0",
                                 "DSH_PROXY_KEY": "proxy-local",

@@ -18,6 +18,14 @@ export const inject = ['tools'];
 
 const MAX_TOOL_CALLS = Number(process.env.HPC_MAX_TOOL_CALLS || '80');
 
+// The binding limit is the proxy's model-request budget (40), not the tool-call cap (80):
+// across 700 episodes no run ever reached 80 tool calls while 453 hit 40 requests, and the
+// two counts track each other at a ratio of 0.99 because each request returns one tool
+// call. Quoting the tool cap to the model understates consumption by roughly half and makes
+// it think it has room it does not have, so the reported budget is the request budget and
+// `calls` is a faithful proxy for requests spent.
+const MAX_REQUESTS = Number(process.env.HPC_MAX_REQUESTS || '40');
+
 // Two independent nudge policies, both riding on the tool result so they cost no model
 // request and cannot consume budget.
 //
@@ -77,7 +85,7 @@ export function apply(ctx) {
         (readStreak - NUDGE_AFTER) % NUDGE_EVERY === 0;
       let nudge = nudging
         ? `\n\n[harness] ${readStreak} consecutive commands without editing or building. ` +
-          `Budget spent: ${calls}/${MAX_TOOL_CALLS}. Make your best edit now and build it; ` +
+          `Budget spent: ${calls}/${MAX_REQUESTS} model requests. Make your best edit now and build it; ` +
           `an edit you can compile and correct beats more reading.`
         : '';
 
@@ -86,7 +94,7 @@ export function apply(ctx) {
         verifyNudged = true;
         nudge +=
           `\n\n[harness] You have edited the repository but not compiled it. ` +
-          `Budget spent: ${calls}/${MAX_TOOL_CALLS}. Build the project now and read the ` +
+          `Budget spent: ${calls}/${MAX_REQUESTS} model requests. Build the project now and read the ` +
           `compiler output before continuing; unverified edits are the most common way ` +
           `this task is failed.`;
       }
