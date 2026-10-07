@@ -460,9 +460,29 @@ a fixed one.
 | `full14` | 45 | 12 | 33 |
 | **mean** | **49.6** | | **37.3** |
 
-DSH's honest mean is **37.3/100**, not 49.6. Against the native loop's 50.0% on the same
-sandbox, DSH is roughly **13 points worse**, not at parity. Every claim in this file that
-DSH "reaches parity" was an artifact.
+### Correction: the vacuous passes are unknown, not automatically false
+
+The 37.3 figure above is **too harsh**, and this matters for not overstating the damage. A
+vacuous pass means the verifier selected zero tests; it does not mean the episode produced
+no fix. Checking directly:
+
+- 34 of 37 vacuous passes **did edit the repository**
+- 3 never edited anything
+- of those that overlap tasks the guarded verifier now covers, **30 also pass** under the
+  guarded verifier while 7 fail
+
+So most of those episodes were probably genuine fixes that the broken filter simply failed
+to verify. The correct reading is a bound, not a point estimate:
+
+| estimate | value | assumption |
+| --- | ---: | --- |
+| reported | 49.6/100 | every vacuous pass is genuine |
+| re-scored | 37.3/100 | every vacuous pass is false |
+| **honest** | **unknown, between the two** | the verifier could not tell |
+
+The legacy runs are therefore **unusable rather than disproven**, and no legacy-vs-native
+comparison can be trusted in either direction. What is certain is the measurement defect
+and that only `full20` onward is trustworthy.
 
 ### Fixed and guarded
 
