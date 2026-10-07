@@ -144,6 +144,7 @@ async def run(
     max_turns: int,
     max_tool_calls: int,
     nudge_after: int,
+    verify_nudge: bool,
     wall_seconds: int,
     command_timeout: int,
     grader_timeout: int,
@@ -292,6 +293,7 @@ async def run(
                                 "HPC_BRIDGE_SOCKET": socket_path,
                                 "HPC_MAX_TOOL_CALLS": str(max_tool_calls),
                                 "HPC_NUDGE_AFTER": str(nudge_after),
+                                "HPC_VERIFY_NUDGE": "1" if verify_nudge else "0",
                                 "DSH_PROXY_KEY": "proxy-local",
                                 "TINKER_API_KEY": os.environ.get("TINKER_API_KEY", "proxy-local"),
                             }
@@ -408,6 +410,12 @@ def main() -> None:
         "because the exported verifier builds with --parallel and ignores "
         "CMAKE_BUILD_PARALLEL_LEVEL. Measured on the full Serial1 test target: one "
         "CPU takes 344s, two take 176s with no OOM, so two is the default.",
+    )
+    parser.add_argument(
+        "--verify-nudge",
+        action="store_true",
+        help="Once the episode edits without compiling, remind it to build. Targets the "
+        "measured bottleneck: editors that never build pass far less often.",
     )
     parser.add_argument("--prepare-only", action="store_true")
     args = parser.parse_args()

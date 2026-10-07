@@ -40,6 +40,7 @@ async def run_one(
     prepare_only: bool,
     cpu_affinity: str | None,
     nudge_after: int,
+    verify_nudge: bool,
 ) -> dict:
     output = run_dir / "results" / task
     command = [
@@ -71,6 +72,8 @@ async def run_one(
     if cpu_affinity is not None:
         command += ["--cpu-affinity", str(cpu_affinity)]
     command += ["--nudge-after", str(nudge_after)]
+    if verify_nudge:
+        command.append("--verify-nudge")
     started = time.monotonic()
     process = await asyncio.create_subprocess_exec(
         *command,
@@ -136,6 +139,12 @@ async def main() -> None:
     parser.add_argument("--episode-timeout", type=float, default=5400)
     parser.add_argument("--prepare-only", action="store_true")
     parser.add_argument(
+        "--verify-nudge",
+        action="store_true",
+        help="Once an episode edits without compiling, remind it to build. Targets the "
+        "measured bottleneck: editors that never build pass far less often.",
+    )
+    parser.add_argument(
         "--nudge-after",
         type=int,
         default=0,
@@ -182,6 +191,7 @@ async def main() -> None:
                 prepare_only=args.prepare_only,
                 cpu_affinity=None if args.cpu_affinity == "none" else args.cpu_affinity,
                 nudge_after=args.nudge_after,
+                verify_nudge=args.verify_nudge,
             )
             return index, summary
 
