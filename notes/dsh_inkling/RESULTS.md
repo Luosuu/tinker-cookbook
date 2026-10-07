@@ -384,6 +384,40 @@ The intermediate variable moved in the predicted direction across all three trea
 which the rejected variants never showed. It is the reason the nudge is kept as an opt-in
 flag rather than deleted, even though its score effect is not established.
 
+### The capped failure population splits into two different diseases
+
+Across 700 control episodes there are 310 capped failures, and they are not one
+phenomenon:
+
+| group | count | share | what it is |
+| --- | ---: | ---: | --- |
+| never edited the repository | 86 | 28% | exploration exhaustion |
+| edited but did not finish | 224 | 72% | incomplete or wrong fix, unverified |
+
+The 86 never-edit episodes consume all 40 requests on reads. Their last five commands are
+overwhelmingly `grep` (137 of 200), `sed` (40) and `ls`; not one ends on a build. They are
+not stuck in a loop (earlier analysis: mean repeated-command share 0.025) and they are not
+blocked — they simply run out of budget while still orienting.
+
+The 224 edited-but-capped episodes are a different problem, and the verification analysis
+above applies to them: within tasks, editors that reach a real build pass 64.7% against
+30% for those that do not.
+
+### Testing does not help, and the correlation is reverse-causal
+
+One further candidate was measured and rejected. Running the task's own test command
+(`ctest`, a gtest filter, or the unit-test binary) is very rare — 19 of 699 episodes — and
+those 19 pass 78.9% against 64.4% for build-only and 28.1% for neither. That looks like a
+large lever until the timing is checked:
+
+- mean position of the first test call: **70% through the trajectory** (median 68%)
+- only 2 of 19 test in the first half
+- within tasks where some runs tested and others did not: 2 better, 2 worse, 8 tied
+
+So testing is what a model does when it already believes it is finished — a consequence of
+confidence, not a cause of success. Instructing the model to run tests would not reproduce
+the 78.9%, and this candidate is rejected on that basis.
+
 ## Status
 
 **The objective is met numerically but not statistically.** Final picture, with the native
