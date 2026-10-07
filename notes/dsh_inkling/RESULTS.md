@@ -17,6 +17,7 @@ tried in this project has been shown to beat it.**
 | --- | --- | ---: | ---: | --- |
 | native loop, ConTree (paired control) | 1 | 50/100 | 50.0% | guarded |
 | **DSH, correctly graded** | 3 | 55, 46, 47 | **49.3%** | guarded |
+| DSH + coverage nudge | 1 | 49 | 49.0% | guarded |
 | DSH legacy runs | 7 | — | 37.3-49.6, unknown | **broken** |
 
 Paired on all 100 tasks: **−0.7 points**, 16 tasks won against 17 lost, exact McNemar
@@ -714,8 +715,8 @@ assembling a complete change, and checking one.
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (49.3% against
-50.0% paired over three draws, p = 1.000), and every harness variant tried was either
-rejected or never established.
+50.0% paired over three draws, p = 1.000), and **all five** harness variants tried were
+either rejected or never established.
 
 What the project did produce:
 
