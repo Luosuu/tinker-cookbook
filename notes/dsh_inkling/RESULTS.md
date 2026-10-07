@@ -582,6 +582,25 @@ version of that measured here — the verify-nudge, which moves where the reques
 did not clear the noise floor.
 
 
+### Building early is selection, not a lever
+
+A strong-looking ordering: episodes whose first build comes within 10 calls pass **93%**,
+those building later pass 55%, and those never building pass 33%. The 68 episodes with a
+delayed build spend a mean of 20.9 of their 22.4 pre-build calls on pure read/search, so
+"surface the build command earlier" looks like an obvious intervention.
+
+The within-task check kills it. Among the 17 tasks with mixed outcomes across the two
+draws, the passing draw built *earlier* in only 3 and *later* in 6. The aggregate ordering
+is selection: an episode builds early because it already understands the defect, which is
+the same reason it passes.
+
+This is the third correlation in this project to reverse under task control, after build
+count and patch size. The pattern is consistent enough to state as a rule: **any
+trajectory-shape statistic measured on aggregates is suspect here, because the same latent
+variable (did the model understand the task) drives both the statistic and the outcome.**
+Only within-task comparisons have survived.
+
+
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (50.5% against
