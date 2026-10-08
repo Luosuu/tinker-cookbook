@@ -6,34 +6,38 @@ ConTree or Rivanna Apptainer sandbox as the execution environment.
 
 ## Result
 
-**DSH reaches parity with the native harness. It does not beat it, and six harness variants
-tried here were all rejected or never established.**
+**The best harness variant is DSH with the grader's build target stated, at 51.3% over three
+draws against the native loop's 50.0%. The objective is not met: the effect is inside the
+noise floor.**
 
-| arm | draws | solved |
-| --- | --- | ---: |
-| native loop (paired control, same sandbox) | 1 | 50/100 |
-| DSH, correctly graded | 3 | 55, 46, 47 |
-| DSH + coverage nudge | 1 | 49 |
-| DSH + re-arm & changed-set echo | 1 | 44 |
+| arm | draws | solved | mean | test-target build rate |
+| --- | --- | ---: | ---: | ---: |
+| native loop (paired control, same sandbox) | 1 | 50/100 | 50.0% | — |
+| DSH control | 3 | 55, 46, 47 | 49.3% | 5% |
+| DSH + coverage nudge | 1 | 49 | 49.0% | — |
+| DSH + re-arm & echo | 1 | 44 | 44.0% | 16% |
+| **DSH + grader target stated** | **3** | **54, 51, 49** | **51.3%** | **73%** |
 
-Paired on all 100 tasks: −0.7 points, 16 won against 17 lost, exact McNemar p = 1.000.
+The last row is the one that matters. A controlled experiment showed the model was building
+the library while grading compiles a unit-test target, so it never saw its own compile
+errors; naming the target in the persona moved test-target building from 5% to 73%. The
+mechanism held across every draw and mediates the outcome (builders pass 59%, non-builders
+33%), but the score gain drifted from +4.0 to +2.5 to +1.3 as draws accumulated — the
+signature of an effect that is real but smaller than this benchmark can resolve.
 
-The evidence says the objective is not reachable by scaffolding on this benchmark with this
-model. Across 259 correctly-graded failures, **42% do not compile**, **40% are an empty
-patch**, and only 18% are a fix that stronger testing would have caught. Among the
-non-compiling failures, 19 had already seen a compile error, edited, and rebuilt — the
-verification loop ran and the fix was still wrong.
+Three things are worth reading before reusing this work:
 
-Two things sank most of the effort and are worth reading before reusing this work:
-
-1. **A verifier bug in the driver** inflated every early DSH score. The published task
-   payload's `test.sh` selects zero tests and then awards reward 1, so an unmodified
-   repository passed. The native arm was immune because it regenerates the verifier.
+1. **A verifier bug in the driver** inflated every early DSH score. The published payload's
+   `test.sh` selects zero tests and then awards reward 1, so an unmodified repository passed.
    Everything before `full20` is unusable; the fix and its guard test are in
    `harness/contree/run_task_contree.py` and `run_task_contree_test.py`.
-2. **The noise floor is ±7 points.** The same configuration run twice produced 53 and 45.
-   Prompt-level effects of 2-6 points cannot be resolved without repeated draws, which is
-   why `compare_runs.py` exists and why three early "positive results" were retracted.
+2. **The noise floor is ±7 points.** The same configuration run twice produced 53 and 45, and
+   the treatment's three draws spread 5 points. Effects of 1-6 points need 6-8 draws per arm;
+   this project ran three. Three early "positive results" were retracted for this reason.
+3. **Aggregate correlations reverse under task control.** Build count, patch size and build
+   timing all looked predictive in aggregate and all reversed, or vanished, within tasks,
+   because the same latent variable drives both. Only within-task comparisons survived: the
+   coverage analysis (12 against 0, p = 0.0005) and the target-state mechanism.
 
 Full detail, including every rejected variant and every corrected conclusion, is in
 [`RESULTS.md`](RESULTS.md).
