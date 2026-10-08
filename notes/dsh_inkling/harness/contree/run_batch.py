@@ -24,7 +24,7 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 
 
 def _partition_for_resume(
-    tasks: list[str], results_dir: Path
+    tasks: list[str], results_dir: Path, *, retry_errors: bool = False
 ) -> tuple[list[tuple[int, str]], dict[int, dict]]:
     """Keep completed episodes and make interrupted episode directories safe to rerun."""
     pending: list[tuple[int, str]] = []
@@ -43,6 +43,10 @@ def _partition_for_resume(
             continue
         if not isinstance(summary, dict) or summary.get("task_name") != task:
             raise ValueError(f"invalid summary for completed task {task}: {summary_path}")
+        if retry_errors and summary.get("error"):
+            shutil.rmtree(output)
+            pending.append((index, task))
+            continue
         completed[index] = summary
     return pending, completed
 
@@ -71,6 +75,7 @@ async def run_one(
     verify_rearm: bool,
     state_target: bool,
     first_edit_nudge: bool,
+    managed_checkpoint: bool,
 ) -> dict:
     output = run_dir / "results" / task
     command = [
@@ -114,6 +119,8 @@ async def run_one(
         command.append("--state-target")
     if first_edit_nudge:
         command.append("--first-edit-nudge")
+    if managed_checkpoint:
+        command.append("--managed-checkpoint")
     started = time.monotonic()
     process = await asyncio.create_subprocess_exec(
         *command,
@@ -184,6 +191,11 @@ async def main() -> None:
         help="Keep tasks with valid summaries and rerun only missing or interrupted tasks.",
     )
     parser.add_argument(
+        "--retry-errors",
+        action="store_true",
+        help="With --resume, also rerun tasks whose summary contains an infrastructure error.",
+    )
+    parser.add_argument(
         "--verify-nudge",
         action="store_true",
         help="Once an episode edits without compiling, remind it to build. Targets the "
@@ -198,6 +210,11 @@ async def main() -> None:
         "--first-edit-nudge",
         action="store_true",
         help="Repeat the request count while no file has been edited.",
+    )
+    parser.add_argument(
+        "--managed-checkpoint",
+        action="store_true",
+        help="Automatically run up to two late incremental builds of the visible grader target.",
     )
     parser.add_argument(
         "--echo-changed",
@@ -235,7 +252,9 @@ async def main() -> None:
     (args.run_dir / "results").mkdir(exist_ok=True)
     (args.run_dir / "tasks.txt").write_text("\n".join(tasks) + "\n")
     if args.resume:
-        indexed_tasks, completed = _partition_for_resume(tasks, args.run_dir / "results")
+        indexed_tasks, completed = _partition_for_resume(
+            tasks, args.run_dir / "results", retry_errors=args.retry_errors
+        )
     else:
         indexed_tasks = list(enumerate(tasks))
         completed = {}
@@ -280,6 +299,7 @@ async def main() -> None:
                 verify_rearm=args.verify_rearm,
                 state_target=args.state_target,
                 first_edit_nudge=args.first_edit_nudge,
+                managed_checkpoint=args.managed_checkpoint,
             )
             return index, summary
 

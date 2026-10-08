@@ -18,6 +18,7 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 import shlex
 import socket
 import sys
@@ -26,6 +27,47 @@ import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
+
+_BUILD_PIPELINE = re.compile(
+    r"(?:\bcmake\s+--build\b|\bninja\b|(?<![\w-])make(?![\w-])|\bctest\b)"
+)
+
+
+def _with_truthful_build_status(command: str) -> str:
+    """Make a piped build report the build's status instead of the final pager's.
+
+    The model commonly runs ``ninja TARGET 2>&1 | tail``. Plain bash reports tail's
+    successful status even when ninja failed, and 150 such false successes occurred in
+    700 state-target episodes. Restrict pipefail to build pipelines: applying it globally
+    would turn ordinary ``grep | head`` commands into status 141 when head closes early.
+    """
+    if "|" not in command or not _BUILD_PIPELINE.search(command):
+        return command
+    return f"bash -o pipefail -c {shlex.quote(command)}"
+
+
+def _should_run_managed_checkpoint(
+    *,
+    calls: int,
+    checkpoint_count: int,
+    clean_diff_hash: str | None,
+    current_diff_hash: str | None,
+    last_checkpoint_hash: str | None,
+    last_successful_target_hash: str | None,
+    command_changed_repo: bool,
+    is_build: bool,
+) -> bool:
+    """Checkpoint a new dirty state only after the model pauses editing late in the run."""
+    return (
+        calls >= 32
+        and checkpoint_count < 2
+        and current_diff_hash is not None
+        and current_diff_hash != clean_diff_hash
+        and current_diff_hash != last_checkpoint_hash
+        and current_diff_hash != last_successful_target_hash
+        and not command_changed_repo
+        and not is_build
+    )
 
 
 def _free_port() -> int:
@@ -150,6 +192,7 @@ async def run(
     verify_rearm: bool,
     state_target: bool,
     first_edit_nudge: bool,
+    managed_checkpoint: bool,
     wall_seconds: int,
     command_timeout: int,
     grader_timeout: int,
@@ -202,8 +245,19 @@ async def run(
             verify_rearm=verify_rearm,
             state_target=state_target,
             first_edit_nudge=first_edit_nudge,
+            managed_checkpoint=managed_checkpoint,
             prepare_only=prepare_only,
         )
+
+
+def _target_names(harbor_task) -> list[str]:
+    """Return build targets from the same visible verifier used for grading."""
+    script = (harbor_task.task_dir / "tests" / "test.sh").read_text()
+    targets: list[str] = []
+    for match in re.findall(r"cmake --build build --target ([\w.]+)", script):
+        if match not in targets:
+            targets.append(match)
+    return targets
 
 
 def _target_brief(harbor_task) -> str:
@@ -215,13 +269,7 @@ def _target_brief(harbor_task) -> str:
     as a reminder, and it is derived from the same test.sh the grader runs so it cannot
     drift.
     """
-    import re as _re
-
-    script = (harbor_task.task_dir / "tests" / "test.sh").read_text()
-    targets: list[str] = []
-    for match in _re.findall(r"cmake --build build --target ([\w.]+)", script):
-        if match not in targets:
-            targets.append(match)
+    targets = _target_names(harbor_task)
     if not targets:
         return ""
     listed = ", ".join(targets[:4])
@@ -262,6 +310,7 @@ async def _run_episode(
     verify_rearm,
     state_target,
     first_edit_nudge,
+    managed_checkpoint,
     prepare_only,
 ) -> dict:
     from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborReward
@@ -288,6 +337,17 @@ async def _run_episode(
                     "max_wall_seconds": wall_seconds,
                 },
                 "network_in_sandbox": False,
+                "interventions": {
+                    "nudge_after": nudge_after,
+                    "verify_nudge": verify_nudge,
+                    "coverage_nudge": coverage_nudge,
+                    "echo_changed": echo_changed,
+                    "verify_rearm": verify_rearm,
+                    "state_target": state_target,
+                    "first_edit_nudge": first_edit_nudge,
+                    "managed_checkpoint": managed_checkpoint,
+                    "truthful_build_pipelines": managed_checkpoint,
+                },
             },
             indent=2,
         )
@@ -329,12 +389,35 @@ async def _run_episode(
         else:
             with tempfile.TemporaryDirectory(prefix="dsh-bridge-") as temp:
                 socket_path = str(Path(temp) / "rpc.sock")
+                target_names = _target_names(harbor_task)
+                clean_diff_hash: str | None = None
+                current_diff_hash: str | None = None
+                last_checkpoint_hash: str | None = None
+                last_successful_target_hash: str | None = None
+                checkpoint_count = 0
+
+                async def diff_hash() -> str | None:
+                    answer = await sandbox.run_command(
+                        "{ git diff --binary --no-ext-diff HEAD; "
+                        "git ls-files --others --exclude-standard -z "
+                        "| xargs -0 -r sha256sum; } | sha256sum | cut -d' ' -f1",
+                        timeout=60,
+                        max_output_bytes=1024,
+                    )
+                    value = answer.stdout.strip().splitlines()
+                    return value[-1] if answer.exit_code == 0 and value else None
+
+                if managed_checkpoint and target_names:
+                    clean_diff_hash = await diff_hash()
+                    current_diff_hash = clean_diff_hash
+
                 with (output / "events.jsonl").open("x") as events:
 
                     async def handle(
                         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
                     ) -> None:
-                        nonlocal calls
+                        nonlocal calls, checkpoint_count, current_diff_hash
+                        nonlocal last_checkpoint_hash, last_successful_target_hash
                         try:
                             request = json.loads(await reader.readline())
                             command = request["command"]
@@ -346,14 +429,116 @@ async def _run_episode(
                                 + "\n"
                             )
                             events.flush()
+                            truthful_command = (
+                                _with_truthful_build_status(command)
+                                if managed_checkpoint
+                                else command
+                            )
                             answer = await sandbox.run_command(
-                                command, timeout=command_timeout, max_output_bytes=16384
+                                truthful_command,
+                                timeout=command_timeout,
+                                max_output_bytes=16384,
                             )
                             response = {
                                 "exit_code": answer.exit_code,
                                 "stdout": answer.stdout[:16384],
                                 "stderr": answer.stderr[:16384],
+                                "build_pipeline_pipefail": truthful_command != command,
                             }
+                            if managed_checkpoint and target_names:
+                                previous_diff_hash = current_diff_hash
+                                current_diff_hash = await diff_hash()
+                                command_changed_repo = (
+                                    current_diff_hash is not None
+                                    and current_diff_hash != previous_diff_hash
+                                )
+                                is_build = _BUILD_PIPELINE.search(command) is not None
+                                is_target_build = is_build and any(
+                                    target in command for target in target_names
+                                )
+                                if (
+                                    is_target_build
+                                    and answer.exit_code == 0
+                                    and current_diff_hash is not None
+                                ):
+                                    last_successful_target_hash = current_diff_hash
+
+                                should_checkpoint = _should_run_managed_checkpoint(
+                                    calls=calls,
+                                    checkpoint_count=checkpoint_count,
+                                    clean_diff_hash=clean_diff_hash,
+                                    current_diff_hash=current_diff_hash,
+                                    last_checkpoint_hash=last_checkpoint_hash,
+                                    last_successful_target_hash=last_successful_target_hash,
+                                    command_changed_repo=command_changed_repo,
+                                    is_build=is_build,
+                                )
+                                if should_checkpoint:
+                                    checkpoint_count += 1
+                                    last_checkpoint_hash = current_diff_hash
+                                    checkpoint_command = (
+                                        "cmake --build build --target "
+                                        f"{shlex.quote(target_names[0])} --parallel"
+                                    )
+                                    checkpoint_started = time.monotonic()
+                                    try:
+                                        checkpoint = await sandbox.run_command(
+                                            checkpoint_command,
+                                            timeout=min(command_timeout, 600),
+                                            max_output_bytes=16384,
+                                        )
+                                        checkpoint_error = None
+                                    except Exception as exc:
+                                        checkpoint = None
+                                        checkpoint_error = f"{type(exc).__name__}: {exc}"
+                                    checkpoint_seconds = time.monotonic() - checkpoint_started
+                                    checkpoint_event = {
+                                        "type": "managed_checkpoint",
+                                        "index": calls,
+                                        "diff_hash": current_diff_hash,
+                                        "target": target_names[0],
+                                        "seconds": checkpoint_seconds,
+                                        "exit_code": (
+                                            checkpoint.exit_code
+                                            if checkpoint is not None
+                                            else None
+                                        ),
+                                        "stdout_tail": (
+                                            checkpoint.stdout[-4000:]
+                                            if checkpoint is not None
+                                            else ""
+                                        ),
+                                        "stderr_tail": (
+                                            checkpoint.stderr[-4000:]
+                                            if checkpoint is not None
+                                            else ""
+                                        ),
+                                        "error": checkpoint_error,
+                                    }
+                                    events.write(json.dumps(checkpoint_event) + "\n")
+                                    events.flush()
+                                    if checkpoint is not None:
+                                        if checkpoint.exit_code == 0:
+                                            last_successful_target_hash = current_diff_hash
+                                        checkpoint_text = (
+                                            "\n\n[harness managed checkpoint]\n"
+                                            f"command: {checkpoint_command}\n"
+                                            f"exit_code={checkpoint.exit_code}\n"
+                                            f"stdout:\n{checkpoint.stdout[-12000:]}\n"
+                                            f"stderr:\n{checkpoint.stderr[-4000:]}"
+                                        )
+                                    else:
+                                        checkpoint_text = (
+                                            "\n\n[harness managed checkpoint]\n"
+                                            f"command: {checkpoint_command}\n"
+                                            f"checkpoint unavailable: {checkpoint_error}"
+                                        )
+                                    combined = response["stdout"][:3000] + checkpoint_text
+                                    response["stdout"] = (
+                                        combined
+                                        if len(combined) <= 16384
+                                        else combined[:3000] + combined[-13384:]
+                                    )
                             events.write(
                                 json.dumps({"type": "bash_result", "index": calls, **response})
                                 + "\n"
@@ -563,6 +748,12 @@ def main() -> None:
         action="store_true",
         help="Repeat, from early in the run, the request count and the fact that nothing has "
         "been edited. Targets the 19 percent of episodes that end with an empty patch.",
+    )
+    parser.add_argument(
+        "--managed-checkpoint",
+        action="store_true",
+        help="Late in an edited episode, automatically rebuild the grader's visible target "
+        "after a stable tool call. At most two incremental checkpoints are run.",
     )
     parser.add_argument("--prepare-only", action="store_true")
     args = parser.parse_args()

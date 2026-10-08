@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -200,6 +201,54 @@ def test_reported_budget_is_the_binding_request_limit() -> None:
     assert "model requests" in source
     # The old wording quoted the tool-call cap.
     assert "Budget spent: ${calls}/${MAX_TOOL_CALLS}" not in source
+
+
+def test_only_build_pipelines_are_wrapped_with_pipefail() -> None:
+    """Build output pagers must not hide failure, without breaking read pipelines."""
+    from notes.dsh_inkling.harness.contree.run_task_contree import (
+        _with_truthful_build_status,
+    )
+
+    build = "cd build && ninja Kokkos_CoreUnitTest_Serial1 2>&1 | tail -n 40"
+    wrapped = _with_truthful_build_status(build)
+    assert wrapped.startswith("bash -o pipefail -c ")
+    assert build in shlex.split(wrapped)
+
+    synthetic = "ninja() { return 7; }; ninja 2>&1 | tail -n 1"
+    assert subprocess.run(["bash", "-c", synthetic]).returncode == 0
+    assert subprocess.run(
+        ["bash", "-c", _with_truthful_build_status(synthetic)]
+    ).returncode == 7
+
+    read = "rg -n 'parallel_reduce' core/src | head -n 20"
+    assert _with_truthful_build_status(read) == read
+
+
+def test_managed_checkpoint_waits_for_a_stable_late_dirty_state() -> None:
+    from notes.dsh_inkling.harness.contree.run_task_contree import (
+        _should_run_managed_checkpoint,
+    )
+
+    state = {
+        "calls": 32,
+        "checkpoint_count": 0,
+        "clean_diff_hash": "clean",
+        "current_diff_hash": "edit-1",
+        "last_checkpoint_hash": None,
+        "last_successful_target_hash": None,
+        "command_changed_repo": False,
+        "is_build": False,
+    }
+    assert _should_run_managed_checkpoint(**state)
+    assert not _should_run_managed_checkpoint(**(state | {"calls": 31}))
+    assert not _should_run_managed_checkpoint(**(state | {"command_changed_repo": True}))
+    assert not _should_run_managed_checkpoint(**(state | {"is_build": True}))
+    assert not _should_run_managed_checkpoint(
+        **(state | {"last_checkpoint_hash": "edit-1"})
+    )
+    assert not _should_run_managed_checkpoint(
+        **(state | {"last_successful_target_hash": "edit-1"})
+    )
 
 
 def test_driver_uses_the_guarded_verifier() -> None:

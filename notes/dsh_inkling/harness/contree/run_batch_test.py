@@ -36,3 +36,25 @@ def test_resume_rejects_summary_for_the_wrong_task(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="invalid summary"):
         _partition_for_resume(["expected-task"], tmp_path / "results")
+
+
+def test_resume_can_retry_error_summaries(tmp_path: Path) -> None:
+    output = tmp_path / "results" / "failed-task"
+    output.mkdir(parents=True)
+    (output / "summary.json").write_text(
+        json.dumps(
+            {
+                "task_name": "failed-task",
+                "reward": 0.0,
+                "error": "ApiTimeoutError: verifier unavailable",
+            }
+        )
+    )
+
+    pending, preserved = _partition_for_resume(
+        ["failed-task"], tmp_path / "results", retry_errors=True
+    )
+
+    assert pending == [(0, "failed-task")]
+    assert preserved == {}
+    assert not output.exists()

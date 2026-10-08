@@ -1005,6 +1005,42 @@ The intervention works and the mechanism is solid; the score effect is real but 
 unresolvable at this budget. The best arm is **49.7%**, above a 47.2% control and a 46.7%
 native baseline, below the 52/100 target, and statistically indistinguishable from all of them.
 
+## The target-build loop is usually stale or falsely successful
+
+The state-target intervention made the model choose the right artifact, but a second audit of
+all seven draws found that this rarely closed the feedback loop. Of 559 non-empty patches:
+
+| final target-build state | episodes |
+| --- | ---: |
+| successful target build after the final edit | **160** |
+| final build failure hidden by a pipeline's exit 0 | 20 |
+| target built, then code edited again | 237 |
+| target never built | 142 |
+
+Only **28.6%** therefore had fresh, trustworthy target feedback. Of 104 patches that eventually
+failed to compile under grading, 88 (84.6%) lacked that feedback.
+
+The false-success mechanism is concrete and repeated. The model commonly runs a command such
+as `ninja TARGET 2>&1 | tail -n 40`; plain bash reports `tail`'s status. Across 701 target
+builds, 150 outputs contained a real compiler/build failure while the tool reported exit 0,
+covering 109 episodes and reproducing in every draw. `full25/kokkos__kokkos-6289`, for example,
+returned exit 0 above `error: no matching function` and `ninja: build stopped`, then failed
+grading with the same error.
+
+This motivates a structural intervention rather than another reminder:
+
+- build pipelines run under `pipefail`, while read pipelines such as `grep | head` retain normal
+  shell semantics;
+- after request 32, a new dirty repository state can receive at most two automatic incremental
+  builds of the visible target named by the verifier;
+- the build output rides on the current tool result, consuming no model request or tool call;
+- checkpoint count, duration, target, status and output tails are logged for auditing.
+
+The implementation is opt-in as `--managed-checkpoint` and has not been scored yet. It must be
+combined with `--state-target` for its first experiment. The mechanism gate is fresh,
+trustworthy post-edit target coverage rising from 28.6% to at least 60%; wall time and sandbox
+timeouts must be reported because the harness is spending additional compute.
+
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (49.3% against

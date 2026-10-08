@@ -24,7 +24,7 @@ Run everything through the ConTree sandbox; no cluster needed. The Rivanna path 
 | DSH + state-target | 7 | 54, 51, 49, 50, 50, 48, 46 | **49.7%** | best arm |
 | DSH + coverage nudge | 1 | 49 | 49.0% | rejected |
 | DSH + re-arm & echo | 1 | 44 | 44.0% | rejected |
-| DSH + first-edit nudge | running | `full36` | — | see open threads |
+| DSH + first-edit nudge | incomplete | `full36` | — | 88 healthy; retry 12 infra failures |
 | (discarded) | — | 53, 45, 48, 48, 55, 53, 45, 33, 29, 32 | — | broken verifier or compromised |
 
 **Parity between the unmodified harnesses is the firmest result here**: 47.2 against 46.7
@@ -102,15 +102,26 @@ It is in `harness/contree/run_task_contree.py::_target_brief`, pinned by a guard
 
 ## Open threads, in priority order
 
-1. **`full36` is running** (`--first-edit-nudge`, launched from `a3da42f`). It targets the
+1. **Finish `full36`** (`--first-edit-nudge`, launched from `a3da42f`). It targets the
    largest bucket: 253 of 1300 episodes (19%) end with an empty patch. Those episodes are not
    lost — 96% reference the correct file and reach it at call **5.7 of 40**, then read for ~34
    more requests without writing. The nudge repeats from request 8 while the repo is untouched
-   and states the budget arithmetic. **Early signal: 3 empty patches in the first 18 episodes
-   (17%, versus ~19% baseline) — too early to read.** Finish it and compare with
-   `compare_runs.py`.
+   and states the budget arithmetic. The run was interrupted twice and then its final 12 tasks
+   hit ConTree API failures from the agent sandbox; 88 healthy episodes are preserved.
+   `--resume --retry-errors` now safely retries only those tasks. Run that command from an
+   environment with direct ConTree access, then compare with `compare_runs.py`. A detector flaw
+   is already established: 6 of 15 observed empty patches wrote only `/tmp` scratch files, which
+   disabled the command-regex reminder despite leaving the repository untouched.
 
-2. **A systemic verifier timeout is unfixed** and costs ~3 points per run on both arms.
+2. **Test the managed-checkpoint arm.** Across seven `--state-target` draws, only 160 of 559
+   non-empty patches (28.6%) had a successful target build after their final edit. Piped builds
+   hid 150 real failures behind exit 0, and stale/absent post-edit feedback covered 88 of 104
+   final compile failures. The new `--managed-checkpoint` makes build-pipeline status truthful
+   and runs at most two late incremental builds of the visible grader target. The next arm is
+   `--state-target --managed-checkpoint`; its primary metric is truthful-fresh target coverage,
+   not the first score.
+
+3. **A systemic verifier timeout is unfixed** and costs ~3 points per run on both arms.
    `kokkos__kokkos-8182` times out in 10 of 11 runs: its verifier builds
    `Kokkos_ContainersUnitTest_Serial --parallel` and the episode ends at 1367-1410 s. Raising
    `grader_timeout` to 2400 s did **not** fix it — a direct re-run took 2686 s and still failed,
@@ -118,13 +129,11 @@ It is in `harness/contree/run_task_contree.py::_target_brief`, pinned by a guard
    merely-slow verifiers. The task is deliberately kept in the set; removing it would flatter
    every number.
 
-3. **The 52/100 reference is a single sample.** The native arm's per-task disagreement between
+4. **The 52/100 reference is a single sample.** The native arm's per-task disagreement between
    two draws is 18 of 100, identical to DSH's 19.4, so the original target carries the same ±7
    point interval as everything else.
 
-4. **Untried levers.** The never-edit population (19%) and the "compiled but tests failed" group
-   (18%) have not been attacked directly. The 40% that never edit is the larger prize and is
-   what `full36` tests.
+5. **Untried levers.** The "compiled but tests failed" group has not been attacked directly.
 
 ## How to reproduce
 
@@ -158,7 +167,8 @@ The public-repo discipline in `AGENTS.md` applies: keep internal context out of 
 | flag | what it does | verdict |
 | --- | --- | --- |
 | `--state-target` | names the target grading compiles | **works** (+2.5-3.0) |
-| `--first-edit-nudge` | repeats the budget arithmetic while nothing is edited | running |
+| `--managed-checkpoint` | truthful piped-build status + up to two late target builds | untested |
+| `--first-edit-nudge` | repeats the budget arithmetic while nothing is edited | incomplete |
 | `--coverage-nudge` | fires late if only one file was edited | rejected |
 | `--verify-rearm` + `--echo-changed` | re-arms the build reminder; echoes the changed set | rejected |
 | `--verify-nudge` | one-shot build reminder | rejected |
