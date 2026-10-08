@@ -2,7 +2,41 @@
 
 Branch `dsh-inkling-kokkos`. Goal: **raise Inkling-Small's SWE-kokkos-bench score by
 iterating the harness**, with DSH (`dsh-headless`) as the harness under test and the
-Rivanna Apptainer sandbox as the execution environment.
+ConTree or Rivanna Apptainer sandbox as the execution environment.
+
+## Result
+
+**DSH reaches parity with the native harness. It does not beat it, and six harness variants
+tried here were all rejected or never established.**
+
+| arm | draws | solved |
+| --- | --- | ---: |
+| native loop (paired control, same sandbox) | 1 | 50/100 |
+| DSH, correctly graded | 3 | 55, 46, 47 |
+| DSH + coverage nudge | 1 | 49 |
+| DSH + re-arm & changed-set echo | 1 | 44 |
+
+Paired on all 100 tasks: −0.7 points, 16 won against 17 lost, exact McNemar p = 1.000.
+
+The evidence says the objective is not reachable by scaffolding on this benchmark with this
+model. Across 259 correctly-graded failures, **42% do not compile**, **40% are an empty
+patch**, and only 18% are a fix that stronger testing would have caught. Among the
+non-compiling failures, 19 had already seen a compile error, edited, and rebuilt — the
+verification loop ran and the fix was still wrong.
+
+Two things sank most of the effort and are worth reading before reusing this work:
+
+1. **A verifier bug in the driver** inflated every early DSH score. The published task
+   payload's `test.sh` selects zero tests and then awards reward 1, so an unmodified
+   repository passed. The native arm was immune because it regenerates the verifier.
+   Everything before `full20` is unusable; the fix and its guard test are in
+   `harness/contree/run_task_contree.py` and `run_task_contree_test.py`.
+2. **The noise floor is ±7 points.** The same configuration run twice produced 53 and 45.
+   Prompt-level effects of 2-6 points cannot be resolved without repeated draws, which is
+   why `compare_runs.py` exists and why three early "positive results" were retracted.
+
+Full detail, including every rejected variant and every corrected conclusion, is in
+[`RESULTS.md`](RESULTS.md).
 
 ## Roles
 
