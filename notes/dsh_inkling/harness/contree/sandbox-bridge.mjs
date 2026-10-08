@@ -59,6 +59,16 @@ const COVERAGE_AT = Number(process.env.HPC_COVERAGE_AT || '30');
 // only 8% ever run that check.
 const ECHO_CHANGED = process.env.HPC_ECHO_CHANGED === '1';
 
+// First-edit pressure: 19% of episodes end with an empty patch, and they are not failing to
+// locate the fix -- 96% of them reference the file the reference patch changes, at call 5.7 of
+// 40 on average, and then read for the remaining 34 requests without writing anything. A single
+// reminder fired on all 17 such episodes of one run and none of them edited.
+//
+// So this fires repeatedly from early in the run, and it states the budget arithmetic rather
+// than restating the task: how many requests are left and that nothing has been changed yet.
+const FIRST_EDIT_NUDGE = process.env.HPC_FIRST_EDIT_NUDGE === '1';
+const FIRST_EDIT_AT = Number(process.env.HPC_FIRST_EDIT_AT || '8');
+
 // Re-arming verify reminder: the once-only verify nudge could not help an episode that
 // built early and then edited repeatedly without building again, which is a real
 // population -- 17 of 72 failing episodes with three or more edits never built at all, and
@@ -128,6 +138,21 @@ export function apply(ctx) {
           `Budget spent: ${calls}/${MAX_REQUESTS} model requests. Make your best edit now and build it; ` +
           `an edit you can compile and correct beats more reading.`
         : '';
+
+      // Fires every FIRST_EDIT_AT requests while the repository is still untouched.
+      if (
+        FIRST_EDIT_NUDGE &&
+        !edited &&
+        calls >= FIRST_EDIT_AT &&
+        (calls - FIRST_EDIT_AT) % FIRST_EDIT_AT === 0
+      ) {
+        nudge +=
+          `\n\n[harness] No file in the repository has been modified yet. ` +
+          `${calls}/${MAX_REQUESTS} model requests used, ${MAX_REQUESTS - calls} remaining. ` +
+          `Reading further cannot change the outcome: an empty patch scores zero regardless ` +
+          `of how well the problem is understood. Write your best edit now, build it, and ` +
+          `refine from the compiler output.`;
+      }
 
       // Factual echo of the changed set, on every result once an edit has happened.
       if (ECHO_CHANGED && editedPaths.size > 0) {

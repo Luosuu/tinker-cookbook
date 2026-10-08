@@ -45,6 +45,7 @@ async def run_one(
     echo_changed: bool,
     verify_rearm: bool,
     state_target: bool,
+    first_edit_nudge: bool,
 ) -> dict:
     output = run_dir / "results" / task
     command = [
@@ -86,6 +87,8 @@ async def run_one(
         command.append("--verify-rearm")
     if state_target:
         command.append("--state-target")
+    if first_edit_nudge:
+        command.append("--first-edit-nudge")
     started = time.monotonic()
     process = await asyncio.create_subprocess_exec(
         *command,
@@ -162,6 +165,11 @@ async def main() -> None:
         help="Enable the single-file coverage reminder.",
     )
     parser.add_argument(
+        "--first-edit-nudge",
+        action="store_true",
+        help="Repeat the request count while no file has been edited.",
+    )
+    parser.add_argument(
         "--echo-changed",
         action="store_true",
         help="Append the edited-file list to every tool result.",
@@ -228,6 +236,7 @@ async def main() -> None:
                 echo_changed=args.echo_changed,
                 verify_rearm=args.verify_rearm,
                 state_target=args.state_target,
+                first_edit_nudge=args.first_edit_nudge,
             )
             return index, summary
 

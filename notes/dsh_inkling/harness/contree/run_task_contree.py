@@ -149,6 +149,7 @@ async def run(
     echo_changed: bool,
     verify_rearm: bool,
     state_target: bool,
+    first_edit_nudge: bool,
     wall_seconds: int,
     command_timeout: int,
     grader_timeout: int,
@@ -200,6 +201,7 @@ async def run(
             echo_changed=echo_changed,
             verify_rearm=verify_rearm,
             state_target=state_target,
+            first_edit_nudge=first_edit_nudge,
             prepare_only=prepare_only,
         )
 
@@ -259,6 +261,7 @@ async def _run_episode(
     echo_changed,
     verify_rearm,
     state_target,
+    first_edit_nudge,
     prepare_only,
 ) -> dict:
     from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborReward
@@ -400,6 +403,7 @@ async def _run_episode(
                                 "HPC_COVERAGE_NUDGE": "1" if coverage_nudge else "0",
                                 "HPC_ECHO_CHANGED": "1" if echo_changed else "0",
                                 "HPC_VERIFY_REARM": "1" if verify_rearm else "0",
+                                "HPC_FIRST_EDIT_NUDGE": "1" if first_edit_nudge else "0",
                                 "DSH_PROXY_KEY": "proxy-local",
                                 "TINKER_API_KEY": os.environ.get("TINKER_API_KEY", "proxy-local"),
                             }
@@ -553,6 +557,12 @@ def main() -> None:
         action="store_true",
         help="Append the verifier's own build targets to the persona. Measured: only 12 "
         "percent of building episodes ever built a test target, while grading does.",
+    )
+    parser.add_argument(
+        "--first-edit-nudge",
+        action="store_true",
+        help="Repeat, from early in the run, the request count and the fact that nothing has "
+        "been edited. Targets the 19 percent of episodes that end with an empty patch.",
     )
     parser.add_argument("--prepare-only", action="store_true")
     args = parser.parse_args()
