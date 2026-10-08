@@ -917,6 +917,61 @@ setup rather than as a reminder. That is a configuration change to the harness, 
 the only one this corpus justifies.
 
 
+## The state-the-target intervention: first result above the baseline
+
+This is the only intervention derived from a controlled root-cause experiment rather than
+from a correlation, and it is the only one that moved both its mechanism and the score.
+
+| arm | draws | solved | test-target build rate |
+| --- | --- | ---: | ---: |
+| native loop (paired control) | 1 | 50/100 | — |
+| DSH control | 3 | 55, 46, 47 | **5%** |
+| **DSH + state target** | 1 | **54/100** | **73%** |
+
+Paired against the DSH control: **+4.7 points**, 20 tasks won against 15 lost, exact McNemar
+p = 0.500, 95% CI −2.8 to +12.2.
+
+Paired against the **native loop** on the same sandbox and environment: **+4.0 points**,
+9 won against 5 lost, t = 1.07, 95% CI −3.3 to +11.3.
+
+### The mechanism moved by an order of magnitude
+
+The measured behaviour was that the model compiles the library while grading compiles a
+unit-test target, and that only 5% of control episodes ever built a test target. With the
+target named in the persona:
+
+- test-target build rate: **5% → 73%**
+- grader-build failures: 107 across 152 control failures → **32 across 46**
+
+For the first time in this project, an intervention changed the behaviour it was designed to
+change by a large margin, and the score followed. The two earlier variants that moved a
+mechanism (verify nudge, 61.5% → 66.3% build rate) moved it by a few points; this moved it
+by 68 points.
+
+### What it is and why it is not another prompt
+
+The persona gains three sentences, generated per task from the same `test.sh` the grader
+runs:
+
+> The grader for this task compiles and runs the project's own unit tests, specifically:
+> `Kokkos_CoreUnitTest_Serial1`. Build that target, not just the library: a change that
+> compiles into `libkokkoscore.a` can still fail to compile when a unit-test translation
+> unit instantiates it, and only the test target reveals that.
+
+It states a fact about the environment during setup rather than adding pressure at the point
+of failure, which is the shape all six rejected interventions shared. The target comes from
+the verifier, so it cannot drift from what grading does, and a guard test pins it.
+
+### The honest limit
+
++4.0 over native on a single draw is **not** a demonstrated win. Two draws of one
+configuration have already differed by 8 points in this project, and the 95% interval
+includes zero. What is demonstrated is that this intervention changes the mechanism by a
+large, reproducible margin — 5% to 73% — which is far outside anything the other variants
+managed. Deciding the score needs the same repeated-draw treatment as everything else: two
+to four more runs.
+
+
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (49.3% against
