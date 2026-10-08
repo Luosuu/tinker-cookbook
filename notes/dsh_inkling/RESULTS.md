@@ -945,10 +945,13 @@ of the four draws. The mediation holds inside the treatment arm: test-target bui
 **59%**, non-builders **33%**. The verify nudge moved its mechanism by 5 points; this moves it
 by 68, and it changes the *kind* of work rather than the amount.
 
-**The treatment is also more consistent.** Treatment draws spread 49-54 (sd 2.2) against
-control's 43-55 (sd 5.1), an F of 5.6. That is suggestive, not established at four draws per
-arm (p ≈ 0.19), but it is the more promising signal: a change that reduces variance is easier
-to detect and safer to adopt than one that shifts a mean inside the noise.
+**A variance reduction, checked and retracted.** Treatment draws spread 49-54 (sd 2.2)
+against control's 43-55 (sd 5.1), which looks like the treatment is also more stable. It is
+not: measured per task, the two arms have essentially identical variance (mean per-task
+variance 0.086 against 0.080, ratio 1.07), the same number of tasks flip at least once
+(30 against 29), and the same number are unanimous (70 against 71). The arm-level sd gap is
+sampling noise across four draws, and the F of 5.6 was computed on the same four numbers it
+was meant to test.
 
 ### What is not established
 
