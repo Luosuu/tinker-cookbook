@@ -999,6 +999,48 @@ failure mode moved the mean by about 4 points and did not move it further, becau
 episodes mostly failed a different way. Getting from 50.8 to a confirmed 52 needs more draws
 rather than a different harness change: 6-8 per arm at this variance.
 
+## A systemic grading defect found while adding draws
+
+Running further draws surfaced two infrastructure problems that had been silently costing
+points in every run, including the ones the conclusions rest on.
+
+### Verifier timeouts are not random
+
+Across 11 clean runs there were **33 verifier-timeout failures**, and they are heavily
+concentrated:
+
+| task | timeouts across 11 runs |
+| --- | ---: |
+| `kokkos__kokkos-8182` | **10** |
+| `kokkos__kokkos-8891` | 5 |
+| `kokkos__kokkos-8989` | 5 |
+| 11 other tasks | 1-2 each |
+
+`kokkos-8182` failed in 10 of 11 runs. Its verifier builds
+`Kokkos_ContainersUnitTest_Serial --parallel`, and the episode consistently ends at
+1367-1410 s against a `grader_timeout` of 1200 s, after which the backend reports
+`Operation ... has timed out` and the episode is scored 0 with a real patch already captured.
+
+This is a genuine harness defect, not model behaviour: **about 1 point per run is lost to one
+task**, plus roughly 2 more across the tail. It cost the treatment and control arms alike, so
+it does not bias the comparison, but it adds noise and it means every mean in this file is
+depressed by roughly 3 points.
+
+The fix is to give the verifier enough time for its own `--parallel` build rather than
+inheriting a timeout tuned for smaller targets.
+
+### One draw was compromised and is excluded
+
+`full32`, a control draw, scored 32/100 — far outside the control band of 43-55. Audited, it
+carries **14 verifier-infra failures and 5 never-started episodes** against 1-4 and 0 in every
+other run. It was dropped rather than averaged in. Its removal is what keeps the control series
+at 55, 46, 47, 43, 43.
+
+Both defects share the lesson this project kept relearning: in this harness a broken component
+degrades quietly, and a run's own logs have to be read before its score is believed. The
+per-run audit for `error`-bearing zeros and `not_started` episodes should be routine.
+
+
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (49.3% against
