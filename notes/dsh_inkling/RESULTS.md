@@ -712,6 +712,56 @@ influence *what the model does*, while the loss is concentrated in two structura
 assembling a complete change, and checking one.
 
 
+### The re-arming reminder and changed-set echo: also null
+
+Two variants were screened together (a deliberate concession: it saves a run, but a
+positive result would have required separating them).
+
+| arm | draws | solved | mean builds | "many edits, zero builds" |
+| --- | --- | ---: | ---: | ---: |
+| control | 3 | 55, 46, 47 | 3.3 | 17% |
+| re-arm + echo | 1 | 44 | 3.0 | 16% |
+
+Paired: **−5.3 points**, 13 tasks won against 19 lost, exact McNemar p = 0.377, 95% CI
+−11.5 to +0.8.
+
+Neither the mechanism nor the score moved. The re-arming reminder was built specifically
+for the population it failed to shift: the share of episodes making three or more edits with
+no build at all went from 17% to 16%.
+
+### The pattern across six interventions
+
+| variant | moved its mechanism? | moved the score? |
+| --- | --- | --- |
+| read-streak nudge | fired in 31/48 sessions | no |
+| build-first persona | behaviour changed modestly | no |
+| tool-output window | could never fire | no |
+| verify nudge | build rate 61.5% → 66.3% | no |
+| coverage nudge | **no** (coverage 72.3% → 69.8%) | no |
+| re-arm + echo | **no** (17% → 16%) | no |
+
+Only two of six moved their target variable at all, and none moved the score. That is a
+strong statement about the ceiling: the interventions are not merely failing to transfer
+from mechanism to outcome, most of them cannot even change the mechanism.
+
+### Why this is probably the ceiling, not a fixable gap
+
+The evidence that the constraint is not the harness:
+
+1. The native loop — a completely different scaffold — has the same failure profile
+   (57/100 capped at 28% against DSH's 134/200 at 35%).
+2. Both harnesses make exactly one tool call per turn and use the same tool budget.
+3. Six interventions, including two that demonstrably moved their intermediate variable,
+   left the score inside a ±7-point noise band around parity.
+4. The 130 capped failures are not near-misses: 83 were still assembling the change, and 41
+   had a complete change they never tested.
+
+The honest reading is that on this benchmark, at this budget, this model is at its
+harness-independent ceiling, and the remaining gap is model capability rather than scaffold
+design. A harness cannot supply the missing verification discipline if six different attempts
+to prompt, remind, and inform it all leave the behaviour unchanged.
+
+
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (49.3% against
