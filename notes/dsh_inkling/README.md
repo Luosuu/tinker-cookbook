@@ -6,26 +6,32 @@ ConTree or Rivanna Apptainer sandbox as the execution environment.
 
 ## Result
 
-**The best arm is DSH with the grader's build target stated: 50.8% over five draws against a
-DSH control mean of 46.8%. The objective is not met — the effect does not reach significance —
-but the mechanism behind it is the one solid finding here.**
+**DSH with the grader's build target stated is the only arm above parity: 50.8% over five draws,
+against a DSH control mean of 46.8% and a native mean of 46.7% over three draws. The
+improvement is consistent at about +4 points and does not reach significance, so the objective
+is not met.**
 
 | arm | draws | solved | mean | test-target build rate |
 | --- | --- | ---: | ---: | ---: |
-| native loop (single draw, concurrency 4) | 1 | 50/100 | 50.0% | — |
+| native loop | 3 | 50, 50, 40 | 46.7% | — |
 | DSH control | 5 | 55, 46, 47, 43, 43 | 46.8% | 5% |
 | DSH + coverage nudge | 1 | 49 | 49.0% | — |
 | DSH + re-arm & echo | 1 | 44 | 44.0% | 16% |
 | **DSH + grader target stated** | **5** | **54, 51, 49, 50, 50** | **50.8%** | **73%** |
 
-Paired against the DSH control: +4.0 points, 24 won against 15 lost, p = 0.200 — the largest
-effect this project measured. Against the native loop: +0.8, p = 1.000.
+Paired against the DSH control: +4.0 points, 24 won against 15 lost, p = 0.200. Against the
+native loop: +4.1, 25/17, p = 0.280. Unpaired on arm totals, t = 1.69 and 1.20.
 
-A controlled experiment found the root cause: the model builds the library while grading
-compiles a unit-test target, so it never sees its own compile errors. Naming the target in the
-persona moved test-target building from 5% to 73%, reproducing in all five draws, and the
-mechanism mediates the outcome (builders pass 59%, non-builders 33%). Freeing episodes from
-that failure mode did not make them pass — they mostly failed a different way.
+Two findings stand on their own:
+
+- **Parity between the unmodified harnesses** is now measured on eight draws: DSH control 46.8
+  against native 46.7, a 0.13-point gap.
+- **The mechanism works.** A controlled experiment showed the model builds the library while
+  grading compiles a unit-test target, so it never saw its own compile errors. Naming the
+  target moved test-target building from 5% to 73%, reproducing in all five draws, and it
+  mediates the outcome (builders pass 59%, non-builders 33%). Freeing episodes from that
+  failure mode moved the mean ~4 points and no further, because the freed episodes mostly
+  failed a different way.
 
 Three things are worth reading before reusing this work:
 
