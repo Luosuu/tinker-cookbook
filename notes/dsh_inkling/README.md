@@ -6,24 +6,26 @@ ConTree or Rivanna Apptainer sandbox as the execution environment.
 
 ## Result
 
-**The best harness variant is DSH with the grader's build target stated, at 51.3% over three
-draws against the native loop's 50.0%. The objective is not met: the effect is inside the
-noise floor.**
+**The best arm is DSH with the grader's build target stated: 51.0% over four draws against a
+DSH control mean of 47.8% and the native loop's 50.0%. The objective is not met — the effect
+is inside the noise floor — but the mechanism behind it is the one solid finding here.**
 
 | arm | draws | solved | mean | test-target build rate |
 | --- | --- | ---: | ---: | ---: |
 | native loop (paired control, same sandbox) | 1 | 50/100 | 50.0% | — |
-| DSH control | 3 | 55, 46, 47 | 49.3% | 5% |
+| DSH control | 4 | 55, 46, 47, 43 | 47.8% | 5% |
 | DSH + coverage nudge | 1 | 49 | 49.0% | — |
 | DSH + re-arm & echo | 1 | 44 | 44.0% | 16% |
-| **DSH + grader target stated** | **3** | **54, 51, 49** | **51.3%** | **73%** |
+| **DSH + grader target stated** | **4** | **54, 51, 49, 50** | **51.0%** | **73%** |
 
-The last row is the one that matters. A controlled experiment showed the model was building
-the library while grading compiles a unit-test target, so it never saw its own compile
-errors; naming the target in the persona moved test-target building from 5% to 73%. The
-mechanism held across every draw and mediates the outcome (builders pass 59%, non-builders
-33%), but the score gain drifted from +4.0 to +2.5 to +1.3 as draws accumulated — the
-signature of an effect that is real but smaller than this benchmark can resolve.
+Paired against the DSH control: +3.3 points, 19 won against 13 lost, p = 0.377. Against the
+native loop: +1.0 point, 17 won against 14 lost, p = 0.720.
+
+A controlled experiment found the root cause: the model builds the library while grading
+compiles a unit-test target, so it never sees its own compile errors. Naming the target in the
+persona moved test-target building from 5% to 73%, reproducing in all four draws, and the
+mechanism mediates the outcome (builders pass 59%, non-builders 33%). The score effect did not
+survive: the estimate against native drifted +4.0 → +2.5 → +1.3 → +1.0 as draws accumulated.
 
 Three things are worth reading before reusing this work:
 

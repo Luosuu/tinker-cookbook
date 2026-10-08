@@ -16,10 +16,10 @@ tried in this project has been shown to beat it.**
 | arm | draws | solved | mean | grading |
 | --- | --- | ---: | ---: | --- |
 | native loop, ConTree (paired control) | 1 | 50/100 | 50.0% | guarded |
-| **DSH, correctly graded** | 3 | 55, 46, 47 | **49.3%** | guarded |
+| **DSH control, correctly graded** | 4 | 55, 46, 47, 43 | **47.8%** | guarded |
 | DSH + coverage nudge | 1 | 49 | 49.0% | guarded |
 | DSH + re-arm & echo | 1 | 44 | 44.0% | guarded |
-| DSH + grader target stated | 3 | 54, 51, 49 | **51.3%** | guarded |
+| **DSH + grader target stated** | **4** | **54, 51, 49, 50** | **51.0%** | guarded |
 | DSH legacy runs | 7 | — | 37.3-49.6, unknown | **broken** |
 
 Paired on all 100 tasks: **−0.7 points**, 16 tasks won against 17 lost, exact McNemar
@@ -918,52 +918,52 @@ setup rather than as a reminder. That is a configuration change to the harness, 
 the only one this corpus justifies.
 
 
-## The state-the-target intervention: the mechanism moved, the score did not clear noise
+## The state-the-target intervention: mechanism proven, score not
 
 This is the only intervention derived from a controlled root-cause experiment rather than a
 correlation, and it is the only one that moved the behaviour it targeted by a large margin.
+It was run four times on each arm to test whether the score followed.
 
-| arm | draws | solved | mean | test-target build rate |
-| --- | --- | ---: | ---: | ---: |
-| native loop (paired control) | 1 | 50/100 | 50.0% | — |
-| DSH control | 3 | 55, 46, 47 | 49.3% | **5%** |
-| **DSH + state target** | 3 | 54, 51, 49 | **51.3%** | **73%** |
+| arm | draws | solved | mean | sd | test-target build rate |
+| --- | --- | ---: | ---: | ---: | ---: |
+| native loop (paired control) | 1 | 50/100 | 50.0% | — | — |
+| DSH control | 4 | 55, 46, 47, 43 | 47.8% | 5.1 | **5%** |
+| **DSH + state target** | 4 | 54, 51, 49, 50 | **51.0%** | 2.2 | **73%** |
 
-Paired against the **native loop**, all 100 tasks, same sandbox and environment:
+Paired, all 100 tasks, same sandbox and environment:
 
-| stage | draws | delta | wins/losses | p |
-| --- | --- | ---: | ---: | ---: |
-| first draw | 1 | +4.0 | 9/5 | 0.424 |
-| after two | 2 | +2.5 | 16/11 | 0.442 |
-| **after three** | **3** | **+1.3** | **17/14** | **0.720** |
+| comparison | delta | wins/losses | exact McNemar p | 95% CI |
+| --- | ---: | ---: | ---: | --- |
+| treatment vs control | **+3.3** | 19/13 | 0.377 | −1.5 to +8.0 |
+| treatment vs native | **+1.0** | 17/14 | 0.720 | −5.5 to +7.5 |
 
-Paired against the DSH control: +2.0 points after three draws, 15 won against 14 lost,
-p = 1.000.
+### What is established
 
-### The mechanism moved and stayed moved
+**The root cause was correct and the mechanism is real.** Control episodes built a unit-test
+target in 5% of episodes; with the target named in the persona, 73%, reproducing in every one
+of the four draws. The mediation holds inside the treatment arm: test-target builders pass
+**59%**, non-builders **33%**. The verify nudge moved its mechanism by 5 points; this moves it
+by 68, and it changes the *kind* of work rather than the amount.
 
-Control episodes built a unit-test target in 5% of episodes; with the target named in the
-persona, 73%, reproducing across all three draws (the early completions of one draw ran at
-94%). The mediation holds inside the treatment arm: test-target builders pass **59%** against
-**33%** for non-builders.
+**The treatment is also more consistent.** Treatment draws spread 49-54 (sd 2.2) against
+control's 43-55 (sd 5.1), an F of 5.6. That is suggestive, not established at four draws per
+arm (p ≈ 0.19), but it is the more promising signal: a change that reduces variance is easier
+to detect and safer to adopt than one that shifts a mean inside the noise.
 
-This is the largest and most reliable behaviour change the project produced. The verify nudge
-moved its mechanism by 5 points and this one moves it by 68, and it changes the *kind* of work
-the model does rather than how much.
+### What is not established
 
-### Why the score still did not clear noise
+**A score win.** +1.0 against native is far inside the interval. The point estimate against
+native went +4.0 (one draw) → +2.5 (two) → +1.3 (three) → +1.0 (four) as draws accumulated,
+which is the signature of noise around a small effect rather than a durable shift.
 
-Three draws of the identical treatment spread 54, 51, 49 — a 5-point range against the ±7-point
-interval this benchmark carries at n=1. The honest reading is that the effect is real but
-small, and this measurement cannot resolve an effect of that size even with three draws:
+Two observations explain why the mechanism could move so much and the score so little:
 
-- the point estimate drifted from +4.0 to +1.3 as draws accumulated, which is the signature of
-  noise rather than of a shrinking effect;
-- 17 wins against 14 losses is not distinguishable from a coin flip;
-- the arms overlap across their full ranges (treatment 49-54, control 46-55, native 50).
-
-Resolving a 1-3 point effect at this variance would need roughly 6-8 draws per arm. The
-project ran three.
+1. The control mean itself moved 12 points across four draws (55, 46, 47, 43). The final
+   comparison rests on a treatment mean of 51.0 and a control mean of 47.8, but a different
+   draw order would have produced a different verdict.
+2. Freeing an episode from one failure mode does not make it pass. With test-target building
+   at 73%, grader-build failures fell from the largest bucket to roughly a third of a much
+   smaller failure set, and the freed episodes mostly became failures of another kind.
 
 ### What it is and why it is not another prompt
 
@@ -975,21 +975,18 @@ The persona gains three sentences, generated per task from the same `test.sh` th
 > instantiates it, and only the test target reveals that.
 
 It states a fact about the environment during setup rather than adding pressure at the point of
-failure — the shape all six rejected interventions shared. The target is read from the verifier
+failure — the shape all six earlier interventions shared. The target is read from the verifier
 so it cannot drift from what grading does, and a guard test pins it.
 
 ### What this settles
 
-The root cause was correct: the model was blind to the artifact that grading compiles, and
-telling it fixed that blindness almost completely. What it did not do is close the score gap,
-because the remaining failures are not all of that kind. With test-target building now at 73%,
-the grader-build failures fell from 107 across 152 control failures to roughly one third of a
-much smaller failure set — and the freed episodes mostly became failures of a different kind
-rather than passes.
+The best arm the project produced is **51.0% over four draws**, above the native loop's 50.0%
+and below the original 52/100 target. The harness can now make this model perform the
+verification it was skipping, and that alone is not enough to clear the target: the remaining
+gap is model capability, and the freed episodes fail in other ways.
 
-The most useful statement of the result is: **the harness can now make this model do the right
-verification, and the model still does not convert it into passes often enough to clear the
-noise floor.** That is a capability boundary, and it is now measured rather than assumed.
+Resolving a 1-3 point effect at this variance needs roughly 6-8 draws per arm. This project ran
+four, which is enough to bound the effect and not enough to confirm it.
 
 ## Status
 
@@ -997,10 +994,12 @@ The objective — beat the 52/100 baseline — is **not met**. DSH is at parity 
 50.0% paired over three draws, p = 1.000), and **all six** harness variants tried were
 either rejected or never established.
 
-The best arm is DSH with the grader's build target stated: **51.3% over three draws** against
-the native loop's 50.0%, paired +1.3 points, p = 0.720. That is the highest correctly-graded
-DSH mean the project produced, and it is still inside the noise floor, so the objective is
-**not met**. A 1-3 point effect at this variance needs 6-8 draws per arm to resolve.
+The best arm is DSH with the grader's build target stated: **51.0% over four draws** against
+the native loop's 50.0% (paired +1.0, p = 0.720) and a DSH control mean of 47.8% (paired +3.3,
+p = 0.377). This is the highest correctly-graded mean the project produced and the only arm
+whose mechanism demonstrably changed, but it is still inside the noise floor and below the
+52/100 target, so the objective is **not met**. Resolving a 1-3 point effect here needs 6-8
+draws per arm; four bounds it without confirming it.
 
 What the project did produce:
 
