@@ -19,6 +19,7 @@ tried in this project has been shown to beat it.**
 | **DSH, correctly graded** | 3 | 55, 46, 47 | **49.3%** | guarded |
 | DSH + coverage nudge | 1 | 49 | 49.0% | guarded |
 | DSH + re-arm & echo | 1 | 44 | 44.0% | guarded |
+| DSH + grader target stated | 3 | 54, 51, 49 | **51.3%** | guarded |
 | DSH legacy runs | 7 | — | 37.3-49.6, unknown | **broken** |
 
 Paired on all 100 tasks: **−0.7 points**, 16 tasks won against 17 lost, exact McNemar
@@ -917,54 +918,78 @@ setup rather than as a reminder. That is a configuration change to the harness, 
 the only one this corpus justifies.
 
 
-## The state-the-target intervention: first arm above the baseline
+## The state-the-target intervention: the mechanism moved, the score did not clear noise
 
-This is the only intervention derived from a controlled root-cause experiment rather than
-from a correlation, and the only one that moved both its mechanism and its score.
+This is the only intervention derived from a controlled root-cause experiment rather than a
+correlation, and it is the only one that moved the behaviour it targeted by a large margin.
 
 | arm | draws | solved | mean | test-target build rate |
 | --- | --- | ---: | ---: | ---: |
 | native loop (paired control) | 1 | 50/100 | 50.0% | — |
 | DSH control | 3 | 55, 46, 47 | 49.3% | **5%** |
-| **DSH + state target** | 2 | 54, 51 | **52.5%** | **73%** |
+| **DSH + state target** | 3 | 54, 51, 49 | **51.3%** | **73%** |
 
-Paired against the **native loop** on the same sandbox and environment: **+2.5 points**,
-16 tasks won against 11 lost, t = 0.74, exact McNemar p = 0.442, 95% CI −4.1 to +9.1.
+Paired against the **native loop**, all 100 tasks, same sandbox and environment:
 
-Paired against the DSH control: **+3.2 points**, 21 won against 18 lost, p = 0.749.
+| stage | draws | delta | wins/losses | p |
+| --- | --- | ---: | ---: | ---: |
+| first draw | 1 | +4.0 | 9/5 | 0.424 |
+| after two | 2 | +2.5 | 16/11 | 0.442 |
+| **after three** | **3** | **+1.3** | **17/14** | **0.720** |
 
-### The mechanism moved by an order of magnitude
+Paired against the DSH control: +2.0 points after three draws, 15 won against 14 lost,
+p = 1.000.
 
-Control episodes built a unit-test target 5% of the time; with the target named, 73%. The
-grader-build failures that had been the largest failure bucket collapsed from 107 across 152
-control failures to 32 across 46 in the first draw, and the effect reproduced in the second
-(94% test-target builds among the early completions).
+### The mechanism moved and stayed moved
 
-The two earlier variants that moved a mechanism at all moved it by a few points — the verify
-nudge took the build rate from 61.5% to 66.3%. This one moved it by 68 points, and unlike
-every other variant it changed the *kind* of work the model did rather than how much.
+Control episodes built a unit-test target in 5% of episodes; with the target named in the
+persona, 73%, reproducing across all three draws (the early completions of one draw ran at
+94%). The mediation holds inside the treatment arm: test-target builders pass **59%** against
+**33%** for non-builders.
+
+This is the largest and most reliable behaviour change the project produced. The verify nudge
+moved its mechanism by 5 points and this one moves it by 68, and it changes the *kind* of work
+the model does rather than how much.
+
+### Why the score still did not clear noise
+
+Three draws of the identical treatment spread 54, 51, 49 — a 5-point range against the ±7-point
+interval this benchmark carries at n=1. The honest reading is that the effect is real but
+small, and this measurement cannot resolve an effect of that size even with three draws:
+
+- the point estimate drifted from +4.0 to +1.3 as draws accumulated, which is the signature of
+  noise rather than of a shrinking effect;
+- 17 wins against 14 losses is not distinguishable from a coin flip;
+- the arms overlap across their full ranges (treatment 49-54, control 46-55, native 50).
+
+Resolving a 1-3 point effect at this variance would need roughly 6-8 draws per arm. The
+project ran three.
 
 ### What it is and why it is not another prompt
 
-The persona gains three sentences, generated per task from the same `test.sh` the grader
-runs:
+The persona gains three sentences, generated per task from the same `test.sh` the grader runs:
 
 > The grader for this task compiles and runs the project's own unit tests, specifically:
 > `Kokkos_CoreUnitTest_Serial1`. Build that target, not just the library: a change that
-> compiles into `libkokkoscore.a` can still fail to compile when a unit-test translation
-> unit instantiates it, and only the test target reveals that.
+> compiles into `libkokkoscore.a` can still fail to compile when a unit-test translation unit
+> instantiates it, and only the test target reveals that.
 
-It states a fact about the environment during setup, rather than adding pressure at the point
-of failure, which is the shape all six rejected interventions shared. The target is read from
-the verifier so it cannot drift from what grading does, and a guard test pins it.
+It states a fact about the environment during setup rather than adding pressure at the point of
+failure — the shape all six rejected interventions shared. The target is read from the verifier
+so it cannot drift from what grading does, and a guard test pins it.
 
-### The honest limit
+### What this settles
 
-+2.5 over native across two draws is **not** a demonstrated win: the 95% interval includes
-zero, and two draws of one configuration have already differed by 8 points in this project.
-What is demonstrated, and is new, is that a harness change can move this model's behaviour by
-a large margin and move the score in the same direction. Deciding the score needs more
-draws — a third is running.
+The root cause was correct: the model was blind to the artifact that grading compiles, and
+telling it fixed that blindness almost completely. What it did not do is close the score gap,
+because the remaining failures are not all of that kind. With test-target building now at 73%,
+the grader-build failures fell from 107 across 152 control failures to roughly one third of a
+much smaller failure set — and the freed episodes mostly became failures of a different kind
+rather than passes.
+
+The most useful statement of the result is: **the harness can now make this model do the right
+verification, and the model still does not convert it into passes often enough to clear the
+noise floor.** That is a capability boundary, and it is now measured rather than assumed.
 
 ## Status
 
@@ -972,9 +997,10 @@ The objective — beat the 52/100 baseline — is **not met**. DSH is at parity 
 50.0% paired over three draws, p = 1.000), and **all six** harness variants tried were
 either rejected or never established.
 
-The evidence indicates the objective as stated is **not reachable by harness design on this
-benchmark with this model**: see the failure taxonomy below, where 42% of failures do not
-compile and 40% never edit, leaving only 18% that a stronger scaffold could plausibly save.
+The best arm is DSH with the grader's build target stated: **51.3% over three draws** against
+the native loop's 50.0%, paired +1.3 points, p = 0.720. That is the highest correctly-graded
+DSH mean the project produced, and it is still inside the noise floor, so the objective is
+**not met**. A 1-3 point effect at this variance needs 6-8 draws per arm to resolve.
 
 What the project did produce:
 
