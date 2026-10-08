@@ -871,6 +871,52 @@ It is also consistent with the six nulls: those nudges pushed *more* building, b
 model's own builds were already clean. Building more could never surface a hidden test.
 
 
+## The actual root cause: the model builds the library, grading builds the tests
+
+The hidden-test finding led to a controlled experiment, and the result is the most
+actionable thing the project produced.
+
+**Method.** Take two real failing patches, apply each to a fresh image, and build the
+visible unit-test target that grading itself compiles, with and without the patch:
+
+| task | baseline build | same build with the model's patch |
+| --- | --- | --- |
+| `kokkos__kokkos-8190` | EXIT=0 | **EXIT=1** |
+| `kokkos__kokkos-7088` | EXIT=0 | **EXIT=1** |
+
+The visible test suite catches exactly what the hidden grading catches. No hidden
+information was needed.
+
+**So why did the model not see it?** Because it never builds that target:
+
+| what the episode built | episodes | share |
+| --- | ---: | ---: |
+| a unit-test target (what grading compiles) | 24 | **12%** |
+| only the library (`libkokkoscore.a`, `kokkoscore`) | 179 | **88%** |
+
+The model compiles the library, which is clean, and stops. Grading compiles the
+unit-test translation units that instantiate the change, and they are not. Hence the
+earlier measurement that 52% of grader compile failures follow a clean model build: the
+model's build was genuinely clean, of a different artifact.
+
+**Why this survived six interventions.** Every nudge tried so far asked the model to build
+*more*, and it already built — 88% of building episodes compile the library, often more than
+once. None of them said *which target*, and the model had no way to learn that grading uses
+a test target: the build directory contains both, the library is faster, and the prompt says
+only "complete the task".
+
+This is a harness-addressable gap rather than a capability wall, and unlike the hidden test
+it does not require leaking anything: the test target is already in the repository the model
+can read.
+
+### The one intervention this implies, and why it is not a prompt repeat
+
+The six failures shared a shape: they added pressure to an action the model already took.
+The untested shape is telling the model *which artifact the grader compiles*, early, as
+setup rather than as a reminder. That is a configuration change to the harness, and it is
+the only one this corpus justifies.
+
+
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (49.3% against
