@@ -823,6 +823,54 @@ Only 13 of 66 are the pure verification gap the nudges were aimed at, which is w
 nudges could not move a 42% bucket: they were designed for 13 episodes out of 66.
 
 
+## Correction: the "does not compile" bucket is mostly hidden-test compilation
+
+The failure taxonomy above said 42% of failures "do not compile". Tracing where the grader's
+build actually fails corrects that substantially, and points somewhere new.
+
+| grader build failure blamed on | count |
+| --- | ---: |
+| a generated **hidden-test** translation unit | **144** |
+| the model's own source directories | **0** |
+| other | 28 |
+
+Not one grader build failure is blamed on a file the model edited. The failure is that the
+hidden test — which the model never sees — instantiates the model's change in a way it does
+not support. A concrete example, from `kokkos__kokkos-8967`:
+
+```
+FAILED: core/unit_test/CMakeFiles/Kokkos_CoreUnitTest_Serial2.dir/serial/TestSerial_SubView_c16.cpp.o
+error: /workspace/repo/core/src/View/Kokkos_BasicView.hpp:600:11:
+       error: cannot convert 'Kokkos::Impl::SpaceAwareAccessor<...>'
+```
+
+The model edited `Kokkos_BasicView.hpp`; the error is raised in a test file it never had.
+
+**52% of grader compile failures happen after the model's own last build was clean.** The
+model compiled everything it could see and got no error.
+
+### Why this reframes the objective
+
+This is the first finding that identifies a *harness-addressable* gap rather than a
+capability wall, and it is not a prompt problem:
+
+- The benchmark hides the test that defines correctness. The model cannot compile against
+  the interface the hidden test uses, because that interface is not in the repository.
+- The guarded verifier is doing exactly what it should — the failure is real, the patch
+  genuinely breaks the hidden test.
+- But 144 failures are attributable to an interface contract the model was never shown.
+
+A harness cannot leak the hidden test (that would invalidate the benchmark). What it could
+do is make the model *state and check its interface assumptions* before finishing: the
+failure is a signature or trait mismatch, and the model has no step where it enumerates what
+its new signature is expected to satisfy. That is a different intervention from every one
+tried so far, all of which tried to change how much or when the model reads, edits or
+verifies.
+
+It is also consistent with the six nulls: those nudges pushed *more* building, but the
+model's own builds were already clean. Building more could never surface a hidden test.
+
+
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (49.3% against
