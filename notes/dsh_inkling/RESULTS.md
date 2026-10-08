@@ -953,10 +953,29 @@ by 68, and it changes the *kind* of work rather than the amount.
 measured — +4.0 paired, 24 wins against 15 losses, p = 0.200 — but it does not reach
 significance, and against the native loop it is +0.8 with p = 1.000.
 
-The comparison against native is also structurally weaker than it looks: the native loop has
-been run **once**, at concurrency 4, while both DSH arms have five draws at concurrency 10.
-A single-draw baseline cannot support a paired test of a 1-4 point effect, and that asymmetry
-is being corrected by running further native draws at the matched profile.
+The comparison against native is also structurally weaker than it looks: the original native
+run was a **single draw at concurrency 4**, while both DSH arms have five draws at concurrency
+10. A single-draw baseline cannot support a paired test of a 1-4 point effect, so two further
+native draws were run at the matched profile.
+
+### The native baseline is as noisy as DSH, and its 50/50 was a coincidence
+
+The two additional native draws scored **50 and 50**, which looks like a highly stable
+baseline against DSH control's 43-55 spread. Checked per task, it is not:
+
+| comparison | tasks differing | agreement |
+| --- | ---: | ---: |
+| native01 vs native02 | **18** of 100 | 82% |
+| DSH control, mean of all 10 draw pairs | 19.4 | 81% |
+
+Two native draws agreed exactly on the total while disagreeing on 18 individual tasks — the
+misses cancelled. The per-task noise is the same in both harnesses, which means the native
+arm carries the same ±7-point interval at n=1 as everything else, and the original 52/100
+target is a single sample from that distribution rather than a fixed bar.
+
+This is the fairest statement the data supports: at this budget the benchmark resolves
+roughly nothing below 7 points for either harness, and the reference number the objective was
+defined against has that uncertainty too.
 
 Two observations explain why the mechanism moved so much and the score so little:
 
