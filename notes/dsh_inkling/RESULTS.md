@@ -1026,8 +1026,16 @@ task**, plus roughly 2 more across the tail. It cost the treatment and control a
 it does not bias the comparison, but it adds noise and it means every mean in this file is
 depressed by roughly 3 points.
 
-The fix is to give the verifier enough time for its own `--parallel` build rather than
-inheriting a timeout tuned for smaller targets.
+**Raising the grader timeout does not fix it.** I changed the default from 1200s to 2400s,
+added a guard test, and re-ran `kokkos-8182` directly. It still failed: 2686s elapsed, and the
+backend reported an operation timeout with an empty grading log. The binding constraint is the
+sandbox's own 3600s lifetime, which the episode's 40-request rollout plus a full containers
+unit-test build exhausts between them. The grader timeout was not what was being hit.
+
+So this is a real defect with no fix available inside the current sandbox limits: about 1 point
+per run is systematically lost to `kokkos-8182` and roughly 2 more to the tail, on both arms.
+The honest handling is to keep the task in the set (removing it would flatter every number) and
+note that every mean in this file is depressed by roughly 3 points.
 
 ### One draw was compromised and is excluded
 

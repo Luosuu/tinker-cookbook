@@ -501,7 +501,12 @@ def main() -> None:
     )
     parser.add_argument("--wall-seconds", type=int, default=3600)
     parser.add_argument("--command-timeout", type=int, default=900)
-    parser.add_argument("--grader-timeout", type=int, default=1200)
+    # 1200s was tuned for single-target verifiers and systematically fails the tasks whose
+    # verifier builds a large unit-test target with --parallel: kokkos__kokkos-8182 ended at
+    # 1367-1410s in 10 of 11 runs and scored 0 with a real patch captured. Across 11 runs that
+    # was 33 infra-timeout zeros, about 3 points per run, on both arms. The sandbox itself
+    # allows 3600s, so the verifier can have a budget that accommodates its own parallel build.
+    parser.add_argument("--grader-timeout", type=int, default=2400)
     parser.add_argument("--sandbox-timeout", type=int, default=3600)
     # A ConTree sandbox reports 4 CPUs but only 4 GB. The factory writes this value into
     # the sandbox environment, and the exported verifier honours it for its own build, so

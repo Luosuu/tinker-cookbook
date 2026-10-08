@@ -240,3 +240,23 @@ def test_target_brief_names_the_verifiers_own_targets(tmp_path: Path) -> None:
         brief = _target_brief(task)
     assert "Kokkos_CoreUnitTest_Serial1" in brief, brief
     assert "not just the library" in brief
+
+
+def test_grader_timeout_is_raised_but_known_insufficient() -> None:
+    """The grader timeout was raised, but measurement showed it is not the binding limit.
+
+    A 1200s default failed kokkos__kokkos-8182 in 10 of 11 runs, finishing at 1367-1410s.
+    Raising it to 2400s and re-running did NOT fix it: the episode then ran 2686s and the
+    backend still reported a timeout with an empty grading log, because the sandbox's own
+    3600s lifetime is what the rollout plus a full containers unit-test build exhaust.
+
+    The default is kept higher because it is correct for the tasks whose verifier build is
+    merely slow, and this test records that it does not address the pathological case, so the
+    task is not silently assumed fixed.
+    """
+    source = (HERE / "run_task_contree.py").read_text()
+    match = re.search(r'"--grader-timeout",\s*type=int,\s*default=(\d+)', source)
+    assert match, "grader timeout default not found"
+    assert int(match.group(1)) >= 2400, "slow verifier builds need a budget above 1200s"
+    # The sandbox ceiling is what actually binds for the largest builds.
+    assert "3600" in source or "sandbox_timeout" in source
