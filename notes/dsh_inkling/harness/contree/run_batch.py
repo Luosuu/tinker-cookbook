@@ -15,11 +15,36 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import shutil
 import sys
 import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
+
+
+def _partition_for_resume(
+    tasks: list[str], results_dir: Path
+) -> tuple[list[tuple[int, str]], dict[int, dict]]:
+    """Keep completed episodes and make interrupted episode directories safe to rerun."""
+    pending: list[tuple[int, str]] = []
+    completed: dict[int, dict] = {}
+    for index, task in enumerate(tasks):
+        output = results_dir / task
+        summary_path = output / "summary.json"
+        try:
+            summary = json.loads(summary_path.read_text())
+        except (OSError, ValueError):
+            # An interrupted episode may contain files opened with mode "x". Remove only
+            # that task's incomplete output so its retry starts from a clean directory.
+            if output.exists():
+                shutil.rmtree(output)
+            pending.append((index, task))
+            continue
+        if not isinstance(summary, dict) or summary.get("task_name") != task:
+            raise ValueError(f"invalid summary for completed task {task}: {summary_path}")
+        completed[index] = summary
+    return pending, completed
 
 
 async def run_one(
@@ -154,6 +179,11 @@ async def main() -> None:
     parser.add_argument("--episode-timeout", type=float, default=5400)
     parser.add_argument("--prepare-only", action="store_true")
     parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Keep tasks with valid summaries and rerun only missing or interrupted tasks.",
+    )
+    parser.add_argument(
         "--verify-nudge",
         action="store_true",
         help="Once an episode edits without compiling, remind it to build. Targets the "
@@ -204,10 +234,23 @@ async def main() -> None:
     args.run_dir.mkdir(parents=True, exist_ok=True)
     (args.run_dir / "results").mkdir(exist_ok=True)
     (args.run_dir / "tasks.txt").write_text("\n".join(tasks) + "\n")
+    if args.resume:
+        indexed_tasks, completed = _partition_for_resume(tasks, args.run_dir / "results")
+    else:
+        indexed_tasks = list(enumerate(tasks))
+        completed = {}
 
     slots = asyncio.Semaphore(args.concurrency)
     print(
-        json.dumps({"event": "start", "tasks": len(tasks), "concurrency": args.concurrency}),
+        json.dumps(
+            {
+                "event": "start",
+                "tasks": len(tasks),
+                "pending": len(indexed_tasks),
+                "resumed": len(completed),
+                "concurrency": args.concurrency,
+            }
+        ),
         flush=True,
     )
     started = time.monotonic()
@@ -240,8 +283,9 @@ async def main() -> None:
             )
             return index, summary
 
-    results = await asyncio.gather(*(guarded(i, t) for i, t in enumerate(tasks)))
-    ordered = [summary for _, summary in sorted(results, key=lambda pair: pair[0])]
+    results = await asyncio.gather(*(guarded(i, t) for i, t in indexed_tasks))
+    by_index = completed | dict(results)
+    ordered = [by_index[index] for index in range(len(tasks))]
     (args.run_dir / "batch-summary.json").write_text(
         json.dumps(
             {
