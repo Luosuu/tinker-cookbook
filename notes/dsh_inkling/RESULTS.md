@@ -800,6 +800,29 @@ budget, not harness design, and the objective as stated — beat the native harn
 scaffolding — is not reachable on this benchmark with this model.
 
 
+### Why the non-compiling failures are not a verification gap
+
+The 42% that do not compile are the largest single bucket, so it matters whether they are
+episodes that never checked or episodes that checked and could not fix it. Tracing the
+first compile error in each:
+
+| behaviour | count |
+| --- | ---: |
+| never saw a compile error at all | 17 |
+| saw one, edited again, and **rebuilt** | **19** |
+| saw one, edited again, never rebuilt | 13 |
+| saw one, never edited again | 17 |
+
+The 19 in bold are decisive. They hit a compile error, changed the code, compiled again, and
+still delivered something that does not build. Six prompt-level interventions, two of which
+explicitly forced rebuilds, left the population unchanged — and this group explains why:
+for them the loop already ran. They saw the compiler, they acted on it, and the fix was
+still wrong.
+
+Only 13 of 66 are the pure verification gap the nudges were aimed at, which is why the
+nudges could not move a 42% bucket: they were designed for 13 episodes out of 66.
+
+
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (49.3% against
