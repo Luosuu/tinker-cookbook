@@ -44,6 +44,7 @@ async def run_one(
     coverage_nudge: bool,
     echo_changed: bool,
     verify_rearm: bool,
+    state_target: bool,
 ) -> dict:
     output = run_dir / "results" / task
     command = [
@@ -83,6 +84,8 @@ async def run_one(
         command.append("--echo-changed")
     if verify_rearm:
         command.append("--verify-rearm")
+    if state_target:
+        command.append("--state-target")
     started = time.monotonic()
     process = await asyncio.create_subprocess_exec(
         *command,
@@ -164,6 +167,11 @@ async def main() -> None:
         help="Append the edited-file list to every tool result.",
     )
     parser.add_argument(
+        "--state-target",
+        action="store_true",
+        help="Append the verifier's own build targets to the persona.",
+    )
+    parser.add_argument(
         "--verify-rearm",
         action="store_true",
         help="Re-arm the build reminder after each build.",
@@ -219,6 +227,7 @@ async def main() -> None:
                 coverage_nudge=args.coverage_nudge,
                 echo_changed=args.echo_changed,
                 verify_rearm=args.verify_rearm,
+                state_target=args.state_target,
             )
             return index, summary
 

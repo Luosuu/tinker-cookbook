@@ -148,6 +148,7 @@ async def run(
     coverage_nudge: bool,
     echo_changed: bool,
     verify_rearm: bool,
+    state_target: bool,
     wall_seconds: int,
     command_timeout: int,
     grader_timeout: int,
@@ -198,8 +199,36 @@ async def run(
             coverage_nudge=coverage_nudge,
             echo_changed=echo_changed,
             verify_rearm=verify_rearm,
+            state_target=state_target,
             prepare_only=prepare_only,
         )
+
+
+def _target_brief(harbor_task) -> str:
+    """Name the build targets the verifier compiles, read from the verifier itself.
+
+    The measured failure is that the model compiles the library, which is clean, while
+    grading compiles the unit-test target, which is not. Across five runs only 12% of
+    building episodes ever built a test target. This states the target as setup rather than
+    as a reminder, and it is derived from the same test.sh the grader runs so it cannot
+    drift.
+    """
+    import re as _re
+
+    script = (harbor_task.task_dir / "tests" / "test.sh").read_text()
+    targets: list[str] = []
+    for match in _re.findall(r"cmake --build build --target ([\w.]+)", script):
+        if match not in targets:
+            targets.append(match)
+    if not targets:
+        return ""
+    listed = ", ".join(targets[:4])
+    return (
+        "The grader for this task compiles and runs the project's own unit tests, "
+        f"specifically: {listed}. Build that target, not just the library: a change that "
+        "compiles into libkokkoscore.a can still fail to compile when a unit-test "
+        "translation unit instantiates it, and only the test target reveals that."
+    )
 
 
 async def _run_episode(
@@ -229,6 +258,7 @@ async def _run_episode(
     coverage_nudge,
     echo_changed,
     verify_rearm,
+    state_target,
     prepare_only,
 ) -> dict:
     from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborReward
@@ -347,6 +377,8 @@ async def _run_episode(
                     )
                     try:
                         persona = persona_file.read_text().strip()
+                        if state_target:
+                            persona = persona + "\n\n" + _target_brief(harbor_task)
                         resolved_patch = output / "dsh.patch.yml"
                         resolved_patch.write_text(
                             profile_patch.read_text()
@@ -510,6 +542,12 @@ def main() -> None:
         action="store_true",
         help="Re-arm the build reminder after every build. Targets the failing episodes "
         "that make three or more edits and never build at all.",
+    )
+    parser.add_argument(
+        "--state-target",
+        action="store_true",
+        help="Append the verifier's own build targets to the persona. Measured: only 12 "
+        "percent of building episodes ever built a test target, while grading does.",
     )
     parser.add_argument("--prepare-only", action="store_true")
     args = parser.parse_args()

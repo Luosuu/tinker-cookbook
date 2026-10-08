@@ -217,3 +217,26 @@ def test_driver_uses_the_guarded_verifier() -> None:
     )
     # And it must not load tasks directly from the payload.
     assert "load_harbor_tasks_from_dir" not in source
+
+
+def test_target_brief_names_the_verifiers_own_targets(tmp_path: Path) -> None:
+    """The brief must derive targets from the verifier, not hardcode one.
+
+    The measured failure is that the model compiles the library while grading compiles a
+    unit-test target; only 12% of building episodes built a test target. The brief is only
+    trustworthy if it names what the grader actually runs, so it is read from the same
+    test.sh the grader uses.
+    """
+    import sys
+
+    sys.path.insert(0, str(Path(__file__).parents[4]))
+    from notes.dsh_inkling.harness.contree.run_task_contree import _target_brief
+    from tinker_cookbook.recipes.kokkos_rl.rl.tasks import prepared_kokkos_tasks
+
+    with prepared_kokkos_tasks(
+        Path(__file__).parents[4] / "data/kokkos/SWE-kokkos-bench-v2"
+    ) as prepared:
+        task = next(t for t in prepared if t.task_name == "kokkos__kokkos-8190")
+        brief = _target_brief(task)
+    assert "Kokkos_CoreUnitTest_Serial1" in brief, brief
+    assert "not just the library" in brief
