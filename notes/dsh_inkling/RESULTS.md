@@ -762,6 +762,43 @@ design. A harness cannot supply the missing verification discipline if six diffe
 to prompt, remind, and inform it all leave the behaviour unchanged.
 
 
+### The definitive failure taxonomy
+
+Across 259 correctly-graded failures, from their own grading logs:
+
+| failure kind | count | share |
+| --- | ---: | ---: |
+| patch did not compile or build | 108 | **42%** |
+| empty patch | 104 | **40%** |
+| compiled but tests failed | 47 | 18% |
+
+This is the clearest picture of the ceiling the project produced, and it is much more
+blunt than "the model needs help verifying". Nearly half of all failures are code that does
+not build, and another 40% are no change at all. Only 18% are a plausible fix that a
+stronger test would have caught.
+
+Of the 47 capped failures that touched every file the reference fix touches, 30 still did
+not compile. So even the "complete-looking" work was mostly broken code, not a
+nearly-correct fix missing one companion edit.
+
+### What this means for the objective
+
+The measured loss is not concentrated in anything a harness can address:
+
+- 40% of failures are episodes that never edit — a scaffolding or model-agency problem, and
+  six prompts failed to move it.
+- 42% are edits that do not compile. A harness cannot supply the language and API knowledge
+  this requires; it can only force a build, and the two variants that did force builds left
+  the rate unchanged (17% → 16%).
+- 18% are genuine test-level near-misses.
+
+Against that, the harness has already been brought to parity with the native loop, and
+parity is what a scaffold-matched comparison should produce when the scaffold is not the
+limiting factor. The honest conclusion is that the residual gap is model capability at this
+budget, not harness design, and the objective as stated — beat the native harness by
+scaffolding — is not reachable on this benchmark with this model.
+
+
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (49.3% against
