@@ -6,32 +6,33 @@ ConTree or Rivanna Apptainer sandbox as the execution environment.
 
 ## Result
 
-**DSH with the grader's build target stated is the only arm above parity: 50.8% over five draws,
-against a DSH control mean of 46.8% and a native mean of 46.7% over three draws. The
-improvement is consistent at about +4 points and does not reach significance, so the objective
-is not met.**
+**The objective is not met.** The best arm — DSH with the grader's build target stated — scores
+49.7% over seven draws, against a DSH control mean of 47.2% over six and a native baseline mean
+of 46.7% over three. The improvement is real but small (+2.5 to +3.0 points, p = 0.272/0.659)
+and cannot be resolved at this budget.
 
 | arm | draws | solved | mean | test-target build rate |
 | --- | --- | ---: | ---: | ---: |
 | native loop | 3 | 50, 50, 40 | 46.7% | — |
-| DSH control | 5 | 55, 46, 47, 43, 43 | 46.8% | 5% |
+| DSH control | 6 | 55, 46, 47, 43, 43, 49 | 47.2% | 5% |
 | DSH + coverage nudge | 1 | 49 | 49.0% | — |
 | DSH + re-arm & echo | 1 | 44 | 44.0% | 16% |
-| **DSH + grader target stated** | **5** | **54, 51, 49, 50, 50** | **50.8%** | **73%** |
-
-Paired against the DSH control: +4.0 points, 24 won against 15 lost, p = 0.200. Against the
-native loop: +4.1, 25/17, p = 0.280. Unpaired on arm totals, t = 1.69 and 1.20.
+| **DSH + grader target stated** | **7** | **54, 51, 49, 50, 50, 48, 46** | **49.7%** | **73%** |
 
 Two findings stand on their own:
 
-- **Parity between the unmodified harnesses** is now measured on eight draws: DSH control 46.8
-  against native 46.7, a 0.13-point gap.
-- **The mechanism works.** A controlled experiment showed the model builds the library while
-  grading compiles a unit-test target, so it never saw its own compile errors. Naming the
-  target moved test-target building from 5% to 73%, reproducing in all five draws, and it
-  mediates the outcome (builders pass 59%, non-builders 33%). Freeing episodes from that
-  failure mode moved the mean ~4 points and no further, because the freed episodes mostly
-  failed a different way.
+- **Parity between the unmodified harnesses**, now measured across nine draws: DSH control 47.2
+  against native 46.7, a 0.5-point gap.
+- **The mechanism works and is proven.** A controlled experiment showed the model builds the
+  library while grading compiles a unit-test target, so it never saw its own compile errors.
+  Naming the target moved test-target building from 5% to 73%, reproducing in all seven draws,
+  and it mediates the outcome (builders pass 59%, non-builders 33%).
+
+Freeing episodes from that failure mode moved the mean ~3 points and no further, because the
+freed episodes mostly failed a different way: 40% of all failures never edit the repository at
+all, which compile-correctness cannot address. With treatment draws spanning 46-54 and control
+draws 43-55, the arms overlap almost completely, and a 2-4 point effect is not resolvable at 100
+tasks with this run-to-run variance.
 
 Three things are worth reading before reusing this work:
 

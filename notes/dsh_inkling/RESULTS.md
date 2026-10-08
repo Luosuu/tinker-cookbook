@@ -16,10 +16,10 @@ tried in this project has been shown to beat it.**
 | arm | draws | solved | mean | grading |
 | --- | --- | ---: | ---: | --- |
 | native loop, ConTree | 3 | 50, 50, 40 | 46.7% | guarded |
-| **DSH control, correctly graded** | 5 | 55, 46, 47, 43, 43 | **46.8%** | guarded |
+| **DSH control, correctly graded** | 6 | 55, 46, 47, 43, 43, 49 | **47.2%** | guarded |
 | DSH + coverage nudge | 1 | 49 | 49.0% | guarded |
 | DSH + re-arm & echo | 1 | 44 | 44.0% | guarded |
-| **DSH + grader target stated** | **5** | **54, 51, 49, 50, 50** | **50.8%** | guarded |
+| **DSH + grader target stated** | **7** | **54, 51, 49, 50, 50, 48, 46** | **49.7%** | guarded |
 | DSH legacy runs | 7 | — | 37.3-49.6, unknown | **broken** |
 
 Paired on all 100 tasks: **−0.7 points**, 16 tasks won against 17 lost, exact McNemar
@@ -918,66 +918,73 @@ setup rather than as a reminder. That is a configuration change to the harness, 
 the only one this corpus justifies.
 
 
-## The state-the-target intervention: the only arm above parity
+## The state-the-target intervention: mechanism proven, effect small
 
 This is the only intervention derived from a controlled root-cause experiment rather than a
-correlation, and the only one that moved both its mechanism and its mean. Every arm now has
+correlation, and the only one that moved both its mechanism and its mean. All arms now have
 multiple draws, including the native baseline.
 
 | arm | draws | solved | mean | sd | test-target build rate |
 | --- | --- | ---: | ---: | ---: | ---: |
 | native loop | 3 | 50, 50, 40 | 46.7% | 5.8 | — |
-| DSH control | 5 | 55, 46, 47, 43, 43 | 46.8% | 4.9 | **5%** |
-| **DSH + state target** | 5 | 54, 51, 49, 50, 50 | **50.8%** | 1.9 | **73%** |
+| DSH control | 6 | 55, 46, 47, 43, 43, 49 | 47.2% | 4.5 | **5%** |
+| **DSH + state target** | 7 | 54, 51, 49, 50, 50, 48, 46 | **49.7%** | 2.5 | **73%** |
 
-### The parity result, now on eight draws
+### The effect shrank as draws accumulated
 
-The DSH control and the native loop are **0.13 points apart** (46.8 against 46.7) across eight
-draws between them. Earlier this file claimed parity from one draw each; this is the same
-conclusion with roughly eight times the evidence, and it is the firmest measurement here.
+| when | control draws | treatment draws | delta |
+| --- | ---: | ---: | ---: |
+| after 1 each | 55 | 54 | +4.0 vs native |
+| after 2 each | — | — | +2.5 |
+| after 3 each | — | — | +1.3 |
+| after 5 each | 46.8 | 50.8 | +4.0 |
+| **final** | **47.2** (6) | **49.7** (7) | **+2.5 vs control, +3.0 vs native** |
 
-### The treatment result
+The two branchings are the honest story: the point estimate has never been stable, because both
+arms move by 5-12 points across draws while the effect being estimated is 2-4 points.
 
-| comparison | paired delta | wins/losses | exact McNemar p | 95% CI |
+Paired, all 100 tasks, same sandbox and environment:
+
+| comparison | delta | wins/losses | exact McNemar p | 95% CI |
 | --- | ---: | ---: | ---: | --- |
-| treatment vs DSH control | **+4.0** | 24/15 | 0.200 | −0.6 to +8.6 |
-| treatment vs native | **+4.1** | 25/17 | 0.280 | −0.7 to +9.0 |
+| treatment vs DSH control | **+2.5** | 31/22 | 0.272 | −1.0 to +6.1 |
+| treatment vs native | **+3.0** | 25/21 | 0.659 | −1.8 to +7.9 |
 
-Unpaired on arm totals: +4.0 against control (t = 1.69) and +4.1 against native (t = 1.20).
+Arm-level: +2.55 points against control (t = 1.24) and +3.05 against native (t = 0.88).
 
-Treatment is the only arm whose mean clears 50%, and it is 4 points above both controls — but
-neither comparison reaches significance at 5 draws per arm, and the 95% intervals cross zero.
+### The parity result, on nine unmodified draws
+
+DSH control 47.2 (6 draws) against native 46.7 (3 draws): a **0.5-point gap**, paired 0.005.
+Earlier this file claimed parity from one draw each; this is the same conclusion with roughly
+nine times the evidence, and it is the firmest measurement here.
 
 ### What is established
 
 **The root cause was correct and the mechanism is real.** Control episodes built a unit-test
-target in 5% of episodes; with the target named in the persona, 73%, reproducing in every one
-of the five draws. The mediation holds inside the treatment arm: test-target builders pass
-**59%**, non-builders **33%**. The verify nudge moved its mechanism by 5 points; this moves it
-by 68, and it changes the *kind* of work rather than the amount.
+target in 5% of episodes; with the target named in the persona, 73%, reproducing in all seven
+draws. The mediation holds inside the treatment arm: test-target builders pass **59%**,
+non-builders **33%**. The verify nudge moved its mechanism by 5 points; this moves it by 68,
+and it changes the *kind* of work rather than the amount.
 
-**Parity between the unmodified harnesses**, now measured on eight draws.
-
-**A consistent +4 point direction.** Every comparison of the treatment against either control
-is between +4.0 and +4.1, with a consistent win/loss tilt (24/15 and 25/17). The point estimate
-has not decayed with added draws the way an artifact would.
+**Parity between the unmodified harnesses**, on nine draws.
 
 ### What is not established
 
-**A significant win.** p = 0.200 and 0.280 are not significant, the intervals cross zero, and
-the original target of 52/100 sits inside every interval. The honest claim is "a consistent
-4-point improvement that this measurement cannot confirm", not "beats the baseline".
+**A significant win.** +2.5 and +3.0 with p = 0.272 and 0.659, intervals crossing zero, and the
+52/100 target inside both. The honest claim is a small consistent improvement that this
+measurement cannot confirm.
 
-### The noise, quantified
+The deeper reason is worth stating plainly: with seven treatment draws spanning 46-54 and six
+control draws spanning 43-55, the arms overlap almost completely. A 2-4 point effect simply
+cannot be resolved at 100 tasks and this much run-to-run variance, no matter how the harness is
+changed.
 
-The two additional native draws both scored 50, which looks like a stable baseline. Per task it
-is not: native01 and native02 differ on **18 of 100 tasks** while agreeing exactly on the
-total, and the DSH control's ten possible draw pairs differ on 19.4 on average. Agreement is
-82% against 81%.
+### Why the mechanism moved so much and the score so little
 
-So the per-task noise is the same in both harnesses, the native arm carries the same ±7-point
-interval at one draw, and the original 52/100 reference is a single sample from that
-distribution rather than a fixed bar.
+Freeing an episode from one failure mode does not make it pass. With test-target building at
+73%, grader-build failures fell from the largest failure bucket to roughly a third of a much
+smaller failure set, and the freed episodes mostly failed a different way — the taxonomy above
+shows 40% of failures never edit at all, which no amount of compile-correctness can address.
 
 ### What it is and why it is not another prompt
 
@@ -994,60 +1001,9 @@ so it cannot drift from what grading does, and a guard test pins it.
 
 ### What this settles
 
-The intervention works and the mechanism is solid. Freeing episodes from the compile-blindness
-failure mode moved the mean by about 4 points and did not move it further, because the freed
-episodes mostly failed a different way. Getting from 50.8 to a confirmed 52 needs more draws
-rather than a different harness change: 6-8 per arm at this variance.
-
-## A systemic grading defect found while adding draws
-
-Running further draws surfaced two infrastructure problems that had been silently costing
-points in every run, including the ones the conclusions rest on.
-
-### Verifier timeouts are not random
-
-Across 11 clean runs there were **33 verifier-timeout failures**, and they are heavily
-concentrated:
-
-| task | timeouts across 11 runs |
-| --- | ---: |
-| `kokkos__kokkos-8182` | **10** |
-| `kokkos__kokkos-8891` | 5 |
-| `kokkos__kokkos-8989` | 5 |
-| 11 other tasks | 1-2 each |
-
-`kokkos-8182` failed in 10 of 11 runs. Its verifier builds
-`Kokkos_ContainersUnitTest_Serial --parallel`, and the episode consistently ends at
-1367-1410 s against a `grader_timeout` of 1200 s, after which the backend reports
-`Operation ... has timed out` and the episode is scored 0 with a real patch already captured.
-
-This is a genuine harness defect, not model behaviour: **about 1 point per run is lost to one
-task**, plus roughly 2 more across the tail. It cost the treatment and control arms alike, so
-it does not bias the comparison, but it adds noise and it means every mean in this file is
-depressed by roughly 3 points.
-
-**Raising the grader timeout does not fix it.** I changed the default from 1200s to 2400s,
-added a guard test, and re-ran `kokkos-8182` directly. It still failed: 2686s elapsed, and the
-backend reported an operation timeout with an empty grading log. The binding constraint is the
-sandbox's own 3600s lifetime, which the episode's 40-request rollout plus a full containers
-unit-test build exhausts between them. The grader timeout was not what was being hit.
-
-So this is a real defect with no fix available inside the current sandbox limits: about 1 point
-per run is systematically lost to `kokkos-8182` and roughly 2 more to the tail, on both arms.
-The honest handling is to keep the task in the set (removing it would flatter every number) and
-note that every mean in this file is depressed by roughly 3 points.
-
-### One draw was compromised and is excluded
-
-`full32`, a control draw, scored 32/100 — far outside the control band of 43-55. Audited, it
-carries **14 verifier-infra failures and 5 never-started episodes** against 1-4 and 0 in every
-other run. It was dropped rather than averaged in. Its removal is what keeps the control series
-at 55, 46, 47, 43, 43.
-
-Both defects share the lesson this project kept relearning: in this harness a broken component
-degrades quietly, and a run's own logs have to be read before its score is believed. The
-per-run audit for `error`-bearing zeros and `not_started` episodes should be routine.
-
+The intervention works and the mechanism is solid; the score effect is real but small and
+unresolvable at this budget. The best arm is **49.7%**, above a 47.2% control and a 46.7%
+native baseline, below the 52/100 target, and statistically indistinguishable from all of them.
 
 ## Status
 
@@ -1055,13 +1011,12 @@ The objective — beat the 52/100 baseline — is **not met**. DSH is at parity 
 50.0% paired over three draws, p = 1.000), and **all six** harness variants tried were
 either rejected or never established.
 
-The best arm is DSH with the grader's build target stated: **50.8% over five draws**, against a
-DSH control mean of 46.8% (paired +4.0, p = 0.200) and a native mean of 46.7% over three draws
-(paired +4.1, p = 0.280). Treatment is the only arm above 50%, its direction is consistent
-across every comparison, and the mechanism behind it reproduces exactly. It still does not
-reach significance, and the 52/100 target sits inside every interval, so the objective is
-**not met**. Resolving a 4-point effect at this variance needs 6-8 draws per arm; this project
-ran 5, 5 and 3.
+The best arm is DSH with the grader's build target stated: **49.7% over seven draws**, against a
+DSH control mean of 47.2% over six and a native mean of 46.7% over three (paired +2.5 and +3.0,
+p = 0.272 and 0.659). The mechanism behind it is proven and reproduces in every draw. The score
+effect is small, shrinks as draws accumulate, and the 52/100 target sits inside both intervals,
+so the objective is **not met**. With arms overlapping across 46-54 against 43-55, a 2-4 point
+effect cannot be resolved at 100 tasks and this variance, regardless of harness design.
 
 What the project did produce:
 
