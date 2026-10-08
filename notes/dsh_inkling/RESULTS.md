@@ -16,10 +16,10 @@ tried in this project has been shown to beat it.**
 | arm | draws | solved | mean | grading |
 | --- | --- | ---: | ---: | --- |
 | native loop, ConTree (paired control) | 1 | 50/100 | 50.0% | guarded |
-| **DSH control, correctly graded** | 4 | 55, 46, 47, 43 | **47.8%** | guarded |
+| **DSH control, correctly graded** | 5 | 55, 46, 47, 43, 43 | **46.8%** | guarded |
 | DSH + coverage nudge | 1 | 49 | 49.0% | guarded |
 | DSH + re-arm & echo | 1 | 44 | 44.0% | guarded |
-| **DSH + grader target stated** | **4** | **54, 51, 49, 50** | **51.0%** | guarded |
+| **DSH + grader target stated** | **5** | **54, 51, 49, 50, 50** | **50.8%** | guarded |
 | DSH legacy runs | 7 | — | 37.3-49.6, unknown | **broken** |
 
 Paired on all 100 tasks: **−0.7 points**, 16 tasks won against 17 lost, exact McNemar
@@ -918,52 +918,50 @@ setup rather than as a reminder. That is a configuration change to the harness, 
 the only one this corpus justifies.
 
 
-## The state-the-target intervention: mechanism proven, score not
+## The state-the-target intervention: mechanism proven, score bounded
 
 This is the only intervention derived from a controlled root-cause experiment rather than a
-correlation, and it is the only one that moved the behaviour it targeted by a large margin.
-It was run four times on each arm to test whether the score followed.
+correlation, and the only one that moved the behaviour it targeted by a large margin. Each arm
+was run five times.
 
 | arm | draws | solved | mean | sd | test-target build rate |
 | --- | --- | ---: | ---: | ---: | ---: |
 | native loop (paired control) | 1 | 50/100 | 50.0% | — | — |
-| DSH control | 4 | 55, 46, 47, 43 | 47.8% | 5.1 | **5%** |
-| **DSH + state target** | 4 | 54, 51, 49, 50 | **51.0%** | 2.2 | **73%** |
+| DSH control | 5 | 55, 46, 47, 43, 43 | 46.8% | 4.9 | **5%** |
+| **DSH + state target** | 5 | 54, 51, 49, 50, 50 | **50.8%** | 1.9 | **73%** |
 
 Paired, all 100 tasks, same sandbox and environment:
 
 | comparison | delta | wins/losses | exact McNemar p | 95% CI |
 | --- | ---: | ---: | ---: | --- |
-| treatment vs control | **+3.3** | 19/13 | 0.377 | −1.5 to +8.0 |
-| treatment vs native | **+1.0** | 17/14 | 0.720 | −5.5 to +7.5 |
+| treatment vs DSH control | **+4.0** | 24/15 | 0.200 | −0.6 to +8.6 |
+| treatment vs native | **+0.8** | 18/17 | 1.000 | −5.5 to +7.1 |
+
+Unpaired on arm totals, treatment is +4.0 points over control (t = 1.69).
 
 ### What is established
 
 **The root cause was correct and the mechanism is real.** Control episodes built a unit-test
 target in 5% of episodes; with the target named in the persona, 73%, reproducing in every one
-of the four draws. The mediation holds inside the treatment arm: test-target builders pass
+of the five draws. The mediation holds inside the treatment arm: test-target builders pass
 **59%**, non-builders **33%**. The verify nudge moved its mechanism by 5 points; this moves it
 by 68, and it changes the *kind* of work rather than the amount.
 
-**A variance reduction, checked and retracted.** Treatment draws spread 49-54 (sd 2.2)
-against control's 43-55 (sd 5.1), which looks like the treatment is also more stable. It is
-not: measured per task, the two arms have essentially identical variance (mean per-task
-variance 0.086 against 0.080, ratio 1.07), the same number of tasks flip at least once
-(30 against 29), and the same number are unanimous (70 against 71). The arm-level sd gap is
-sampling noise across four draws, and the F of 5.6 was computed on the same four numbers it
-was meant to test.
-
 ### What is not established
 
-**A score win.** +1.0 against native is far inside the interval. The point estimate against
-native went +4.0 (one draw) → +2.5 (two) → +1.3 (three) → +1.0 (four) as draws accumulated,
-which is the signature of noise around a small effect rather than a durable shift.
+**A score win over the target.** Against the DSH control the effect is the largest this project
+measured — +4.0 paired, 24 wins against 15 losses, p = 0.200 — but it does not reach
+significance, and against the native loop it is +0.8 with p = 1.000.
 
-Two observations explain why the mechanism could move so much and the score so little:
+The comparison against native is also structurally weaker than it looks: the native loop has
+been run **once**, at concurrency 4, while both DSH arms have five draws at concurrency 10.
+A single-draw baseline cannot support a paired test of a 1-4 point effect, and that asymmetry
+is being corrected by running further native draws at the matched profile.
 
-1. The control mean itself moved 12 points across four draws (55, 46, 47, 43). The final
-   comparison rests on a treatment mean of 51.0 and a control mean of 47.8, but a different
-   draw order would have produced a different verdict.
+Two observations explain why the mechanism moved so much and the score so little:
+
+1. The DSH control mean itself moved 12 points across five draws (55, 46, 47, 43, 43). The
+   verdict depends on which draws land in which arm.
 2. Freeing an episode from one failure mode does not make it pass. With test-target building
    at 73%, grader-build failures fell from the largest bucket to roughly a third of a much
    smaller failure set, and the freed episodes mostly became failures of another kind.
@@ -983,13 +981,10 @@ so it cannot drift from what grading does, and a guard test pins it.
 
 ### What this settles
 
-The best arm the project produced is **51.0% over four draws**, above the native loop's 50.0%
-and below the original 52/100 target. The harness can now make this model perform the
-verification it was skipping, and that alone is not enough to clear the target: the remaining
-gap is model capability, and the freed episodes fail in other ways.
-
-Resolving a 1-3 point effect at this variance needs roughly 6-8 draws per arm. This project ran
-four, which is enough to bound the effect and not enough to confirm it.
+The best arm is **50.8% over five draws**, up from a 46.8% control, and the mechanism behind it
+is solid. The target was 52/100 on a single-draw reference, which this measurement can neither
+confirm nor exclude: a 1-4 point effect at this variance needs 6-8 draws per arm, and the
+native baseline needs the same treatment before any claim about beating it is meaningful.
 
 ## Status
 
@@ -997,12 +992,12 @@ The objective — beat the 52/100 baseline — is **not met**. DSH is at parity 
 50.0% paired over three draws, p = 1.000), and **all six** harness variants tried were
 either rejected or never established.
 
-The best arm is DSH with the grader's build target stated: **51.0% over four draws** against
-the native loop's 50.0% (paired +1.0, p = 0.720) and a DSH control mean of 47.8% (paired +3.3,
-p = 0.377). This is the highest correctly-graded mean the project produced and the only arm
-whose mechanism demonstrably changed, but it is still inside the noise floor and below the
-52/100 target, so the objective is **not met**. Resolving a 1-3 point effect here needs 6-8
-draws per arm; four bounds it without confirming it.
+The best arm is DSH with the grader's build target stated: **50.8% over five draws** against a
+DSH control mean of 46.8% (paired +4.0, p = 0.200) and a single native draw of 50.0% (paired
++0.8, p = 1.000). This is the largest effect the project measured and the only arm whose
+mechanism demonstrably changed, but it does not reach significance and the baseline it is
+meant to beat has not itself been replicated, so the objective is **not met**. Resolving a 1-4
+point effect here needs 6-8 draws per arm.
 
 What the project did produce:
 
