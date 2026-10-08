@@ -917,36 +917,32 @@ setup rather than as a reminder. That is a configuration change to the harness, 
 the only one this corpus justifies.
 
 
-## The state-the-target intervention: first result above the baseline
+## The state-the-target intervention: first arm above the baseline
 
 This is the only intervention derived from a controlled root-cause experiment rather than
-from a correlation, and it is the only one that moved both its mechanism and the score.
+from a correlation, and the only one that moved both its mechanism and its score.
 
-| arm | draws | solved | test-target build rate |
-| --- | --- | ---: | ---: |
-| native loop (paired control) | 1 | 50/100 | — |
-| DSH control | 3 | 55, 46, 47 | **5%** |
-| **DSH + state target** | 1 | **54/100** | **73%** |
+| arm | draws | solved | mean | test-target build rate |
+| --- | --- | ---: | ---: | ---: |
+| native loop (paired control) | 1 | 50/100 | 50.0% | — |
+| DSH control | 3 | 55, 46, 47 | 49.3% | **5%** |
+| **DSH + state target** | 2 | 54, 51 | **52.5%** | **73%** |
 
-Paired against the DSH control: **+4.7 points**, 20 tasks won against 15 lost, exact McNemar
-p = 0.500, 95% CI −2.8 to +12.2.
+Paired against the **native loop** on the same sandbox and environment: **+2.5 points**,
+16 tasks won against 11 lost, t = 0.74, exact McNemar p = 0.442, 95% CI −4.1 to +9.1.
 
-Paired against the **native loop** on the same sandbox and environment: **+4.0 points**,
-9 won against 5 lost, t = 1.07, 95% CI −3.3 to +11.3.
+Paired against the DSH control: **+3.2 points**, 21 won against 18 lost, p = 0.749.
 
 ### The mechanism moved by an order of magnitude
 
-The measured behaviour was that the model compiles the library while grading compiles a
-unit-test target, and that only 5% of control episodes ever built a test target. With the
-target named in the persona:
+Control episodes built a unit-test target 5% of the time; with the target named, 73%. The
+grader-build failures that had been the largest failure bucket collapsed from 107 across 152
+control failures to 32 across 46 in the first draw, and the effect reproduced in the second
+(94% test-target builds among the early completions).
 
-- test-target build rate: **5% → 73%**
-- grader-build failures: 107 across 152 control failures → **32 across 46**
-
-For the first time in this project, an intervention changed the behaviour it was designed to
-change by a large margin, and the score followed. The two earlier variants that moved a
-mechanism (verify nudge, 61.5% → 66.3% build rate) moved it by a few points; this moved it
-by 68 points.
+The two earlier variants that moved a mechanism at all moved it by a few points — the verify
+nudge took the build rate from 61.5% to 66.3%. This one moved it by 68 points, and unlike
+every other variant it changed the *kind* of work the model did rather than how much.
 
 ### What it is and why it is not another prompt
 
@@ -958,19 +954,17 @@ runs:
 > compiles into `libkokkoscore.a` can still fail to compile when a unit-test translation
 > unit instantiates it, and only the test target reveals that.
 
-It states a fact about the environment during setup rather than adding pressure at the point
-of failure, which is the shape all six rejected interventions shared. The target comes from
-the verifier, so it cannot drift from what grading does, and a guard test pins it.
+It states a fact about the environment during setup, rather than adding pressure at the point
+of failure, which is the shape all six rejected interventions shared. The target is read from
+the verifier so it cannot drift from what grading does, and a guard test pins it.
 
 ### The honest limit
 
-+4.0 over native on a single draw is **not** a demonstrated win. Two draws of one
-configuration have already differed by 8 points in this project, and the 95% interval
-includes zero. What is demonstrated is that this intervention changes the mechanism by a
-large, reproducible margin — 5% to 73% — which is far outside anything the other variants
-managed. Deciding the score needs the same repeated-draw treatment as everything else: two
-to four more runs.
-
++2.5 over native across two draws is **not** a demonstrated win: the 95% interval includes
+zero, and two draws of one configuration have already differed by 8 points in this project.
+What is demonstrated, and is new, is that a harness change can move this model's behaviour by
+a large margin and move the score in the same direction. Deciding the score needs more
+draws — a third is running.
 
 ## Status
 
