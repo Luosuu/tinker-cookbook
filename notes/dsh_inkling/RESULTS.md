@@ -1041,6 +1041,68 @@ combined with `--state-target` for its first experiment. The mechanism gate is f
 trustworthy post-edit target coverage rising from 28.6% to at least 60%; wall time and sandbox
 timeouts must be reported because the harness is spending additional compute.
 
+## The first-edit nudge: two draws, promising, not established
+
+`--first-edit-nudge` targets the empty-patch bucket: from request 8, and every 8 requests
+after, while the repository is untouched, the tool result states the remaining budget and that
+an empty patch scores zero.
+
+| arm | draws | solved | mean |
+| --- | --- | ---: | ---: |
+| DSH control | 6 | 55, 46, 47, 43, 43, 49 | 47.2% |
+| DSH + state-target | 7 | 54, 51, 49, 50, 50, 48, 46 | 49.7% |
+| **DSH + first-edit nudge** | **2** | **56, 51** | **53.5%** |
+
+Paired on all 100 tasks:
+
+| comparison | delta | wins/losses | exact McNemar p | 95% CI |
+| --- | ---: | ---: | ---: | --- |
+| first-edit vs control | **+6.3** | 29/13 | 0.0195 | +1.6 to +11.1 |
+| first-edit vs state-target | +3.8 | 25/19 | 0.451 | −1.2 to +8.7 |
+
+The paired test treats the two first-edit draws as the arm's true per-task rate, so it ignores
+draw-to-draw variance. Treating each draw as one observation, two draws against six gives
+t ≈ 1.8-2.0 and p ≈ 0.13-0.17. **This is the largest effect measured in the project and it is
+not yet established.** The rule set before the third draw: the arm is credited only if, over at
+least four draws, the paired delta against control stays above +3 points and the empty-patch
+rate stays below control.
+
+### Audit of both draws
+
+Neither draw ran cleanly in one pass, so the score was checked against how it was produced.
+
+- **The nudge fired.** It appears in 39 episodes of `full36` and 36 of `full37`, and in none of
+  the control or state-target draws. `full36` was launched before configs recorded their
+  interventions, so its `config.json` has no `interventions` block; the nudge text in its
+  traces is the evidence.
+- **Retries did not create the score.** `full36` finished 83 tasks in its first pass (44
+  solved, 53%) and 17 across three resumed passes (12 solved, 71%). The retried tasks were
+  already easier: control solves them 60% of the time against 45% for the rest. Both subsets
+  sit 8-11 points above their own control rate, so the gain is not a retry artifact.
+- **Concurrency was mixed.** `full36` ran at 10, then 8, 8 and 5. `full37`'s first pass at
+  concurrency 10 lost 80 of 100 tasks to ConTree and API failures; those 80 were rerun at
+  concurrency 4 (41 solved, 51%) against 10 of 20 in the first pass. Within-draw pass rates do
+  not differ by pass, but this is a recorded confound, not a controlled variable.
+- **One error remains**: `kokkos__kokkos-8182` in `full37`, the known verifier timeout, scored
+  as a failure as in every other draw.
+
+### The mechanism moved, but explains only part of the score
+
+| arm | empty patch | no repo write by request 8: still empty | pass | wrote by request 8: pass |
+| --- | ---: | ---: | ---: | ---: |
+| control | 19.2% | 22% | 43% | 83% |
+| state-target | 20.3% | 24% | 43% | 83% |
+| `full36` | 16.0% | 18% | 51% | 87% |
+| `full37` | 14.1% | 16% | 45% | 79% |
+
+The empty-patch rate fell in both draws, in the direction the nudge was designed for. But the
+fall is 3-5 points of episodes, and the late-writing population it acts on converts at well
+under half, so the mechanism accounts for roughly 2-3 points of score directly. In `full36`
+the early writers, whom the nudge never reaches, also passed more than control (87% against
+83%), which is draw luck. The honest reading is a real but modest mechanism plus a favourable
+first draw, which is exactly the pattern that shrank the state-target effect as draws
+accumulated.
+
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (49.3% against
@@ -1053,6 +1115,10 @@ p = 0.272 and 0.659). The mechanism behind it is proven and reproduces in every 
 effect is small, shrinks as draws accumulate, and the 52/100 target sits inside both intervals,
 so the objective is **not met**. With arms overlapping across 46-54 against 43-55, a 2-4 point
 effect cannot be resolved at 100 tasks and this variance, regardless of harness design.
+
+The first-edit nudge is the one open candidate: 56 and 51 over two draws (53.5%), +6.3 paired
+against control, above the 52/100 reference on its mean but not yet established at the draw
+level (p ≈ 0.13-0.17). It needs at least two more draws under the rule stated in its section.
 
 What the project did produce:
 
