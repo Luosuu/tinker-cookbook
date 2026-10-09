@@ -1,18 +1,22 @@
 #!/usr/bin/env bash
-# Run native, DSH control and DSH state-target, four draws each, all at once so every arm
-# shares the same period and load. Scores drift between sessions by several points, so arms
-# are only comparable within one block.
+# Run native and two DSH arms, four draws each, all at once so every arm shares the same
+# period and load. Scores drift between sessions by several points, so arms are only
+# comparable within one block.
 #
 #   PER_RUN=3 bash notes/dsh_inkling/harness/contree/launch_pass4.sh /tmp/dsh-contree 40 04
 #
-# Arguments: output root, first DSH run number (eight consecutive), first native run number
-# (four consecutive, zero-padded to two digits).
+# Arguments: output root, first DSH run number (eight consecutive: four arm A, then four
+# arm B), first native run number (four consecutive, zero-padded to two digits). Arm flags
+# default to the unmodified harness (A) and --state-target (B); override with ARM_A_FLAGS and
+# ARM_B_FLAGS, e.g. ARM_A_FLAGS=--state-target ARM_B_FLAGS="--state-target --managed-checkpoint".
 set -u
 cd "$(dirname "$0")/../../../.."
 C=${1:-/tmp/dsh-contree}
 FIRST_DSH=${2:-40}
 FIRST_NATIVE=${3:-04}
 PER_RUN=${PER_RUN:-3}
+read -r -a arm_a <<< "${ARM_A_FLAGS:-}"
+read -r -a arm_b <<< "${ARM_B_FLAGS:---state-target}"
 TASKS=notes/dsh_inkling/harness/contree/tasklists/full100.txt
 PERSONA=notes/dsh_inkling/harness/contree/persona-reference.txt
 mkdir -p "$C/pass4-logs"
@@ -39,9 +43,9 @@ launch_native() {
 # Interleave arms in launch order so no arm gets a head start.
 for i in 0 1 2 3; do
   launch_native "${native[$i]}"
-  launch_dsh "${dsh[$i]}"
-  launch_dsh "${dsh[$((i + 4))]}" --state-target
+  launch_dsh "${dsh[$i]}" ${arm_a[@]+"${arm_a[@]}"}
+  launch_dsh "${dsh[$((i + 4))]}" ${arm_b[@]+"${arm_b[@]}"}
 done
-echo "launched 12 runs at $PER_RUN each"
+echo "launched 12 runs at $PER_RUN each: A=[${arm_a[*]-}] B=[${arm_b[*]-}]"
 wait
 echo "all runs finished"
