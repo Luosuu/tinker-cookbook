@@ -24,19 +24,45 @@ from collections import defaultdict
 from pathlib import Path
 
 
+def _records(run_dir: Path) -> list[dict]:
+    """Episode records from a DSH run (``results/*/summary.json``) or a native run
+    (``<timestamp>/results.jsonl``, one record per line with the same fields)."""
+    records: list[dict] = []
+    for summary in sorted((run_dir / "results").glob("*/summary.json")):
+        try:
+            records.append(json.loads(summary.read_text()))
+        except (OSError, ValueError):
+            continue
+    for results in sorted(run_dir.glob("*/results.jsonl")):
+        for line in results.read_text().splitlines():
+            try:
+                records.append(json.loads(line))
+            except ValueError:
+                continue
+    return records
+
+
 def load_rewards(run_dir: Path) -> dict[str, list[float]]:
     """Per-task reward lists for one run (a list because runs may repeat a task)."""
     out: dict[str, list[float]] = defaultdict(list)
-    for summary in sorted((run_dir / "results").glob("*/summary.json")):
-        try:
-            record = json.loads(summary.read_text())
-        except (OSError, ValueError):
-            continue
+    for record in _records(run_dir):
         reward = record.get("reward")
         task = record.get("task_name")
         if task is not None and reward is not None:
             out[task].append(float(reward))
     return dict(out)
+
+
+def pass_at_k(rewards: dict[str, list[float]], k: int) -> float | None:
+    """Unbiased pass@k averaged over tasks; ``None`` if any task has fewer than k samples."""
+    if not rewards or any(len(v) < k for v in rewards.values()):
+        return None
+    per_task = []
+    for values in rewards.values():
+        n = len(values)
+        c = sum(1 for r in values if r == 1.0)
+        per_task.append(1.0 - math.comb(n - c, k) / math.comb(n, k))
+    return _mean(per_task)
 
 
 def load_arm(run_dirs: list[Path]) -> dict[str, list[float]]:
@@ -120,6 +146,14 @@ def main() -> None:
         arms[name] = load_arm(paths)
         episodes = sum(len(v) for v in arms[name].values())
         print(f"{name}: {len(arms[name])} tasks, {episodes} episodes across {len(paths)} run(s)")
+        min_samples = min((len(v) for v in arms[name].values()), default=0)
+        passes = [
+            f"pass@{k} {score:.3f}"
+            for k in (1, 2, 4)
+            if k <= min_samples and (score := pass_at_k(arms[name], k)) is not None
+        ]
+        if passes:
+            print(f"  {', '.join(passes)}")
 
     names = list(arms)
     if len(names) == 2:
