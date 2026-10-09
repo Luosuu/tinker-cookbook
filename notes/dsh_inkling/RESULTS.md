@@ -1116,6 +1116,39 @@ fit:
 These are separable. `full39` is a control draw at the same code, concurrency and time as
 `full38`. If it also scores in the low 50s, the gain is the time, not the nudge.
 
+### The contemporaneous control settles it: the gain is the period
+
+| draw | arm | when | concurrency | solved | empty patches |
+| --- | --- | --- | ---: | ---: | ---: |
+| `full38` | first-edit nudge | same session | 8 | 52 | 19 |
+| `full39` | control | immediately after | 8 | **52** | 21 |
+
+Paired, `full38` against `full39`: **+0.0**, 9 tasks won against 9 lost, exact McNemar
+p = 1.000. `full39` against the six earlier control draws: +4.8 (CI −1.5 to +11.2). The control
+arm, with nothing changed, moved up by about as much as the nudge appeared to add.
+
+Pooling `full39` into the control arm reduces the first-edit advantage to +5.1 paired and
+t = 2.25 at the draw level, but that pooled figure still mixes periods and should not be
+cited. The only same-period comparison available says the nudge adds nothing measurable, and
+its mechanism (the empty-patch rate) agrees: 19 against 21 in the same period, inside the
+range of every earlier control draw.
+
+**The first-edit nudge is not credited.** Its apparent +5.8 was a time confound: all its draws
+ran after every control draw. What shifted, between the earlier control draws at concurrency 10
+and this period at 8, is not identified; it could be concurrency, service load, or the
+sampling service itself.
+
+Two consequences outlast this arm:
+
+1. **Draws of different arms must be interleaved in time.** Pooling an arm's draws from one
+   period against a baseline from another can manufacture a 5-point effect that survives an
+   exact McNemar test at p = 0.0015. The state-target comparison is less exposed because its
+   draws alternated with control draws (`full20`-`full35`), but the native baseline was not
+   interleaved with anything.
+2. **The 52/100 reference and the 46.7% native mean were measured in an earlier period.** A
+   control draw now scores 52, so neither number is a valid target for arms run today. Beating
+   the native harness has to be measured against a native draw run in the same period.
+
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (49.3% against
@@ -1129,10 +1162,10 @@ effect is small, shrinks as draws accumulate, and the 52/100 target sits inside 
 so the objective is **not met**. With arms overlapping across 46-54 against 43-55, a 2-4 point
 effect cannot be resolved at 100 tasks and this variance, regardless of harness design.
 
-The first-edit nudge is the one open candidate: 56, 51 and 52 over three draws (53.0%), +5.8
-paired against control, p ≈ 0.05 at the draw level. Its own mechanism did not hold in the third
-draw, and all its draws ran after every control draw, so a contemporaneous control (`full39`)
-must be scored before the gain can be credited to the nudge.
+The first-edit nudge looked like a candidate (56, 51, 52; +5.8 paired) until a control draw run
+in the same period also scored 52 (`full39`). Its gain was a time confound and it is not
+credited. The same shift means the 52/100 reference and the native mean belong to an earlier
+period; the objective now needs a same-period native comparison.
 
 What the project did produce:
 

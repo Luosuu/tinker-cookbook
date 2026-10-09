@@ -9,9 +9,10 @@ this file is the orientation, the reusable lessons, and the open threads.
 Iterate the DSH harness until Inkling-Small beats the 52/100 native Chat Completions baseline
 on SWE-kokkos-bench, at a matched budget. **Not met yet.** The established best arm reaches
 49.7% (7 draws) against a 47.2% DSH control (6 draws) and a 46.7% native mean (3 draws). The
-first-edit nudge averages 53.0% over three draws (+5.8 paired against control, p ≈ 0.05 at the
-draw level), but its mechanism did not hold in the third draw and all its draws ran after every
-control draw. A contemporaneous control (`full39`) decides whether the gain is the nudge.
+first-edit nudge averaged 53.0% over three draws, but a control draw run in the same period
+(`full39`) also scored 52, identical to the nudge's same-period draw: the gain was a time
+confound. Scores have shifted up by ~5 points since the earlier draws, so the 52/100 reference
+and the native mean are no longer valid targets for arms run now.
 
 Run everything through the ConTree sandbox; no cluster needed. The Rivanna path is kept in
 `harness/rivanna/` but SSH to its login node was blocked from this host.
@@ -27,7 +28,8 @@ Run everything through the ConTree sandbox; no cluster needed. The Rivanna path 
 | DSH + state-target | 7 | 54, 51, 49, 50, 50, 48, 46 | **49.7%** | best arm |
 | DSH + coverage nudge | 1 | 49 | 49.0% | rejected |
 | DSH + re-arm & echo | 1 | 44 | 44.0% | rejected |
-| DSH + first-edit nudge | 3 | 56, 51, 52 | 53.0% | `full36`-`full38`; time-confounded, see `full39` |
+| DSH + first-edit nudge | 3 | 56, 51, 52 | 53.0% | `full36`-`full38`; rejected: time confound |
+| DSH control, later period | 1 | 52 | 52.0% | `full39`, concurrency 8, same session as `full38` |
 | (discarded) | — | 53, 45, 48, 48, 55, 53, 45, 33, 29, 32 | — | broken verifier or compromised |
 
 **Parity between the unmodified harnesses is the firmest result here**: 47.2 against 46.7
@@ -105,13 +107,13 @@ It is in `harness/contree/run_task_contree.py::_target_brief`, pinned by a guard
 
 ## Open threads, in priority order
 
-1. **Separate the first-edit nudge from time.** It targets the largest bucket: 19% of episodes
-   end with an empty patch. Three draws (56, 51, 52) give +5.8 paired against control, but
-   `full38` scored 52 with a control-level empty-patch rate (19.2%), and episodes the nudge
-   cannot reach passed above control in two of three draws. All control draws predate them.
-   Score `full39` (control, concurrency 8, run right after `full38`). If it lands near 52, the
-   gain is the period, not the nudge; if near 47, run a fourth first-edit draw and interleave
-   further control and treatment draws rather than batching one arm at a time. Keep concurrency
+1. **Re-baseline in the current period, interleaved.** The first-edit nudge (56, 51, 52) was
+   rejected when `full39`, a control draw right after `full38`, also scored 52. Scores have
+   moved up ~5 points since the earlier draws for reasons not identified (concurrency 10 → 8,
+   load, or the service). Every number before `full36` is now a different-period baseline.
+   Run native, control and state-target draws in rotation (one of each, repeated) at fixed
+   concurrency, and compare only within that block. That answers the objective directly and
+   re-tests state-target under the same conditions. Keep concurrency
    fixed within a draw: at 10, `full37` lost 80 of 100 tasks to ConTree/API failures. ConTree
    needs `full_network` from the agent sandbox; the earlier 403s were the sandbox proxy. A
    detector flaw remains: episodes that write only `/tmp` scratch files disable the reminder.
@@ -171,7 +173,7 @@ The public-repo discipline in `AGENTS.md` applies: keep internal context out of 
 | --- | --- | --- |
 | `--state-target` | names the target grading compiles | **works** (+2.5-3.0) |
 | `--managed-checkpoint` | truthful piped-build status + up to two late target builds | untested |
-| `--first-edit-nudge` | repeats the budget arithmetic while nothing is edited | +5.8 over 3 draws; time-confounded |
+| `--first-edit-nudge` | repeats the budget arithmetic while nothing is edited | rejected (time confound) |
 | `--coverage-nudge` | fires late if only one file was edited | rejected |
 | `--verify-rearm` + `--echo-changed` | re-arms the build reminder; echoes the changed set | rejected |
 | `--verify-nudge` | one-shot build reminder | rejected |
