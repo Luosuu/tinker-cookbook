@@ -7,12 +7,12 @@ this file is the orientation, the reusable lessons, and the open threads.
 ## Objective and status
 
 Iterate the DSH harness until Inkling-Small beats the 52/100 native Chat Completions baseline
-on SWE-kokkos-bench, at a matched budget. **Not met yet.** The established best arm reaches
-49.7% (7 draws) against a 47.2% DSH control (6 draws) and a 46.7% native mean (3 draws). The
-first-edit nudge averaged 53.0% over three draws, but a control draw run in the same period
-(`full39`) also scored 52, identical to the nudge's same-period draw: the gain was a time
-confound. Scores have shifted up by ~5 points since the earlier draws, so the 52/100 reference
-and the native mean are no longer valid targets for arms run now.
+on SWE-kokkos-bench, at a matched budget. **Close, not yet conclusive.** In a same-period
+block (all arms run together, four draws each), DSH + state-target scores 51.7% pass@1 and
+67% pass@4 against native 48.0% / 63% and DSH control 48.2% / 60%. Its lead over native is
++3.8 here and +3.0 in the earlier period; combined p ≈ 0.02, this block alone p ≈ 0.08. The
+52/100 reference was one early native draw; same-period native draws average 48.0. The
+first-edit nudge was rejected as a time confound.
 
 Run everything through the ConTree sandbox; no cluster needed. The Rivanna path is kept in
 `harness/rivanna/` but SSH to its login node was blocked from this host.
@@ -30,6 +30,9 @@ Run everything through the ConTree sandbox; no cluster needed. The Rivanna path 
 | DSH + re-arm & echo | 1 | 44 | 44.0% | rejected |
 | DSH + first-edit nudge | 3 | 56, 51, 52 | 53.0% | `full36`-`full38`; rejected: time confound |
 | DSH control, later period | 1 | 52 | 52.0% | `full39`, concurrency 8, same session as `full38` |
+| **same-period block** native | 4 | 45, 47, 49, 51 | 48.0% | `native04`-`07`; pass@4 63% |
+| **same-period block** control | 4 | 45, 51, 48, 49 | 48.2% | `full40`-`43`; pass@4 60% |
+| **same-period block** state-target | 4 | 52, 55, 50, 50 | **51.7%** | `full44`-`47`; pass@4 **67%** |
 | (discarded) | — | 53, 45, 48, 48, 55, 53, 45, 33, 29, 32 | — | broken verifier or compromised |
 
 **Parity between the unmodified harnesses is the firmest result here**: 47.2 against 46.7
@@ -107,13 +110,13 @@ It is in `harness/contree/run_task_contree.py::_target_brief`, pinned by a guard
 
 ## Open threads, in priority order
 
-1. **Re-baseline in the current period, interleaved.** The first-edit nudge (56, 51, 52) was
-   rejected when `full39`, a control draw right after `full38`, also scored 52. Scores have
-   moved up ~5 points since the earlier draws for reasons not identified (concurrency 10 → 8,
-   load, or the service). Every number before `full36` is now a different-period baseline.
-   Run native, control and state-target draws in rotation (one of each, repeated) at fixed
-   concurrency, and compare only within that block. That answers the objective directly and
-   re-tests state-target under the same conditions. Keep concurrency
+1. **Run one more same-period block of state-target against native.** The first block
+   (`harness/contree/launch_pass4.sh`: 12 runs × 3 episodes, 36 sandboxes, 4.7 h) gave +3.8
+   pass@1, p ≈ 0.08 alone. A second block with only those two arms, six draws each at the
+   same total concurrency, should take a similar time and would settle the objective on its
+   own. Analyse with `compare_runs.py` (it reads native runs and prints pass@k) and compare
+   only within a block; never pool an arm from one period against a baseline from another
+   (that is how the first-edit nudge appeared to gain +5.8). Keep concurrency
    fixed within a draw: at 10, `full37` lost 80 of 100 tasks to ConTree/API failures. ConTree
    needs `full_network` from the agent sandbox; the earlier 403s were the sandbox proxy. A
    detector flaw remains: episodes that write only `/tmp` scratch files disable the reminder.
@@ -171,7 +174,7 @@ The public-repo discipline in `AGENTS.md` applies: keep internal context out of 
 
 | flag | what it does | verdict |
 | --- | --- | --- |
-| `--state-target` | names the target grading compiles | **works** (+2.5-3.0) |
+| `--state-target` | names the target grading compiles | **works** (+3.8 vs native same-period) |
 | `--managed-checkpoint` | truthful piped-build status + up to two late target builds | untested |
 | `--first-edit-nudge` | repeats the budget arithmetic while nothing is edited | rejected (time confound) |
 | `--coverage-nudge` | fires late if only one file was edited | rejected |

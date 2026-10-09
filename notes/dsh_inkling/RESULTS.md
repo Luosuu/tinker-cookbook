@@ -1149,6 +1149,57 @@ Two consequences outlast this arm:
    control draw now scores 52, so neither number is a valid target for arms run today. Beating
    the native harness has to be measured against a native draw run in the same period.
 
+## Same-period pass@4: native, DSH control, DSH + state-target
+
+To remove the time confound, all three arms ran at once: four draws each, twelve 100-task runs
+launched together and interleaved in launch order, three episodes per run, 36 concurrent
+sandboxes in total (`native04`-`07`, `full40`-`43`, `full44`-`47`). Every arm saw the same
+period and the same load. 1,200 episodes finished in 4.7 hours.
+
+| arm | draws | pass@1 | pass@2 | pass@4 |
+| --- | --- | ---: | ---: | ---: |
+| native loop | 45, 47, 49, 51 | 48.0% | 56.3% | 63.0% |
+| DSH control | 45, 51, 48, 49 | 48.2% | 54.0% | 60.0% |
+| **DSH + state-target** | **52, 55, 50, 50** | **51.7%** | **60.3%** | **67.0%** |
+
+pass@k is the unbiased estimator over the four samples per task.
+
+| comparison | paired pass@1 | 95% CI | draw-level t (df 6) | pass@4 tasks, wins/losses |
+| --- | ---: | --- | ---: | --- |
+| control vs native | +0.2 | −3.5 to +4.0 | 0.14 | 60 vs 63, 3/6 |
+| state-target vs native | **+3.8** | −0.7 to +8.2 | 2.14 (p ≈ 0.08) | 67 vs 63, 7/3 |
+| state-target vs control | +3.5 | −0.6 to +7.6 | 2.03 (p ≈ 0.09) | 67 vs 60, 8/1 (p = 0.039) |
+
+Excluding the 1% of episodes lost to infrastructure errors (ConTree token-service timeouts
+during grading, spread across all arms) changes no conclusion: state-target vs native +2.9,
+vs control +3.2.
+
+### What this block establishes
+
+- **Parity between the unmodified harnesses replicates in the same period**: 48.2 against
+  48.0, the third independent measurement of it.
+- **The period shift was real for both harnesses.** Native rose from 46.7 to 48.0 and DSH
+  control from 47.2 to 48.2; the earlier 52 draws (`full38`, `full39`) were high draws in a
+  period that averages about 48.
+- **State-target leads by the same margin in both periods.** It was +2.5 over control in the
+  first period and is +3.5 in this one. Combining the two periods by inverse-variance
+  weighting of each period's draw-level difference gives **+3.1 over DSH control (z = 2.35,
+  p ≈ 0.02)** and **+3.6 over native (z = 2.31, p ≈ 0.02)**. These use a normal approximation
+  on few draws per period, so they overstate the evidence somewhat; the first-period native
+  draws were also not interleaved with DSH. Neither block alone reaches p < 0.05.
+- **The gain is larger at pass@4**: 67 tasks solved at least once, against 63 native and 60
+  control. State-target makes more tasks reachable, not only the same tasks more reliable.
+- **No episode was truncated by load.** None of the 800 DSH episodes exceeded 3,300 s; median
+  episode time was 321 s native, 338 s control and 349 s state-target.
+
+### Against the objective
+
+The objective was to beat 52/100. That figure was one native draw from an earlier setup; four
+same-period native draws average 48.0, and the 52 sits inside their range. Measured against
+the native harness in the same period, which is the comparison the objective intends,
+**DSH + state-target is ahead by +3.8 pass@1 and +4 tasks at pass@4, consistent across two
+periods, combined p ≈ 0.02, and not yet significant within a single block.**
+
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (49.3% against
@@ -1164,8 +1215,13 @@ effect cannot be resolved at 100 tasks and this variance, regardless of harness 
 
 The first-edit nudge looked like a candidate (56, 51, 52; +5.8 paired) until a control draw run
 in the same period also scored 52 (`full39`). Its gain was a time confound and it is not
-credited. The same shift means the 52/100 reference and the native mean belong to an earlier
-period; the objective now needs a same-period native comparison.
+credited.
+
+**Update after the same-period pass@4 block.** With native, control and state-target run
+together, four draws each: native 48.0%, control 48.2%, state-target 51.7% pass@1 (pass@4: 63,
+60, 67). State-target leads native by +3.8 here and by +3.0 in the first period; combined
+across periods p ≈ 0.02, within this block alone p ≈ 0.08. It is the best-supported arm, and
+the only one that has beaten the native harness under matched conditions.
 
 What the project did produce:
 
