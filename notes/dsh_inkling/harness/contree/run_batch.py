@@ -22,6 +22,17 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 
+_COMPLETE_EPISODE_FILES = (
+    "config.json",
+    "preflight.json",
+    "events.jsonl",
+    "proxy-budget.jsonl",
+    "stdout.log",
+    "stderr.log",
+    "candidate.patch",
+    "grading.json",
+)
+
 
 def _partition_for_resume(
     tasks: list[str], results_dir: Path, *, retry_errors: bool = False
@@ -47,6 +58,12 @@ def _partition_for_resume(
             shutil.rmtree(output)
             pending.append((index, task))
             continue
+        if not summary.get("error") and summary.get("harness_status") != "prepared_only":
+            missing = [name for name in _COMPLETE_EPISODE_FILES if not (output / name).is_file()]
+            if missing:
+                shutil.rmtree(output)
+                pending.append((index, task))
+                continue
         completed[index] = summary
     return pending, completed
 

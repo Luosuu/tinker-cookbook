@@ -5,7 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from notes.dsh_inkling.harness.contree.run_batch import _partition_for_resume
+from notes.dsh_inkling.harness.contree.run_batch import (
+    _COMPLETE_EPISODE_FILES,
+    _partition_for_resume,
+)
 
 
 def test_resume_keeps_completed_and_cleans_interrupted_tasks(tmp_path: Path) -> None:
@@ -15,6 +18,8 @@ def test_resume_keeps_completed_and_cleans_interrupted_tasks(tmp_path: Path) -> 
     completed.mkdir(parents=True)
     interrupted.mkdir(parents=True)
     summary = {"task_name": "task-complete", "reward": 1.0}
+    for name in _COMPLETE_EPISODE_FILES:
+        (completed / name).touch()
     (completed / "summary.json").write_text(json.dumps(summary))
     (completed / "events.jsonl").write_text("keep")
     (interrupted / "events.jsonl").write_text("partial")
@@ -56,5 +61,27 @@ def test_resume_can_retry_error_summaries(tmp_path: Path) -> None:
     )
 
     assert pending == [(0, "failed-task")]
+    assert preserved == {}
+    assert not output.exists()
+
+
+def test_resume_retries_summary_with_missing_episode_artifacts(tmp_path: Path) -> None:
+    output = tmp_path / "results" / "partial-task"
+    output.mkdir(parents=True)
+    (output / "summary.json").write_text(
+        json.dumps(
+            {
+                "task_name": "partial-task",
+                "harness_status": "finished",
+                "reward": 1.0,
+                "error": None,
+            }
+        )
+    )
+    (output / "grading.json").write_text("{}")
+
+    pending, preserved = _partition_for_resume(["partial-task"], tmp_path / "results")
+
+    assert pending == [(0, "partial-task")]
     assert preserved == {}
     assert not output.exists()
