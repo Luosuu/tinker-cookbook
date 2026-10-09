@@ -291,6 +291,53 @@ def test_target_brief_names_the_verifiers_own_targets(tmp_path: Path) -> None:
     assert "not just the library" in brief
 
 
+def test_env_brief_reports_layout_and_build_facts(tmp_path: Path) -> None:
+    """The brief is read from the checkout, and must state the facts episodes rediscover."""
+    from notes.dsh_inkling.harness.contree.run_task_contree import (
+        _env_brief_script,
+        _format_env_brief,
+    )
+
+    repo = tmp_path / "repo"
+    (repo / "core" / "src" / "View").mkdir(parents=True)
+    (repo / "core" / "src" / "impl").mkdir()
+    (repo / "core" / "unit_test").mkdir()
+    (repo / "build" / "core" / "unit_test").mkdir(parents=True)
+    (repo / "build" / "CMakeCache.txt").write_text(
+        "CMAKE_GENERATOR:INTERNAL=Ninja\n"
+        "CMAKE_BUILD_TYPE:STRING=Release\n"
+        "Kokkos_CXX_STANDARD:STRING=20\n"
+        "Kokkos_ENABLE_SERIAL:BOOL=ON\n"
+        "Kokkos_ENABLE_CUDA:BOOL=OFF\n"
+    )
+    (repo / "build" / "KokkosCore_config.h").write_text("")
+    exe = repo / "build" / "core" / "unit_test" / "Kokkos_CoreUnitTest_Serial1"
+    exe.write_text("#!/bin/sh\n")
+    exe.chmod(0o755)
+
+    raw = subprocess.run(
+        ["bash", "-c", _env_brief_script(str(repo))], capture_output=True, text=True, check=True
+    ).stdout
+    brief = _format_env_brief(raw)
+
+    assert "Subdirectories of core/src: View impl" in brief
+    assert "there is no core/include" in brief
+    assert "already configured with Ninja" in brief
+    assert "Kokkos_CXX_STANDARD=20" in brief
+    assert "Kokkos_ENABLE_SERIAL=ON" in brief
+    assert "CUDA" not in brief
+    assert "build/core/unit_test/Kokkos_CoreUnitTest_Serial1" in brief
+    assert "--gtest_filter" in brief
+
+
+def test_env_brief_is_capped_and_empty_when_nothing_is_found() -> None:
+    from notes.dsh_inkling.harness.contree.run_task_contree import _format_env_brief
+
+    assert _format_env_brief("  \n") == ""
+    long = "\n".join(f"line {i} " + "x" * 80 for i in range(200))
+    assert len(_format_env_brief(long)) < 3100
+
+
 def test_grader_timeout_is_raised_but_known_insufficient() -> None:
     """The grader timeout was raised, but measurement showed it is not the binding limit.
 

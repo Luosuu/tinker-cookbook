@@ -93,6 +93,7 @@ async def run_one(
     state_target: bool,
     first_edit_nudge: bool,
     managed_checkpoint: bool,
+    env_brief: bool,
 ) -> dict:
     output = run_dir / "results" / task
     command = [
@@ -138,6 +139,8 @@ async def run_one(
         command.append("--first-edit-nudge")
     if managed_checkpoint:
         command.append("--managed-checkpoint")
+    if env_brief:
+        command.append("--env-brief")
     started = time.monotonic()
     process = await asyncio.create_subprocess_exec(
         *command,
@@ -234,6 +237,11 @@ async def main() -> None:
         help="Automatically run up to two late incremental builds of the visible grader target.",
     )
     parser.add_argument(
+        "--env-brief",
+        action="store_true",
+        help="Append repository and build-directory facts read from the checkout at setup.",
+    )
+    parser.add_argument(
         "--echo-changed",
         action="store_true",
         help="Append the edited-file list to every tool result.",
@@ -317,6 +325,7 @@ async def main() -> None:
                 state_target=args.state_target,
                 first_edit_nudge=args.first_edit_nudge,
                 managed_checkpoint=args.managed_checkpoint,
+                env_brief=args.env_brief,
             )
             return index, summary
 

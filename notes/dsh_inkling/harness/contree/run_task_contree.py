@@ -193,6 +193,7 @@ async def run(
     state_target: bool,
     first_edit_nudge: bool,
     managed_checkpoint: bool,
+    env_brief: bool,
     wall_seconds: int,
     command_timeout: int,
     grader_timeout: int,
@@ -246,6 +247,7 @@ async def run(
             state_target=state_target,
             first_edit_nudge=first_edit_nudge,
             managed_checkpoint=managed_checkpoint,
+            env_brief=env_brief,
             prepare_only=prepare_only,
         )
 
@@ -258,6 +260,54 @@ def _target_names(harbor_task) -> list[str]:
         if match not in targets:
             targets.append(match)
     return targets
+
+
+def _env_brief_script(repo: str = "/workspace/repo") -> str:
+    """Shell script that prints the repository and build facts episodes otherwise rediscover.
+
+    Across 1,100 state-target episodes, each spent about 2.7 requests discovering the build
+    layout (`ls build` alone 481 times), and the first three commands of 705 included listing
+    the repository. Searches in a nonexistent `core/include` recur. Every fact here is read
+    from the task's own checkout, never from the verifier.
+    """
+    q = shlex.quote(repo)
+    return f"""cd {q} 2>/dev/null || exit 0
+echo "Repository root: {repo}"
+echo "Top level: $(ls | tr '\\n' ' ')"
+for d in core/src containers/src algorithms/src simd/src src; do
+  if [ -d "$d" ]; then
+    echo "Subdirectories of $d: $(find "$d" -mindepth 1 -maxdepth 1 -type d | sed 's#.*/##' | sort | tr '\\n' ' ')"
+  fi
+done
+if [ -d core/src ] && [ ! -d core/include ]; then
+  echo "Core headers live under core/src and its subdirectories; there is no core/include."
+fi
+if [ -f build/CMakeCache.txt ]; then
+  gen=$(sed -n 's/^CMAKE_GENERATOR:[A-Z]*=//p' build/CMakeCache.txt)
+  echo "Build directory: {repo}/build, already configured with ${{gen:-CMake}}; rebuilding a target is incremental."
+  echo "Configuration: $(grep -E '^(CMAKE_BUILD_TYPE|CMAKE_CXX_STANDARD|Kokkos_CXX_STANDARD|Kokkos_ENABLE_(SERIAL|OPENMP|THREADS|CUDA|HIP|SYCL|TESTS)):' build/CMakeCache.txt | sed 's/:[A-Z]*=/=/' | grep -vE '=(OFF)?$' | tr '\\n' ' ')"
+  if [ -f build/KokkosCore_config.h ]; then
+    echo "Generated configuration header: build/KokkosCore_config.h"
+  fi
+  if command -v ninja >/dev/null 2>&1 && [ -f build/build.ninja ]; then
+    echo "Test targets: $(cd build && ninja -t targets all 2>/dev/null | sed -n 's/^\\([A-Za-z0-9_]*[Tt]est[A-Za-z0-9_]*\\): phony$/\\1/p' | sort -u | head -n 40 | tr '\\n' ' ')"
+  fi
+  exes=$(find build -maxdepth 4 -type f -perm -u+x -name '*Test*' ! -name '*.so' 2>/dev/null | sort | head -n 12 | tr '\\n' ' ')
+  if [ -n "$exes" ]; then
+    echo "Built test executables (gtest): $exes"
+    echo "Run one test from build/: ./<path to executable> --gtest_filter='<suite>.<name>'"
+  fi
+fi
+"""
+
+
+def _format_env_brief(raw: str, limit: int = 3000) -> str:
+    facts = raw.strip()
+    if not facts:
+        return ""
+    if len(facts) > limit:
+        facts = facts[:limit].rsplit("\n", 1)[0]
+    return "Facts about this environment, gathered before you started:\n" + facts
 
 
 def _target_brief(harbor_task) -> str:
@@ -311,6 +361,7 @@ async def _run_episode(
     state_target,
     first_edit_nudge,
     managed_checkpoint,
+    env_brief,
     prepare_only,
 ) -> dict:
     from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborReward
@@ -347,6 +398,7 @@ async def _run_episode(
                     "first_edit_nudge": first_edit_nudge,
                     "managed_checkpoint": managed_checkpoint,
                     "truthful_build_pipelines": managed_checkpoint,
+                    "env_brief": env_brief,
                 },
             },
             indent=2,
@@ -567,6 +619,14 @@ async def _run_episode(
                         persona = persona_file.read_text().strip()
                         if state_target:
                             persona = persona + "\n\n" + _target_brief(harbor_task)
+                        if env_brief:
+                            brief_answer = await sandbox.run_command(
+                                _env_brief_script(), timeout=120, max_output_bytes=8192
+                            )
+                            brief = _format_env_brief(brief_answer.stdout)
+                            (output / "env-brief.txt").write_text(brief + "\n")
+                            if brief:
+                                persona = persona + "\n\n" + brief
                         resolved_patch = output / "dsh.patch.yml"
                         resolved_patch.write_text(
                             profile_patch.read_text()
@@ -754,6 +814,12 @@ def main() -> None:
         action="store_true",
         help="Late in an edited episode, automatically rebuild the grader's visible target "
         "after a stable tool call. At most two incremental checkpoints are run.",
+    )
+    parser.add_argument(
+        "--env-brief",
+        action="store_true",
+        help="Append repository and build-directory facts, read from the checkout before the "
+        "episode starts. Episodes otherwise spend about three requests rediscovering them.",
     )
     parser.add_argument("--prepare-only", action="store_true")
     args = parser.parse_args()
