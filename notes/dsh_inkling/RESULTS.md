@@ -1200,6 +1200,39 @@ the native harness in the same period, which is the comparison the objective int
 **DSH + state-target is ahead by +3.8 pass@1 and +4 tasks at pass@4, consistent across two
 periods, combined p ≈ 0.02, and not yet significant within a single block.**
 
+## Second same-period block: the state-target lead does not replicate
+
+Native, state-target, and state-target with `--managed-checkpoint`, four draws each, launched
+together (`native08`-`11`, `full48`-`51`, `full52`-`55`), 36 sandboxes, 1,200 episodes.
+
+| arm | draws | pass@1 | pass@2 | pass@4 |
+| --- | --- | ---: | ---: | ---: |
+| native loop | 49, 53, 51, 46 | 49.7% | 58.2% | 63% |
+| DSH + state-target | 49, 49, 53, 49 | 50.0% | 57.3% | 63% |
+| DSH + state-target + managed checkpoint | 54, 50, 48, 51 | 50.7% | 59.7% | 67% |
+
+| comparison | paired pass@1 | 95% CI | exact McNemar p |
+| --- | ---: | --- | ---: |
+| state-target vs native | +0.2 | −3.9 to +4.4 | 1.000 |
+| state-target + checkpoint vs native | +1.0 | −3.1 to +5.1 | 1.000 |
+| state-target + checkpoint vs state-target | +0.8 | −3.6 to +5.1 | 1.000 |
+
+**State-target's +3.8 over native in the first block fell to +0.2 here.** Combining the two
+same-period blocks gives +2.0 (z = 1.63, p ≈ 0.10); adding the earlier period, +2.2
+(p ≈ 0.07). The claim from the first block, combined p ≈ 0.02, does not survive a second
+block. The honest estimate is a gain of about two points over native that this design has not
+established.
+
+**The managed checkpoint fired but barely moved its mechanism.** It ran in 115 of 400
+episodes (47 twice). Non-empty patches ending with a fresh, truthful, successful target build
+rose only from 51.2% to 53.6%, against a 60% gate, and episodes took 23% longer (median 500 s
+against 408 s). Its pass@4 is the highest measured (67 against 63), but on pass@1 it is within
+noise of both other arms. It is not credited.
+
+Why the checkpoint did not reach more episodes: it waits for request 32 and a command that
+neither edits nor builds, so the many episodes that keep editing until the request cap never
+see it, and those that already built after their last edit do not need it.
+
 ## Status
 
 The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (49.3% against
@@ -1219,9 +1252,12 @@ credited.
 
 **Update after the same-period pass@4 block.** With native, control and state-target run
 together, four draws each: native 48.0%, control 48.2%, state-target 51.7% pass@1 (pass@4: 63,
-60, 67). State-target leads native by +3.8 here and by +3.0 in the first period; combined
-across periods p ≈ 0.02, within this block alone p ≈ 0.08. It is the best-supported arm, and
-the only one that has beaten the native harness under matched conditions.
+60, 67). State-target led native by +3.8 in that block.
+
+**Update after the second block.** The lead fell to +0.2 (native 49.7%, state-target 50.0%,
+state-target + managed checkpoint 50.7%). Across both same-period blocks state-target is +2.0
+over native, p ≈ 0.10. DSH is at parity with the native harness, possibly slightly ahead; no
+arm has been shown to beat it.
 
 What the project did produce:
 

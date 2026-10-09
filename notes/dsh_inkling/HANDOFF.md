@@ -7,12 +7,11 @@ this file is the orientation, the reusable lessons, and the open threads.
 ## Objective and status
 
 Iterate the DSH harness until Inkling-Small beats the 52/100 native Chat Completions baseline
-on SWE-kokkos-bench, at a matched budget. **Close, not yet conclusive.** In a same-period
-block (all arms run together, four draws each), DSH + state-target scores 51.7% pass@1 and
-67% pass@4 against native 48.0% / 63% and DSH control 48.2% / 60%. Its lead over native is
-+3.8 here and +3.0 in the earlier period; combined p ≈ 0.02, this block alone p ≈ 0.08. The
-52/100 reference was one early native draw; same-period native draws average 48.0. The
-first-edit nudge was rejected as a time confound.
+on SWE-kokkos-bench, at a matched budget. **Not met.** Two same-period blocks (all arms run
+together, four draws each) put DSH + state-target at +3.8 and then +0.2 over native; combined
++2.0, p ≈ 0.10. Adding `--managed-checkpoint` gave +1.0 over native in the second block, not
+significant. The 52/100 reference was one early native draw; same-period native draws average
+48-50. The first-edit nudge was rejected as a time confound.
 
 Run everything through the ConTree sandbox; no cluster needed. The Rivanna path is kept in
 `harness/rivanna/` but SSH to its login node was blocked from this host.
@@ -33,6 +32,9 @@ Run everything through the ConTree sandbox; no cluster needed. The Rivanna path 
 | **same-period block** native | 4 | 45, 47, 49, 51 | 48.0% | `native04`-`07`; pass@4 63% |
 | **same-period block** control | 4 | 45, 51, 48, 49 | 48.2% | `full40`-`43`; pass@4 60% |
 | **same-period block** state-target | 4 | 52, 55, 50, 50 | **51.7%** | `full44`-`47`; pass@4 **67%** |
+| block 2 native | 4 | 49, 53, 51, 46 | 49.7% | `native08`-`11`; pass@4 63% |
+| block 2 state-target | 4 | 49, 49, 53, 49 | 50.0% | `full48`-`51`; pass@4 63% |
+| block 2 state-target + checkpoint | 4 | 54, 50, 48, 51 | 50.7% | `full52`-`55`; pass@4 67% |
 | (discarded) | — | 53, 45, 48, 48, 55, 53, 45, 33, 29, 32 | — | broken verifier or compromised |
 
 **Parity between the unmodified harnesses is the firmest result here**: 47.2 against 46.7
@@ -174,8 +176,9 @@ The public-repo discipline in `AGENTS.md` applies: keep internal context out of 
 
 | flag | what it does | verdict |
 | --- | --- | --- |
-| `--state-target` | names the target grading compiles | **works** (+3.8 vs native same-period) |
-| `--managed-checkpoint` | truthful piped-build status + up to two late target builds | untested |
+| `--state-target` | names the target grading compiles | mechanism works; score +2.0 vs native over two blocks, p ≈ 0.10 |
+| `--managed-checkpoint` | truthful piped-build status + up to two late target builds | fired in 29% of episodes, mechanism +2.4 points, score within noise |
+| `--env-brief` | repo layout and build facts read from the checkout at setup | smoke-tested only |
 | `--first-edit-nudge` | repeats the budget arithmetic while nothing is edited | rejected (time confound) |
 | `--coverage-nudge` | fires late if only one file was edited | rejected |
 | `--verify-rearm` + `--echo-changed` | re-arms the build reminder; echoes the changed set | rejected |
