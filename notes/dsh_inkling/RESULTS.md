@@ -1041,7 +1041,7 @@ combined with `--state-target` for its first experiment. The mechanism gate is f
 trustworthy post-edit target coverage rising from 28.6% to at least 60%; wall time and sandbox
 timeouts must be reported because the harness is spending additional compute.
 
-## The first-edit nudge: two draws, promising, not established
+## The first-edit nudge: a score gain the mechanism does not explain
 
 `--first-edit-nudge` targets the empty-patch bucket: from request 8, and every 8 requests
 after, while the repository is untouched, the tool result states the remaining budget and that
@@ -1051,27 +1051,29 @@ an empty patch scores zero.
 | --- | --- | ---: | ---: |
 | DSH control | 6 | 55, 46, 47, 43, 43, 49 | 47.2% |
 | DSH + state-target | 7 | 54, 51, 49, 50, 50, 48, 46 | 49.7% |
-| **DSH + first-edit nudge** | **2** | **56, 51** | **53.5%** |
+| **DSH + first-edit nudge** | **3** | **56, 51, 52** | **53.0%** |
 
 Paired on all 100 tasks:
 
 | comparison | delta | wins/losses | exact McNemar p | 95% CI |
 | --- | ---: | ---: | ---: | --- |
-| first-edit vs control | **+6.3** | 29/13 | 0.0195 | +1.6 to +11.1 |
-| first-edit vs state-target | +3.8 | 25/19 | 0.451 | −1.2 to +8.7 |
+| first-edit vs control | **+5.8** | 31/10 | 0.0015 | +1.9 to +9.8 |
+| first-edit vs state-target | +3.3 | 27/21 | 0.471 | −0.9 to +7.4 |
 
-The paired test treats the two first-edit draws as the arm's true per-task rate, so it ignores
-draw-to-draw variance. Treating each draw as one observation, two draws against six gives
-t ≈ 1.8-2.0 and p ≈ 0.13-0.17. **This is the largest effect measured in the project and it is
-not yet established.** The rule set before the third draw: the arm is credited only if, over at
-least four draws, the paired delta against control stays above +3 points and the empty-patch
-rate stays below control.
+The paired test treats the first-edit draws as the arm's true per-task rate, so it ignores
+draw-to-draw variance. Treating each draw as one observation (Welch), three draws against six
+give +5.8, t = 2.44, df ≈ 6.5, p ≈ 0.05; against state-target, +3.3, t = 1.83, p ≈ 0.15. The
+rule set before the third draw: credit the arm only if, over at least four draws, the paired
+delta against control stays above +3 points **and** the empty-patch rate stays below control.
+The score half holds after three draws; the mechanism half failed in the third (below).
 
-### Audit of both draws
+### Audit of the draws
 
-Neither draw ran cleanly in one pass, so the score was checked against how it was produced.
+`full38` ran in one pass at concurrency 8 with one error, the known `kokkos__kokkos-8182`
+verifier timeout. The first two did not run cleanly, so their scores were checked against how
+they were produced.
 
-- **The nudge fired.** It appears in 39 episodes of `full36` and 36 of `full37`, and in none of
+- **The nudge fired.** It appears in 39 episodes of `full36`, 36 of `full37` and 39 of `full38`, and in none of
   the control or state-target draws. `full36` was launched before configs recorded their
   interventions, so its `config.json` has no `interventions` block; the nudge text in its
   traces is the evidence.
@@ -1086,7 +1088,7 @@ Neither draw ran cleanly in one pass, so the score was checked against how it wa
 - **One error remains**: `kokkos__kokkos-8182` in `full37`, the known verifier timeout, scored
   as a failure as in every other draw.
 
-### The mechanism moved, but explains only part of the score
+### The mechanism does not explain the score
 
 | arm | empty patch | no repo write by request 8: still empty | pass | wrote by request 8: pass |
 | --- | ---: | ---: | ---: | ---: |
@@ -1094,14 +1096,25 @@ Neither draw ran cleanly in one pass, so the score was checked against how it wa
 | state-target | 20.3% | 24% | 43% | 83% |
 | `full36` | 16.0% | 18% | 51% | 87% |
 | `full37` | 14.1% | 16% | 45% | 79% |
+| `full38` | **19.2%** | 23% | 45% | **93%** |
 
-The empty-patch rate fell in both draws, in the direction the nudge was designed for. But the
-fall is 3-5 points of episodes, and the late-writing population it acts on converts at well
-under half, so the mechanism accounts for roughly 2-3 points of score directly. In `full36`
-the early writers, whom the nudge never reaches, also passed more than control (87% against
-83%), which is draw luck. The honest reading is a real but modest mechanism plus a favourable
-first draw, which is exactly the pattern that shrank the state-target effect as draws
-accumulated.
+The empty-patch rate fell in the first two draws and returned to the control rate in the third,
+which still scored 52. Even where it fell, a 3-5 point drop in a population that converts
+under half accounts for 2-3 points of score at most. And in two of three draws the episodes
+the nudge cannot reach, those that wrote by request 8, passed well above control (87% and
+93% against 83%).
+
+So the arm scores higher, but not through the mechanism it was built for. Two explanations
+fit:
+
+- **Draw luck**, as with state-target, which would shrink with more draws.
+- **A time confound.** All six control draws ran before the three first-edit draws, at
+  concurrency 10; `full38` ran at 8. A change in the sampling service, the sandbox, or load
+  between those times would lift every episode, including the ones the nudge never touches,
+  which is the pattern observed.
+
+These are separable. `full39` is a control draw at the same code, concurrency and time as
+`full38`. If it also scores in the low 50s, the gain is the time, not the nudge.
 
 ## Status
 
@@ -1116,9 +1129,10 @@ effect is small, shrinks as draws accumulate, and the 52/100 target sits inside 
 so the objective is **not met**. With arms overlapping across 46-54 against 43-55, a 2-4 point
 effect cannot be resolved at 100 tasks and this variance, regardless of harness design.
 
-The first-edit nudge is the one open candidate: 56 and 51 over two draws (53.5%), +6.3 paired
-against control, above the 52/100 reference on its mean but not yet established at the draw
-level (p ≈ 0.13-0.17). It needs at least two more draws under the rule stated in its section.
+The first-edit nudge is the one open candidate: 56, 51 and 52 over three draws (53.0%), +5.8
+paired against control, p ≈ 0.05 at the draw level. Its own mechanism did not hold in the third
+draw, and all its draws ran after every control draw, so a contemporaneous control (`full39`)
+must be scored before the gain can be credited to the nudge.
 
 What the project did produce:
 
