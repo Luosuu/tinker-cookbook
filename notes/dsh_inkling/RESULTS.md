@@ -1200,6 +1200,36 @@ the native harness in the same period, which is the comparison the objective int
 **DSH + state-target is ahead by +3.8 pass@1 and +4 tasks at pass@4, consistent across two
 periods, combined p ≈ 0.02, and not yet significant within a single block.**
 
+## Success-trace skills: what solved episodes do, and what cannot be copied
+
+Contrasting solved against failed episodes within the same task, over 11 state-target runs
+(46 mixed-outcome tasks), to find reusable behaviour rather than another prompt.
+
+**Most trajectory-shape differences are selection, not skill.** Edits, builds, first-build
+timing, test-source reading and orientation commands all split roughly evenly within tasks
+(solved>failed in 20-29 of 46, failed>solved in 16-25). These are the same aggregate signals
+that reversed under task control earlier in this project; they describe an episode that
+understood the task, they do not transfer.
+
+**The one behaviour that leans toward success is editing with `sed -i`** (solved>failed in 27
+tasks against 7). Reading a paired empty-patch loss and its solved sibling shows why: the loser
+spent all 40 requests re-deriving where C++ deduction guides belong and hit the cap at request
+40 just as it understood the insertion point; the winner reached the same understanding by
+request 28 and had budget left to write, build and fix. The difference is not a technique the
+model lacks, it is requests spent before committing.
+
+**Where the requests go.** Over 1,100 episodes: 4.7 searches per episode return nothing, and
+2.7 commands per episode rediscover the build layout (`ls build` alone 481 times), with
+repository and build-tree listing among the first three commands of 705 episodes. This waste is
+the same across solved and failed episodes, so removing it frees requests for the commit-and-fix
+phase that the exploration-exhausted losers never reach.
+
+This is the motivation for `--env-brief`: it is not a new instruction but the removal of a
+recurring, mechanical cost. It states, at setup, the facts those wasted requests rediscover —
+the directory layout, that `core/include` does not exist, the configured build directory and its
+test targets — read from the checkout, not the verifier. Whether it converts to score is being
+measured in a same-period block (native vs state-target vs state-target+env-brief).
+
 ## Second same-period block: the state-target lead does not replicate
 
 Native, state-target, and state-target with `--managed-checkpoint`, four draws each, launched
