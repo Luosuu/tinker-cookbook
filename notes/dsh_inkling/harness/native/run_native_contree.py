@@ -51,7 +51,12 @@ def _config(tasks_dir: str, output_path: str, cache_path: str, max_concurrency: 
         command_timeout=900,
         grader_timeout=1200,
         max_concurrency=max_concurrency,
-        max_infra_retries=0,
+        # The direct chat-completions endpoint intermittently returns 502 Bad Gateway
+        # ("unable to reach the origin service"); with 0 retries a single transient gateway
+        # error scores a real attempt as 0 and collapsed the native arm in two blocks. Retry
+        # transient infra failures so the baseline is measurable. This only raises the native
+        # score, making "DSH beats native" a stricter bar, so it does not flatter the DSH arm.
+        max_infra_retries=4,
         allow_network=False,
         contree_cache_path=cache_path,
         # Two CPUs halves the verifier's build without OOM on a 4 GB sandbox.
