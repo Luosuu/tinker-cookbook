@@ -290,7 +290,7 @@ if [ -f build/CMakeCache.txt ]; then
     echo "Generated configuration header: build/KokkosCore_config.h"
   fi
   if command -v ninja >/dev/null 2>&1 && [ -f build/build.ninja ]; then
-    echo "Test targets: $(cd build && ninja -t targets all 2>/dev/null | sed -n 's/^\\([A-Za-z0-9_]*[Tt]est[A-Za-z0-9_]*\\): phony$/\\1/p' | sort -u | head -n 40 | tr '\\n' ' ')"
+    echo "Test targets: $(cd build && ninja -t targets all 2>/dev/null | sed -n 's/^\\([A-Za-z0-9_]*[Tt]est[A-Za-z0-9_]*\\): phony$/\\1/p' | grep -vE '^(Continuous|Experimental|Nightly)' | sort -u | head -n 40 | tr '\\n' ' ')"
   fi
   exes=$(find build -maxdepth 4 -type f -perm -u+x -name '*Test*' ! -name '*.so' 2>/dev/null | sort | head -n 12 | tr '\\n' ' ')
   if [ -n "$exes" ]; then
