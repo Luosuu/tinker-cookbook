@@ -19,12 +19,43 @@ read -r -a arm_a <<< "${ARM_A_FLAGS:-}"
 read -r -a arm_b <<< "${ARM_B_FLAGS:---state-target}"
 TASKS=notes/dsh_inkling/harness/contree/tasklists/full100.txt
 PERSONA=notes/dsh_inkling/harness/contree/persona-reference.txt
-mkdir -p "$C/pass4-logs"
+# Warm-up concurrency is deliberately low: 36 sandboxes each cloning kokkos from GitHub at once
+# (which happens when the image cache is empty, e.g. after a reboot wipes /tmp) triggers clone
+# failures and ConTree timeouts. Build the shared image cache first, serially-ish, so the
+# parallel block below does zero fresh clones.
+WARM_CONCURRENCY=${WARM_CONCURRENCY:-4}
+WARM_ATTEMPTS=${WARM_ATTEMPTS:-4}
+mkdir -p "$C/pass4-logs" "$C/cache"
 
 dsh=(); for i in 0 1 2 3 4 5 6 7; do dsh+=("full$((FIRST_DSH + i))"); done
 native=(); for i in 0 1 2 3; do native+=("native$(printf %02d $((10#$FIRST_NATIVE + i)))"); done
 for run in "${dsh[@]}" "${native[@]}"; do
   if [ -e "$C/$run" ]; then echo "refusing: $C/$run exists"; exit 1; fi
+done
+
+# Phase 1: warm the image cache. --prepare-only builds and caches each task's image without
+# running an episode; --resume --retry-errors makes repeated attempts fill in only the tasks
+# that timed out, so a flaky ConTree converges instead of failing the whole block.
+warm_dir="$C/warm"
+for attempt in $(seq 1 "$WARM_ATTEMPTS"); do
+  resume=""
+  [ -e "$warm_dir" ] && resume="--resume --retry-errors"
+  .venv/bin/python -m notes.dsh_inkling.harness.contree.run_batch \
+    --tasks-file $TASKS --run-dir "$warm_dir" --cache "$C/cache/images.json" \
+    --concurrency "$WARM_CONCURRENCY" --prepare-only $resume \
+    > "$C/pass4-logs/warm-$attempt.log" 2>&1
+  remaining=$(.venv/bin/python - "$warm_dir" <<'PY'
+import glob, json, sys
+done = {}
+for p in glob.glob(sys.argv[1] + "/results/*/summary.json"):
+    s = json.load(open(p))
+    done[s["task_name"]] = not s.get("error")
+total = sum(1 for line in open("notes/dsh_inkling/harness/contree/tasklists/full100.txt") if line.strip())
+print(total - sum(1 for ok in done.values() if ok))
+PY
+)
+  echo "warm attempt $attempt: $remaining tasks still unprepared"
+  [ "$remaining" -eq 0 ] && break
 done
 
 launch_dsh() {
