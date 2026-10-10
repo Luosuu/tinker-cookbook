@@ -1265,6 +1265,25 @@ So env-brief is a small, consistent, not-yet-significant gain with a confirmed m
 lower variance. Held to the same standard as state-target: keep it opt-in and re-test against a
 healthy native arm before crediting a score win.
 
+## Fourth block: contaminated by infrastructure loss, inconclusive
+
+A repeat of native vs state-target vs state-target+env-brief (`native16`-`19`, `full64`-`71`),
+run after a machine reboot wiped `/tmp` and the image cache. Despite warming the cache first, the
+block hit ConTree clone failures and image eviction (see HANDOFF "Infra fragility"), and the loss
+was **asymmetric**: the native arm lost 38% of episodes to infra errors against 18-19% for the
+DSH arms. That makes every cross-arm comparison here invalid (native survivors are a biased
+subset), and indeed the paired and draw-level tests disagree in sign, confirming the imbalance.
+
+The within-DSH comparison (18% vs 19% loss, roughly balanced) gives env-brief vs state-target
+**−2.2 pass@1** (p = 0.27) — the opposite sign to block 3's +3.0. The two env-brief measurements
+therefore do not agree, and **env-brief is not established**: one clean block positive, one
+contaminated block negative, neither significant. It stays an opt-in flag with a confirmed
+mechanism (discovery commands fall) but no demonstrated score effect.
+
+Recorded as inconclusive. Its lesson is methodological: after a cache wipe the infra loss is large
+and uneven, so a block is trustworthy only when every arm's infra-error rate is both low and
+similar — check that before reading any delta.
+
 ## Second same-period block: the state-target lead does not replicate
 
 Native, state-target, and state-target with `--managed-checkpoint`, four draws each, launched
@@ -1305,9 +1324,10 @@ met**. Current best estimate across three same-period blocks:
 
 - **state-target vs native**: +3.8, then +0.2, then native-anomalous. Combined over the two
   usable blocks +2.0 (p ≈ 0.10). A real but unconfirmed ~2-point gain.
-- **state-target + env-brief vs state-target** (block 3, within-DSH, clean): +3.0 pass@1
-  (p = 0.31), mechanism confirmed (build-layout discovery 2.55 → 1.45 per episode), and
-  visibly lower variance (draws 52-53 vs 45-55). Promising, not significant.
+- **state-target + env-brief vs state-target**: +3.0 (block 3, clean) then −2.2 (block 4,
+  balanced within-DSH but infra-contaminated). The two do not agree; env-brief is **not
+  established**. Mechanism confirmed (build-layout discovery 2.55 → 1.45 per episode) but no
+  reliable score effect.
 - **state-target + managed-checkpoint**: +1.0 vs native, null; mechanism barely moved and costs
   23% wall time. Not credited.
 - **first-edit-nudge**: rejected, a time confound (a same-period control matched it).

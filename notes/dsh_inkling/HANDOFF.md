@@ -56,6 +56,7 @@ Run everything through the ConTree sandbox; no cluster needed. The Rivanna path 
 | block 3 native | 4 | 23, 26, 18, 23 | 22.5% | `native12`-`15`; **anomalous, discard** |
 | block 3 state-target | 4 | 55, 51, 45, 47 | 49.5% | `full56`-`59`; pass@4 67% |
 | block 3 state-target + env-brief | 4 | 52, 53, 53, 52 | **52.5%** | `full60`-`63`; pass@4 68%, +3.0 vs state (p=0.31) |
+| block 4 (infra-contaminated) | 4×3 | — | — | `native16-19` 38% infra loss vs DSH 18-19%; cross-arm invalid; within-DSH env-brief −2.2 (p=0.27) |
 | (discarded) | — | 53, 45, 48, 48, 55, 53, 45, 33, 29, 32 | — | broken verifier or compromised |
 
 **Parity between the unmodified harnesses is the firmest result here**: 47.2 against 46.7
@@ -133,15 +134,18 @@ It is in `harness/contree/run_task_contree.py::_target_brief`, pinned by a guard
 
 ## Open threads, in priority order
 
-1. **Run a clean block of native vs state-target vs state-target+env-brief.** env-brief is the
-   live candidate (+3.0 over state-target, mechanism confirmed, lower variance), but block 3's
-   native arm was anomalous so there is no same-period native number for it yet. Launch with
+1. **Accumulate clean native-vs-state-target blocks to settle the objective.** state-target is
+   the closest candidate: +2.0 vs native over the two clean blocks (1 and 2), p ≈ 0.10. Reaching
+   p < 0.05 needs ~2-3 more *clean* blocks (every arm's infra-error rate low and similar —
+   block 3's native was anomalous, block 4 lost 38% of native episodes). Launch with
    `ARM_A_FLAGS="--state-target" ARM_B_FLAGS="--state-target --env-brief" bash
-   harness/contree/launch_pass4.sh /tmp/dsh-contree <dsh_n> <native_n>`, verify the native draws
-   land near 48-50 before trusting them, and combine across blocks for the p < 0.05 test. Analyse
-   with `/tmp/dsh-contree/block3_analyze.py` (pass@k + the discovery-cost mechanism) or
-   `compare_runs.py`. Never pool an arm from one period against a baseline from another (that is
-   how the first-edit nudge appeared to gain +5.8). Keep concurrency
+   harness/contree/launch_pass4.sh /tmp/dsh-contree <dsh_n> <native_n>` (it warms the cache
+   first). Then run `python -m notes.dsh_inkling.block_report --drop-infra --arm native=... --arm
+   state=... --arm state_eb=...`; **before trusting any delta, confirm each arm kept ~90%+ of
+   episodes and native scored ~45-50.** Combine the draw-level deltas across clean blocks by
+   inverse-variance weighting (as in RESULTS "Same-period pass@4"). env-brief is a secondary
+   candidate (+3.0 then −2.2; unproven). Never pool an arm from one period against a baseline from
+   another (that is how the first-edit nudge appeared to gain +5.8). Keep concurrency
    fixed within a draw: at 10, `full37` lost 80 of 100 tasks to ConTree/API failures. ConTree
    needs `full_network` from the agent sandbox; the earlier 403s were the sandbox proxy. A
    detector flaw remains: episodes that write only `/tmp` scratch files disable the reminder.
@@ -201,7 +205,7 @@ The public-repo discipline in `AGENTS.md` applies: keep internal context out of 
 | --- | --- | --- |
 | `--state-target` | names the target grading compiles | mechanism works; score +2.0 vs native over two blocks, p ≈ 0.10 |
 | `--managed-checkpoint` | truthful piped-build status + up to two late target builds | fired in 29% of episodes, mechanism +2.4 points, score within noise |
-| `--env-brief` | repo layout and build facts read from the checkout at setup | +3.0 vs state-target within one block (p=0.31), mechanism confirmed, lower variance |
+| `--env-brief` | repo layout and build facts read from the checkout at setup | not established: +3.0 (block 3) then −2.2 (block 4); mechanism confirmed, no reliable score effect |
 | `--first-edit-nudge` | repeats the budget arithmetic while nothing is edited | rejected (time confound) |
 | `--coverage-nudge` | fires late if only one file was edited | rejected |
 | `--verify-rearm` + `--echo-changed` | re-arms the build reminder; echoes the changed set | rejected |
