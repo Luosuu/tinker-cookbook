@@ -7,11 +7,16 @@ this file is the orientation, the reusable lessons, and the open threads.
 ## Objective and status
 
 Iterate the DSH harness until Inkling-Small beats the 52/100 native Chat Completions baseline
-on SWE-kokkos-bench, at a matched budget. **Not met.** Two same-period blocks (all arms run
-together, four draws each) put DSH + state-target at +3.8 and then +0.2 over native; combined
-+2.0, p ≈ 0.10. Adding `--managed-checkpoint` gave +1.0 over native in the second block, not
-significant. The 52/100 reference was one early native draw; same-period native draws average
-48-50. The first-edit nudge was rejected as a time confound.
+on SWE-kokkos-bench, at a matched budget. **Not yet met.** Three same-period blocks (all arms
+run together, four draws each): state-target vs native +3.8, then +0.2, then native-anomalous;
+combined over the two usable blocks +2.0 (p ≈ 0.10). `--env-brief` added +3.0 over state-target
+within block 3 (p = 0.31, mechanism confirmed, lower variance). `--managed-checkpoint` was null.
+The first-edit nudge was rejected as a time confound. The 52/100 reference was one early native
+draw; same-period native draws average 48-50.
+
+**Watch the native sampling path.** In block 3 the native arm collapsed to 22.5% (from ~50)
+while both DSH arms were normal — a degradation on the direct-OAI path, not a harness effect.
+Always sanity-check the native draws against ~48-50 before trusting a cross-arm number.
 
 Run everything through the ConTree sandbox; no cluster needed. The Rivanna path is kept in
 `harness/rivanna/` but SSH to its login node was blocked from this host.
@@ -35,6 +40,9 @@ Run everything through the ConTree sandbox; no cluster needed. The Rivanna path 
 | block 2 native | 4 | 49, 53, 51, 46 | 49.7% | `native08`-`11`; pass@4 63% |
 | block 2 state-target | 4 | 49, 49, 53, 49 | 50.0% | `full48`-`51`; pass@4 63% |
 | block 2 state-target + checkpoint | 4 | 54, 50, 48, 51 | 50.7% | `full52`-`55`; pass@4 67% |
+| block 3 native | 4 | 23, 26, 18, 23 | 22.5% | `native12`-`15`; **anomalous, discard** |
+| block 3 state-target | 4 | 55, 51, 45, 47 | 49.5% | `full56`-`59`; pass@4 67% |
+| block 3 state-target + env-brief | 4 | 52, 53, 53, 52 | **52.5%** | `full60`-`63`; pass@4 68%, +3.0 vs state (p=0.31) |
 | (discarded) | — | 53, 45, 48, 48, 55, 53, 45, 33, 29, 32 | — | broken verifier or compromised |
 
 **Parity between the unmodified harnesses is the firmest result here**: 47.2 against 46.7
@@ -112,13 +120,15 @@ It is in `harness/contree/run_task_contree.py::_target_brief`, pinned by a guard
 
 ## Open threads, in priority order
 
-1. **Run one more same-period block of state-target against native.** The first block
-   (`harness/contree/launch_pass4.sh`: 12 runs × 3 episodes, 36 sandboxes, 4.7 h) gave +3.8
-   pass@1, p ≈ 0.08 alone. A second block with only those two arms, six draws each at the
-   same total concurrency, should take a similar time and would settle the objective on its
-   own. Analyse with `compare_runs.py` (it reads native runs and prints pass@k) and compare
-   only within a block; never pool an arm from one period against a baseline from another
-   (that is how the first-edit nudge appeared to gain +5.8). Keep concurrency
+1. **Run a clean block of native vs state-target vs state-target+env-brief.** env-brief is the
+   live candidate (+3.0 over state-target, mechanism confirmed, lower variance), but block 3's
+   native arm was anomalous so there is no same-period native number for it yet. Launch with
+   `ARM_A_FLAGS="--state-target" ARM_B_FLAGS="--state-target --env-brief" bash
+   harness/contree/launch_pass4.sh /tmp/dsh-contree <dsh_n> <native_n>`, verify the native draws
+   land near 48-50 before trusting them, and combine across blocks for the p < 0.05 test. Analyse
+   with `/tmp/dsh-contree/block3_analyze.py` (pass@k + the discovery-cost mechanism) or
+   `compare_runs.py`. Never pool an arm from one period against a baseline from another (that is
+   how the first-edit nudge appeared to gain +5.8). Keep concurrency
    fixed within a draw: at 10, `full37` lost 80 of 100 tasks to ConTree/API failures. ConTree
    needs `full_network` from the agent sandbox; the earlier 403s were the sandbox proxy. A
    detector flaw remains: episodes that write only `/tmp` scratch files disable the reminder.
@@ -178,7 +188,7 @@ The public-repo discipline in `AGENTS.md` applies: keep internal context out of 
 | --- | --- | --- |
 | `--state-target` | names the target grading compiles | mechanism works; score +2.0 vs native over two blocks, p ≈ 0.10 |
 | `--managed-checkpoint` | truthful piped-build status + up to two late target builds | fired in 29% of episodes, mechanism +2.4 points, score within noise |
-| `--env-brief` | repo layout and build facts read from the checkout at setup | smoke-tested only |
+| `--env-brief` | repo layout and build facts read from the checkout at setup | +3.0 vs state-target within one block (p=0.31), mechanism confirmed, lower variance |
 | `--first-edit-nudge` | repeats the budget arithmetic while nothing is edited | rejected (time confound) |
 | `--coverage-nudge` | fires late if only one file was edited | rejected |
 | `--verify-rearm` + `--echo-changed` | re-arms the build reminder; echoes the changed set | rejected |

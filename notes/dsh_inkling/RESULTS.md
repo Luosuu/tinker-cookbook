@@ -1230,6 +1230,41 @@ the directory layout, that `core/include` does not exist, the configured build d
 test targets — read from the checkout, not the verifier. Whether it converts to score is being
 measured in a same-period block (native vs state-target vs state-target+env-brief).
 
+## Third same-period block: env-brief vs state-target (native arm anomalous)
+
+Native, state-target, and state-target + `--env-brief`, four draws each, launched together
+(`native12`-`15`, `full56`-`59`, `full60`-`63`).
+
+**The native arm is not usable in this block.** It scored 23, 26, 18, 23 (22.5%), against
+45-51 in the two earlier blocks, while both DSH arms scored normally (state-target 49.5%). Its
+episodes were structurally identical to healthy blocks — same median tool calls (40) and input
+tokens (~422k), no error surge — but solved half as many, with 31 tasks regressing from solved
+to failed. The native loop hits the OAI endpoint directly, without the DSH proxy, so this is a
+degradation on the native sampling path during this period, not a harness difference. Every
+cross-arm comparison against native here (+27, +30) is discarded; a fresh native block is
+needed for the objective.
+
+**The within-DSH comparison is clean**, since both DSH arms are healthy, same-period, same
+sampling path.
+
+| arm | draws | pass@1 | pass@2 | pass@4 |
+| --- | --- | ---: | ---: | ---: |
+| DSH + state-target | 55, 51, 45, 47 | 49.5% | 59.5% | 67% |
+| DSH + state-target + env-brief | 52, 53, 53, 52 | **52.5%** | **62.3%** | 68% |
+
+Paired pass@1 **+3.0** (CI −0.6 to +6.6), 21 tasks won against 14, exact McNemar p = 0.311;
+draw-level +3.0, t = 1.34. The env-brief draws are notably tighter (52-53 against 45-55), which
+is the signal worth following: it does not lift the ceiling but removes a source of
+run-to-run variance.
+
+**The mechanism moved as designed.** Build-layout discovery commands fell from 2.55 to 1.45 per
+episode. Empty-output searches were unchanged at ~6.5/episode — the brief answers "where things
+are", not "does this symbol exist", so the residual search waste is a separate lever.
+
+So env-brief is a small, consistent, not-yet-significant gain with a confirmed mechanism and
+lower variance. Held to the same standard as state-target: keep it opt-in and re-test against a
+healthy native arm before crediting a score win.
+
 ## Second same-period block: the state-target lead does not replicate
 
 Native, state-target, and state-target with `--managed-checkpoint`, four draws each, launched
@@ -1265,9 +1300,26 @@ see it, and those that already built after their last edit do not need it.
 
 ## Status
 
-The objective — beat the 52/100 baseline — is **not met**. DSH is at parity (49.3% against
-50.0% paired over three draws, p = 1.000), and **all six** harness variants tried were
-either rejected or never established.
+The objective — beat the native harness significantly under matched conditions — is **not yet
+met**. Current best estimate across three same-period blocks:
+
+- **state-target vs native**: +3.8, then +0.2, then native-anomalous. Combined over the two
+  usable blocks +2.0 (p ≈ 0.10). A real but unconfirmed ~2-point gain.
+- **state-target + env-brief vs state-target** (block 3, within-DSH, clean): +3.0 pass@1
+  (p = 0.31), mechanism confirmed (build-layout discovery 2.55 → 1.45 per episode), and
+  visibly lower variance (draws 52-53 vs 45-55). Promising, not significant.
+- **state-target + managed-checkpoint**: +1.0 vs native, null; mechanism barely moved and costs
+  23% wall time. Not credited.
+- **first-edit-nudge**: rejected, a time confound (a same-period control matched it).
+
+The immediate next step for the objective is a clean block of **native vs state-target vs
+state-target+env-brief** with a healthy native arm, repeated until the combined cross-block test
+reaches p < 0.05 or rules the effect out.
+
+### Earlier framing (superseded, kept for the record)
+
+The objective was first stated as beating a 52/100 reference. That was one native draw from an
+earlier period; same-period native draws average 48-50, so 52 is a high draw, not a fixed bar.
 
 The best arm is DSH with the grader's build target stated: **49.7% over seven draws**, against a
 DSH control mean of 47.2% over six and a native mean of 46.7% over three (paired +2.5 and +3.0,
