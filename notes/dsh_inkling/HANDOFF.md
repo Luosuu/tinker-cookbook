@@ -18,6 +18,19 @@ draw; same-period native draws average 48-50.
 while both DSH arms were normal — a degradation on the direct-OAI path, not a harness effect.
 Always sanity-check the native draws against ~48-50 before trusting a cross-arm number.
 
+**Infra fragility (important for reproduction).** `/tmp` does not survive a machine reboot, which
+wipes both run data and the ConTree image cache; two reboots destroyed in-flight blocks during
+this work. Each task's Dockerfile does `git clone https://github.com/kokkos/kokkos.git`, so a
+cold cache plus 36 concurrent sandboxes triggers GitHub anonymous-clone rate-limiting
+(`exit=128, could not read Username`), and ConTree also evicts cached images between the warm
+phase and the block, forcing some re-clones mid-run. Mitigations now in place: `launch_pass4.sh`
+warms the cache serially (`--prepare-only --resume --retry-errors`, low concurrency) before the
+parallel block, and `block_report.py --drop-infra` excludes the episodes that still fail to
+prepare. The residual clone failures cluster on a fixed set of tasks (7043, 7074, 7088, 7148,
+7151, 7172, 7244, ...) and hit every arm equally, so the within-DSH same-period comparison stays
+valid on the surviving tasks; cross-arm power is just reduced. For a clean full block, run on a
+host with persistent scratch or pre-seed the cache and keep block concurrency moderate.
+
 Run everything through the ConTree sandbox; no cluster needed. The Rivanna path is kept in
 `harness/rivanna/` but SSH to its login node was blocked from this host.
 
