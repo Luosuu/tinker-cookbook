@@ -76,6 +76,31 @@ def test_arm_specs() -> None:
         parse_arm("pi=pi hook")
 
 
+def test_pi_agent_is_frozen_into_the_block(tmp_path: Path) -> None:
+    """Updating the shared Pi checkout must not change a running block's agent."""
+    from notes.dsh_inkling.harness.rivanna.block import freeze_pi_agent, pi_manifest
+
+    source = tmp_path / "pi-src"
+    (source / "node_modules").mkdir(parents=True)
+    (source / "runner.mjs").write_text("v1")
+    (source / "package.json").write_text('{"version": "0.3.0"}')
+    (source / ".gitignore").write_text("node_modules/\n")
+    for args in (
+        ["init", "-q"],
+        ["add", "."],
+        ["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "v1"],
+    ):
+        subprocess.run(["git", "-C", str(source), *args], check=True)
+    frozen = freeze_pi_agent(source, tmp_path / "block" / "pi")
+    (source / "runner.mjs").write_text("v2")
+    pi_dir = Path(frozen["dir"])
+    assert (pi_dir / "runner.mjs").read_text() == "v1"
+    assert (pi_dir / "node_modules").resolve() == (source / "node_modules").resolve()
+    assert pi_manifest(pi_dir) == frozen["manifest"] and "runner.mjs" in frozen["manifest"]
+    (pi_dir / "runner.mjs").write_text("tampered")
+    assert pi_manifest(pi_dir) != frozen["manifest"]
+
+
 def test_pi_arm_keeps_the_native_budget(tmp_path: Path) -> None:
     """A Pi arm may choose its integration, never its budget or inference settings."""
     from notes.dsh_inkling.harness.rivanna.run_pi_episode import pi_config

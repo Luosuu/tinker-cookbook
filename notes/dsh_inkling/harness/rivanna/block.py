@@ -104,6 +104,29 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+def pi_manifest(directory: Path) -> dict[str, str]:
+    return {
+        str(path.relative_to(directory)): sha256_file(path)
+        for path in sorted(directory.rglob("*"))
+        if path.is_file() and "node_modules" not in path.relative_to(directory).parts
+    }
+
+
+def freeze_pi_agent(source: Path, destination: Path) -> dict:
+    """Export the committed Pi agent into the block so later updates cannot reach it."""
+    destination.mkdir(parents=True)
+    archive = subprocess.run(
+        ["git", "-C", str(source), "archive", "HEAD"], capture_output=True, check=True
+    ).stdout
+    subprocess.run(["tar", "-x", "-C", str(destination)], input=archive, check=True)
+    (destination / "node_modules").symlink_to(source / "node_modules")
+    return {
+        "dir": str(destination),
+        "version": json.loads((destination / "package.json").read_text())["version"],
+        "manifest": pi_manifest(destination),
+    }
+
+
 def plan(args: argparse.Namespace) -> None:
     from notes.dsh_inkling.harness.rivanna.apptainer import (
         require_guarded_verifier,
@@ -124,23 +147,20 @@ def plan(args: argparse.Namespace) -> None:
     if any(arm["kind"] == "pi" for arm in arms.values()):
         if args.pi_agent_dir is None:
             raise SystemExit("Pi arms need --pi-agent-dir")
-        pi_dir = args.pi_agent_dir.resolve()
-        pi = {
-            "dir": str(pi_dir),
-            **git_identity(pi_dir),
-            "version": json.loads((pi_dir / "package.json").read_text())["version"],
-        }
-        if pi["dirty"] and not args.allow_dirty:
+        source = args.pi_agent_dir.resolve()
+        pi_identity = git_identity(source)
+        if pi_identity["dirty"] and not args.allow_dirty:
             raise SystemExit("refusing: the Pi agent checkout has uncommitted changes")
-        if not (pi_dir / "node_modules/@earendil-works/pi-coding-agent").is_dir():
-            raise SystemExit(f"run npm ci in {pi_dir} first")
+        if not (source / "node_modules/@earendil-works/pi-coding-agent").is_dir():
+            raise SystemExit(f"run npm ci in {source} first")
         from notes.dsh_inkling.harness.rivanna.run_pi_episode import pi_config
 
         for arm in arms.values():
             if arm["kind"] == "pi":
                 pi_config(
-                    pi_agent_dir=pi_dir, grader_timeout=1, sandbox_timeout=1, options=arm["options"]
+                    pi_agent_dir=source, grader_timeout=1, sandbox_timeout=1, options=arm["options"]
                 )
+        pi = {"source": str(source), **pi_identity}
     tasks_root = args.tasks_root.resolve()
     names = (
         [line.strip() for line in args.tasks_file.read_text().splitlines() if line.strip()]
@@ -158,6 +178,8 @@ def plan(args: argparse.Namespace) -> None:
     pools = {pool: [s for s in slots if s["pool"] == pool] for pool in ("cpu", "gpu")}
     runtime = block / "runtime"
     runtime.mkdir(parents=True)
+    if pi is not None:
+        pi.update(freeze_pi_agent(Path(pi["source"]), block / "pi"))
     shared = args.dsh_runtime.resolve()
     (runtime / "node_modules").symlink_to(shared / "node_modules")
     for name in ("package.json", "package-lock.json"):
@@ -240,8 +262,8 @@ def run_slot(args: argparse.Namespace) -> None:
         from notes.dsh_inkling.harness.rivanna.run_pi_episode import run
 
         pi_dir = Path(design["pi_agent"]["dir"])
-        if git_identity(pi_dir)["commit"] != design["pi_agent"]["commit"]:
-            raise SystemExit("Pi agent checkout does not match the frozen design commit")
+        if pi_manifest(pi_dir) != design["pi_agent"]["manifest"]:
+            raise SystemExit("Pi agent files do not match the frozen design manifest")
         asyncio.run(
             run(
                 task=task,
