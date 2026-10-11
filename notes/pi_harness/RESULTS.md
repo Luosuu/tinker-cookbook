@@ -10,9 +10,9 @@ motivated by trajectories, opt-in, and guarded by tests. Episodes run through
 
 **Pi with the harness build check (`build_check=after-edit`, pi-hpc-agent ≥ 0.5.0) beats the
 same-period native loop by 4.3 points pass@1 over two blocks (task-paired t-test p = 0.010,
-task bootstrap 95% interval +1.3 to +7.6; 1,192 of 1,200 block-p02 episodes, 1,190 of 1,200
-block-p01).** The p02 run was the pre-specified replication of the p01 lead and reached
-significance on its own (draw-level Welch t, p = 0.018). The Pi loop without levers matches
+task bootstrap 95% interval +1.3 to +7.5; 1,197 of 1,200 block-p01 episodes and 1,193 of
+1,200 block-p02).** The p02 run was the pre-specified replication of the p01 lead and reached
+significance on its own (task-paired p = 0.008; draw-level Welch t, p = 0.021). The Pi loop without levers matches
 native (−1.2, p = 0.52). The symbol brief adds nothing on top of the build check (+0.5,
 p = 0.84).
 
@@ -20,15 +20,15 @@ p = 0.84).
 | --- | --- | --- | ---: |
 | native | 58.0, 52.0, 57.0, 55.0 | 49.0, 51.5, 54.5, 55.6 | 54.1% |
 | Pi | 54.0, 54.5, 60.6, 49.0 | — | 54.5% (p01) |
-| Pi + build check | 62.6, 56.6, 56.0, 57.0 | 58.0, 62.0, 57.6, 57.6 | 58.4% |
+| Pi + build check | 62.6, 56.6, 56.0, 57.0 | 58.0, 62.0, 57.0, 57.6 | 58.4% |
 | Pi + build check + symbol brief | — | 59.6, 54.5, 64.0, 56.6 | 58.7% (p02) |
 
 `python -m notes.pi_harness.combine --treatment pi_check --control native BLOCK_p01 BLOCK_p02`
 reproduces the primary test. Robustness: excluding the systemic verifier timeout
 (`kokkos__kokkos-8182`) gives +4.3, p = 0.010; the draw-level inverse-variance combination
-gives +4.5 (SE 1.4). With two Pi arms compared against native in p02, a Bonferroni-adjusted
-primary p is 0.02. The eight unfinished p02 episodes are all `kokkos__kokkos-8182`, spread
-across the three arms.
+gives +4.4 (SE 1.4). With two Pi arms compared against native in p02, a Bonferroni-adjusted
+primary p is 0.02. The unfinished episodes (three in p01, seven in p02) are all
+`kokkos__kokkos-8182`, spread across the arms.
 
 ## Parity first (pi-hpc-agent 0.2.0)
 
@@ -143,14 +143,14 @@ and every call site to change.
 
 ## Block p02: replication, and the symbol brief on top
 
-`dsh-blocks/block-p02`, code `bd91a5e`, pi-hpc-agent 0.6.0, same envelope as p01. 1,192 of
+`dsh-blocks/block-p02`, code `bd91a5e`, pi-hpc-agent 0.6.0, same envelope as p01. 1,193 of
 1,200 episodes finished; zero infra errors (one native episode was OOM-killed during sandbox
 teardown after it had been graded).
 
 | comparison (p02) | task-paired delta (95% CI) | p |
 | --- | --- | ---: |
-| Pi + check vs native | +6.1 draw-level; +6.75 task-paired (+2.4 to +11.3) | 0.018 (Welch t) |
-| Pi + check + brief vs native | +6.75 (+1.25 to +12.5) | 0.023 |
+| Pi + check vs native | +6.25 (+2.0 to +10.75); draw-level +6.0 | 0.008; Welch t 0.021 |
+| Pi + check + brief vs native | +6.75 (+1.0 to +12.75) | 0.023 |
 | Pi + check + brief vs Pi + check | +0.5 (−4.5 to +5.5) | 0.84 |
 
 | failures (p02) | native | Pi + check | + brief |
