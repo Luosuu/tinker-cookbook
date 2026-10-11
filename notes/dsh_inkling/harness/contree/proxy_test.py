@@ -12,7 +12,7 @@ import json
 
 import pytest
 
-from notes.dsh_inkling.harness.rivanna.proxy import (
+from notes.dsh_inkling.harness.contree.proxy import (
     REFERENCE_REASONING_EFFORT,
     REFERENCE_SEPARATE_REASONING,
     Budget,

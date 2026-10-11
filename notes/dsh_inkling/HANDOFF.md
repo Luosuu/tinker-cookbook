@@ -69,8 +69,10 @@ prepare. The residual clone failures cluster on a fixed set of tasks (7043, 7074
 valid on the surviving tasks; cross-arm power is just reduced. For a clean full block, run on a
 host with persistent scratch or pre-seed the cache and keep block concurrency moderate.
 
-Run everything through the ConTree sandbox; no cluster needed. The Rivanna path is kept in
-`harness/rivanna/` but SSH to its login node was blocked from this host.
+ConTree needs no cluster, but its infrastructure lost blocks 3 and 4. Same-period blocks can
+now run on Rivanna instead, with prebuilt SIFs and one Slurm allocation per episode; see
+[`harness/rivanna/RUNBOOK.md`](harness/rivanna/RUNBOOK.md). Rivanna blocks use the v2.4
+payload, so combine their within-block deltas only with other Rivanna blocks.
 
 ## The numbers, and which ones to trust
 

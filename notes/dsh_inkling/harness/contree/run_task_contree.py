@@ -201,6 +201,7 @@ async def run(
     build_parallelism: int,
     cpu_affinity: str | None,
     prepare_only: bool,
+    sandbox: str = "contree",
 ) -> dict:
     # Resolve before anything changes directory: the DSH launcher is spawned with cwd set
     # to the runtime, so a relative path here would be resolved twice.
@@ -208,6 +209,46 @@ async def run(
     code_root = code_root.resolve()
     sys.path.insert(0, str(code_root))
     from tinker_cookbook.recipes.kokkos_rl.rl.tasks import prepared_kokkos_tasks
+
+    episode = {
+        "task": task,
+        "output": output,
+        "runtime": runtime,
+        "proxy_script": proxy_script,
+        "env_file": env_file,
+        "upstream": upstream,
+        "profile_patch": profile_patch,
+        "persona_file": persona_file,
+        "python": python,
+        "node": node,
+        "cache_path": cache_path,
+        "max_turns": max_turns,
+        "max_tool_calls": max_tool_calls,
+        "wall_seconds": wall_seconds,
+        "command_timeout": command_timeout,
+        "grader_timeout": grader_timeout,
+        "sandbox_timeout": sandbox_timeout,
+        "build_parallelism": build_parallelism,
+        "cpu_affinity": cpu_affinity,
+        "nudge_after": nudge_after,
+        "verify_nudge": verify_nudge,
+        "coverage_nudge": coverage_nudge,
+        "echo_changed": echo_changed,
+        "verify_rearm": verify_rearm,
+        "state_target": state_target,
+        "first_edit_nudge": first_edit_nudge,
+        "managed_checkpoint": managed_checkpoint,
+        "env_brief": env_brief,
+        "prepare_only": prepare_only,
+        "sandbox_backend": sandbox,
+    }
+    if sandbox == "apptainer":
+        # The v2.4 payload already carries the guarded verifier; load_guarded_task refuses
+        # any payload whose test.sh lacks it. Regenerating it here would drop the v2.4
+        # grader repairs, which live only in the published payload.
+        from notes.dsh_inkling.harness.rivanna.apptainer import load_guarded_task
+
+        return await _run_episode(harbor_task=load_guarded_task(tasks_root, task), **episode)
 
     # Load through prepared_kokkos_tasks so the verifier is the regenerated, guarded one.
     # The published payload's own test.sh grants reward 1 when its gtest filter selects
@@ -217,39 +258,7 @@ async def run(
         by_name = {t.task_name: t for t in prepared}
         if task not in by_name:
             raise SystemExit(f"unknown task {task}")
-        harbor_task = by_name[task]
-        return await _run_episode(
-            task=task,
-            output=output,
-            harbor_task=harbor_task,
-            runtime=runtime,
-            proxy_script=proxy_script,
-            env_file=env_file,
-            upstream=upstream,
-            profile_patch=profile_patch,
-            persona_file=persona_file,
-            python=python,
-            node=node,
-            cache_path=cache_path,
-            max_turns=max_turns,
-            max_tool_calls=max_tool_calls,
-            wall_seconds=wall_seconds,
-            command_timeout=command_timeout,
-            grader_timeout=grader_timeout,
-            sandbox_timeout=sandbox_timeout,
-            build_parallelism=build_parallelism,
-            cpu_affinity=cpu_affinity,
-            nudge_after=nudge_after,
-            verify_nudge=verify_nudge,
-            coverage_nudge=coverage_nudge,
-            echo_changed=echo_changed,
-            verify_rearm=verify_rearm,
-            state_target=state_target,
-            first_edit_nudge=first_edit_nudge,
-            managed_checkpoint=managed_checkpoint,
-            env_brief=env_brief,
-            prepare_only=prepare_only,
-        )
+        return await _run_episode(harbor_task=by_name[task], **episode)
 
 
 def _target_names(harbor_task) -> list[str]:
@@ -363,20 +372,22 @@ async def _run_episode(
     managed_checkpoint,
     env_brief,
     prepare_only,
+    sandbox_backend="contree",
 ) -> dict:
     from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborReward
     from tinker_cookbook.recipes.kokkos_rl.rl.candidate_artifact import capture_candidate
-    from tinker_cookbook.sandbox.contree_sandbox import ContreeDockerfileSandboxFactory
 
     dockerfile = harbor_task.task_dir / "environment" / "Dockerfile"
     dockerfile_sha = hashlib.sha256(dockerfile.read_bytes()).hexdigest()
+    sif = harbor_task.task_dir / "environment" / "sif.path"
 
     output.mkdir(parents=True, exist_ok=True)
     (output / "config.json").write_text(
         json.dumps(
             {
                 "harness": "deepseek-harness",
-                "sandbox": "contree",
+                "sandbox": sandbox_backend,
+                "sif_path": sif.read_text().strip() if sandbox_backend == "apptainer" else None,
                 "task": task,
                 "dockerfile_sha256": dockerfile_sha,
                 "model": "thinkingmachines/Inkling-Small:peft:262144",
@@ -405,12 +416,22 @@ async def _run_episode(
         )
     )
 
-    factory = ContreeDockerfileSandboxFactory(
-        cache_path=cache_path,
-        timeout=sandbox_timeout,
-        runtime_build_parallelism=build_parallelism,
-        allow_network=True,  # image preparation needs network to clone and build
-    )
+    async def open_episode_sandbox():
+        if sandbox_backend == "apptainer":
+            from notes.dsh_inkling.harness.rivanna.apptainer import open_sandbox
+
+            return await open_sandbox(
+                harbor_task, sandbox_timeout, hidden_paths=(str(env_file.resolve()),)
+            )
+        from tinker_cookbook.sandbox.contree_sandbox import ContreeDockerfileSandboxFactory
+
+        factory = ContreeDockerfileSandboxFactory(
+            cache_path=cache_path,
+            timeout=sandbox_timeout,
+            runtime_build_parallelism=build_parallelism,
+            allow_network=True,  # image preparation needs network to clone and build
+        )
+        return await factory(harbor_task.task_dir / "environment", sandbox_timeout)
 
     started = time.monotonic()
     sandbox = None
@@ -420,13 +441,14 @@ async def _run_episode(
     harness_status = "not_started"
     calls = 0
     try:
-        sandbox = await factory(harbor_task.task_dir / "environment", sandbox_timeout)
+        sandbox = await open_episode_sandbox()
         if cpu_affinity is not None:
             sandbox = AffinitySandbox(sandbox, cpu_affinity)
         (output / "preflight.json").write_text(
             json.dumps(
                 {
                     "image_prepared": True,
+                    "hidden_assets_absent": sandbox_backend == "apptainer" or None,
                     "dockerfile_sha256": dockerfile_sha,
                     "instruction_sha256": hashlib.sha256(
                         harbor_task.instruction.encode()
@@ -822,7 +844,18 @@ def main() -> None:
         "episode starts. Episodes otherwise spend about three requests rediscovering them.",
     )
     parser.add_argument("--prepare-only", action="store_true")
+    parser.add_argument(
+        "--sandbox",
+        choices=("contree", "apptainer"),
+        default="contree",
+        help="apptainer runs the guarded v2.4 payload in its prebuilt Rivanna SIF; pass "
+        "--cpu-affinity none there, since Slurm already confines the episode to its CPUs.",
+    )
     args = parser.parse_args()
+    if args.cpu_affinity == "none":
+        args.cpu_affinity = None
+    if args.sandbox == "apptainer" and args.prepare_only:
+        parser.error("--prepare-only builds ConTree images; Apptainer SIFs are prebuilt")
     if args.env_file.is_file():
         _load_env_file(args.env_file)
     print(json.dumps(asyncio.run(run(**vars(args))), indent=2))

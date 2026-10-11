@@ -258,12 +258,15 @@ def test_driver_uses_the_guarded_verifier() -> None:
     repository scores a pass. `prepared_kokkos_tasks` regenerates a guarded verifier whose
     filter is real and whose coverage check fails on a zero-test selection. Using the raw
     payload inflated this project's scores by roughly 12 points per run before it was
-    caught, so the driver must go through the prepared copy.
+    caught, so the driver must go through the prepared copy. The Apptainer backend grades
+    the v2.4 payload, whose verifier is already guarded, through `load_guarded_task`,
+    which refuses any test.sh without the guard.
     """
     source = (HERE / "run_task_contree.py").read_text()
     assert "prepared_kokkos_tasks" in source, (
         "the driver must not grade with the raw published test.sh"
     )
+    assert "load_guarded_task" in source
     # And it must not load tasks directly from the payload.
     assert "load_harbor_tasks_from_dir" not in source
 
