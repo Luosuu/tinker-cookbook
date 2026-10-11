@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "description": "Pinned Claude Code runtime for the Rivanna harness comparison",
+  "dependencies": {
+    "@anthropic-ai/claude-code": "2.1.50"
+  }
+}

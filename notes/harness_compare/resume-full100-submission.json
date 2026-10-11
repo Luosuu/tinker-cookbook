@@ -1,0 +1,23 @@
+{
+  "run_root": "/scratch/fad3ew/openhands-smoke/claude-code-pass4-resume-20260926",
+  "local_artifacts": "/Users/tianle/repo/project_genesis/artifacts/claude-code-pass4-resume-20260926",
+  "code_root": "/scratch/fad3ew/openhands-smoke/harness-cross-eval-resume-20260926",
+  "source_snapshot": "/scratch/fad3ew/openhands-smoke/inkling-small-round02",
+  "baseline_run": "/scratch/fad3ew/openhands-smoke/claude-code-pass4-20260924",
+  "model": "thinkingmachines/Inkling-Small:peft:262144",
+  "samples_per_task": 4,
+  "episodes": 400,
+  "continuation_policy": "thinking_only_resume",
+  "max_continuations": 3,
+  "freeze_job": "20523331",
+  "cpu_smoke_job": "20523332",
+  "gpu_smoke_job": "20523333",
+  "cpu_full_array": "20523429",
+  "gpu_full_array": "20523434",
+  "dependencies": {
+    "cpu_smoke_job": "afterok:20523331",
+    "gpu_smoke_job": "afterok:20523331",
+    "cpu_full_array": "afterok:20523332",
+    "gpu_full_array": "afterok:20523333"
+  }
+}

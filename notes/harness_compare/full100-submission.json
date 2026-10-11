@@ -1,0 +1,22 @@
+{
+  "run_root": "/scratch/fad3ew/openhands-smoke/claude-code-pass4-20260924",
+  "local_artifacts": "/Users/tianle/repo/project_genesis/artifacts/claude-code-pass4-20260924",
+  "source_snapshot": "/scratch/fad3ew/openhands-smoke/inkling-small-round02",
+  "model": "thinkingmachines/Inkling-Small:peft:262144",
+  "samples_per_task": 4,
+  "cpu_tasks": 96,
+  "gpu_tasks": 4,
+  "episodes": 400,
+  "failed_freeze_attempt": "20461832",
+  "freeze_job": "20462014",
+  "cpu_smoke_job": "20462229",
+  "gpu_smoke_job": "20462230",
+  "cpu_full_array": "20462231",
+  "gpu_full_array": "20462232",
+  "dependencies": {
+    "cpu_smoke_job": "afterok:20462014",
+    "gpu_smoke_job": "afterok:20462014",
+    "cpu_full_array": "afterok:20462229",
+    "gpu_full_array": "afterok:20462230"
+  }
+}

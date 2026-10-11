@@ -1,0 +1,10 @@
+{
+  "pilot_job": "20459113",
+  "extension_job": "20459291",
+  "claude_smoke_job": "20461077",
+  "claude_extension_job": "20461117",
+  "failed_setup_job": "20458864",
+  "remote_root": "/scratch/fad3ew/openhands-smoke/harness-cross-eval-20260924",
+  "pi_eval_root": "/scratch/fad3ew/openhands-smoke/pi-skill-eval-20260922",
+  "pilot_tasks": ["kokkos__kokkos-8594", "kokkos__kokkos-9276", "kokkos__kokkos-7172", "kokkos__kokkos-kernels-2864"]
+}
