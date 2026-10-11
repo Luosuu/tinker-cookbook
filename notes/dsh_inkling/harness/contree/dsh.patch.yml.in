@@ -1,0 +1,107 @@
+- id: agent-default-model
+  config:
+    provider: tinkerproxy
+    model: thinkingmachines/Inkling-Small:peft:262144
+
+- id: llm-pi-ai
+  config:
+    providers:
+      tinkerproxy:
+        apiKeyEnv: DSH_PROXY_KEY
+        api: openai-completions
+        baseURL: ${DSH_PROXY_BASE_URL}
+        compat:
+          supportsDeveloperRole: false
+          maxTokensField: max_tokens
+        models:
+          - id: thinkingmachines/Inkling-Small:peft:262144
+            contextWindow: 262144
+            maxOutputTokens: 16384
+
+# Match the reference harness persona exactly. DSH ships its own identity line and a
+# "Current runtime context" user message describing harness file policy; the reference
+# sends neither, so both must be turned off or the prompt differs from the baseline.
+- id: system-prompt
+  config:
+    includeHarnessIdentity: false
+    includeRuntimeContext: false
+    personaPrefix: ${DSH_PERSONA}
+    personaSuffix: ''
+
+# Plan mode prepends a "stay in plan mode, do not edit" section and exposes an
+# exit_plan_mode tool the reference harness does not have. For a task whose whole
+# objective is producing a patch, that is a direct handicap rather than a neutral default.
+- id: plan-mode
+  disabled: true
+
+# Agent instructions inject an extra user-role message carrying DSH house rules
+# (issue-tracker conventions, delegation advice, and similar). The reference harness
+# sends the task instruction alone, so leaving this on would add prompt content the
+# baseline never saw.
+- id: agent-instructions
+  disabled: true
+
+# The reference harness exposes exactly one repository tool. Keeping the tool surface
+# identical to the native baseline is what makes a harness-behaviour change attributable.
+- id: tool-bash
+  disabled: true
+- id: tool-pwsh
+  disabled: true
+- id: tool-fs
+  disabled: true
+- id: tool-fs-search
+  disabled: true
+- id: tool-jobs
+  disabled: true
+- id: tool-web
+  disabled: true
+- id: tool-subagent
+  disabled: true
+- id: tool-subagent-fork
+  disabled: true
+- id: tool-subagent-control
+  disabled: true
+- id: tool-subagent-list-agents
+  disabled: true
+- id: tool-workflow
+  disabled: true
+- id: tool-ralph
+  disabled: true
+- id: tool-goal
+  disabled: true
+- id: tool-todo
+  disabled: true
+- id: tool-skill
+  disabled: true
+
+# Session-title generation issues one extra model request per episode. The reference
+# harness has no such call, and the proxy counts every upstream request against the same
+# 40-request budget, so leaving it on spends a turn the baseline never spent.
+# `session-title-llm` is the entry id that resolves to the
+# `@deepseek-ai/dsh-session-title-first-prompt-llm` plugin, which is the one that actually
+# issues a title request; `session-title` is its non-LLM fallback. Both are disabled.
+- id: session-title-llm
+  disabled: true
+- id: session-title
+  disabled: true
+
+# Match the reference's tool-output budget. The audited baseline passed
+# max_tool_output_chars=16384 and kept the first third with the last two thirds, while the
+# pruner defaults to an 8,192-character trigger retaining only 4,096 head plus 1,024 tail.
+# Reading a large Kokkos header is exactly where that difference decides whether the model
+# sees the code it needs.
+#
+# The plugin rejects any config where headChars + len(PRUNE_MARKER) + tailChars exceeds
+# thresholdChars, and the marker is 39 code points, so the retained budget is
+# 16384 - 39 = 16345 split one-third / two-thirds. Getting this arithmetic wrong makes the
+# plugin fail to load, which silently falls back to the defaults rather than erroring
+# visibly — see the guard test in run_task_contree_test.py.
+- id: tool-result-pruner
+  config:
+    thresholdChars: 16384
+    headChars: 5448
+    tailChars: 10897
+
+- insert:
+    - id: hpc-sandbox-bash
+      name: ${DSH_BRIDGE_PLUGIN}

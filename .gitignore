@@ -17,3 +17,6 @@ notes/genesis_archive/
 # Release payloads under data/kokkos/SWE-kokkos-bench* remain tracked.
 data/kokkos/ecosystem/
 data/kokkos/expansion/
+
+# Local DSH runtime for ConTree harness iteration (installed via npm, not vendored)
+.dsh-runtime/
