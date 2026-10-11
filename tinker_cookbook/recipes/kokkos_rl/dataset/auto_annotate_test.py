@@ -331,3 +331,78 @@ async def test_failed_modal_validation_is_fed_back_for_repair() -> None:
     assert result.attempts[0].validation is not None
     assert "unknown target BadTarget" in completer.prompts[1]
     assert all(sandbox.cleaned for sandbox in sandboxes)
+
+
+def test_historical_subpackage_target_uses_base_cmake_and_preserves_test_selection():
+    instance = replace(_instance(), merged_at="2020-01-01T00:00:00Z")
+    annotation = {
+        "build_targets": ["UnitTest_Serial"],
+        "build_command": "ninja UnitTest_Serial",
+        "metadata": {"toolchain": "cpu", "f2p_stage": "test"},
+        "f2p_commands": ["./wrong --gtest_filter=*.UnorderedMap_valid_empty"],
+        "p2p_commands": ["./wrong --gtest_filter=*.UnorderedMap_deep_copy"],
+    }
+    result = _normalize_toolchain_annotation(
+        annotation,
+        instance,
+        build_context="KOKKOS_SUBPACKAGE(Containers)\nKOKKOS_ADD_EXECUTABLE_AND_TEST(\nUnitTest_${Tag}\n)",
+    )
+    assert result["build_targets"] == ["KokkosContainers_UnitTest_Serial"]
+    assert result["build_command"] == ""
+    assert "KokkosContainers_UnitTest_Serial" in result["f2p_commands"][0]
+    assert "*.UnorderedMap_valid_empty" in result["f2p_commands"][0]
+    assert "*.UnorderedMap_deep_copy" in result["p2p_commands"][0]
+
+
+@pytest.mark.asyncio
+async def test_adapter_timeout_does_not_spend_annotation_retry(monkeypatch):
+    from unittest.mock import AsyncMock
+
+    from . import auto_annotate as module
+    from .validate import CommandResult, ValidationReport
+
+    monkeypatch.setattr(module, "_fetch_cmake_context", AsyncMock(return_value=""))
+    completer = _FakeCompleter([_annotation("GoodTarget"), _annotation("GoodTarget")])
+    report = ValidationReport(
+        instance_id=_instance().instance_id,
+        passed=False,
+        results=[
+            CommandResult(
+                command="cmake --build build",
+                exit_code=-1,
+                expected_exit="zero",
+                stdout="",
+                stderr="Command timed out after 300 seconds",
+                seconds=300,
+            )
+        ],
+        error="unexpected exit -1",
+    )
+    result = await annotate_and_validate_instance(
+        _instance(),
+        completer=completer,
+        max_attempts=2,
+        validation_runner=AsyncMock(return_value=report),
+    )
+    assert not result.passed
+    assert len(completer.prompts) == 1
+    assert len(result.attempts) == 1
+
+
+def test_historical_kernels_names_follow_public_cmake_without_changing_selectors():
+    context = "62: SET(PACKAGE_NAME KokkosKernels)\n163: SET(EXE_NAME ${PACKAGE_NAME}_${ROOT_NAME})"
+    instance = replace(_instance(), repo="kokkos/kokkos-kernels")
+    annotation = {
+        "metadata": {"toolchain": "cpu"},
+        "build_targets": ["sparse_serial"],
+        "build_command": "cmake --build build --target sparse_serial",
+        "f2p_commands": [
+            "./build/unit_test/serial/sparse_serial --gtest_filter='*spgemm*:*SPGEMM*'"
+        ],
+        "p2p_commands": [],
+    }
+    result = _normalize_toolchain_annotation(annotation, instance, build_context=context)
+    assert result["build_targets"] == ["KokkosKernels_sparse_serial"]
+    assert result["build_command"].endswith("--target KokkosKernels_sparse_serial")
+    assert "-name KokkosKernels_sparse_serial" in result["f2p_commands"][0]
+    assert result["f2p_commands"][0].endswith(" --gtest_filter='*spgemm*:*SPGEMM*'")

@@ -11,7 +11,7 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
-from tinker_cookbook.recipes.kokkos_rl.dataset.runtime_coverage import ERROR_MARKER
+from tinker_cookbook.recipes.kokkos_rl.dataset.runtime_coverage import ERROR_MARKER, guarded_outcome
 from tinker_cookbook.recipes.kokkos_rl.dataset.test_commands import (
     apply_reviewed_test_overrides,
     guarded_command,
@@ -33,7 +33,9 @@ class CommandResult:
     def matched_expectation(self) -> bool:
         if self.coverage_error:
             return False
-        return self.exit_code == 0 if self.expected_exit == "zero" else self.exit_code != 0
+        outcome = guarded_outcome(self.command, self.stdout, self.stderr, self.exit_code)
+        return outcome["status"] == ("passed" if self.expected_exit == "zero" else "failed")
+
 
 
 @dataclass

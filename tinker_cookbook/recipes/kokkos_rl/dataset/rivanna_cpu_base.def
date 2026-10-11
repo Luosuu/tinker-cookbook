@@ -1,0 +1,14 @@
+Bootstrap: localimage
+From: /scratch/fad3ew/openhands-smoke/agent-server.sif
+
+%post
+    set -eu
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --no-install-recommends build-essential cmake ninja-build ccache git ca-certificates
+    rm -rf /var/lib/apt/lists/*
+    cmake --version
+    g++ --version
+
+%runscript
+    exec tini -- /usr/local/bin/openhands-agent-server "$@"

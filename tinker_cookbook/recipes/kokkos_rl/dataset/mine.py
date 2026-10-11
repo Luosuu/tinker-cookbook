@@ -9,6 +9,9 @@ import os
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
+from uuid import uuid4
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -25,19 +28,66 @@ from tinker_cookbook.recipes.kokkos_rl.dataset.patching import (
     linked_issue_numbers,
     partition_patch,
     sanitize_problem_statement,
+    statement_source_evidence,
 )
 
 
 class GitHubAPIError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, response_metadata: dict | None = None) -> None:
+        super().__init__(message)
+        self.response_metadata = response_metadata
+
+
+def github_error_metadata(status: int, path: str, headers, detail: str, *, now: float) -> dict:
+    """Retain only quota headers; never credentials, cookies, or request headers."""
+    allowed = ("date", "x-ratelimit-limit", "x-ratelimit-remaining", "x-ratelimit-reset", "x-ratelimit-resource", "retry-after")
+    lowered = {str(k).lower(): str(v) for k, v in (headers or {}).items()}
+    saved = {key: lowered[key] for key in allowed if key in lowered}
+    category = "http_error"
+    if status in {403, 429}:
+        if "secondary rate limit" in detail.lower():
+            category = "secondary_rate_limit"
+        elif saved.get("x-ratelimit-remaining") == "0" or "api rate limit exceeded" in detail.lower():
+            category = "primary_rate_limit"
+        elif status == 429 or "retry-after" in saved:
+            category = "rate_limit_unspecified"
+    deadlines = []
+    if category == "primary_rate_limit" and saved.get("x-ratelimit-reset", "").isdigit():
+        deadlines.append(float(saved["x-ratelimit-reset"]))
+    retry = saved.get("retry-after")
+    if retry is not None:
+        try:
+            deadlines.append(now + max(0, int(retry)))
+        except ValueError:
+            try:
+                deadlines.append(parsedate_to_datetime(retry).timestamp())
+            except (ValueError, TypeError, OverflowError):
+                pass
+    return {
+        "status": status,
+        "path": urllib.parse.urlsplit(path).path,
+        "category": category,
+        "received_at_epoch": now,
+        "headers": saved,
+        "next_retry_at_epoch": max(deadlines) if deadlines else None,
+        "retry_policy": "No automatic retry. One recovery check only after a known server deadline; unknown deadlines require external reconciliation.",
+    }
 
 
 class GitHubAPI:
     """Small async facade over GitHub's REST API using only the standard library."""
 
-    def __init__(self, token: str | None = None, max_concurrency: int = 16) -> None:
+    def __init__(self, token: str | None = None, max_concurrency: int = 16, *, error_records_dir: Path | None = None) -> None:
         self._token = token
+        self._error_records_dir = error_records_dir
         self._semaphore = asyncio.Semaphore(max_concurrency)
+
+    def _http_error(self, error: urllib.error.HTTPError, path: str, detail: str) -> GitHubAPIError:
+        metadata = github_error_metadata(error.code, path, error.headers, detail, now=datetime.now(timezone.utc).timestamp())
+        if self._error_records_dir is not None:
+            self._error_records_dir.mkdir(parents=True, exist_ok=True)
+            (self._error_records_dir / f"{uuid4().hex}.json").write_text(json.dumps(metadata, indent=2) + "\n")
+        return GitHubAPIError(f"GitHub API {error.code} for {path}: {detail}", response_metadata=metadata)
 
     async def json(self, path: str, params: dict[str, object] | None = None) -> Any:
         async with self._semaphore:
@@ -72,11 +122,11 @@ class GitHubAPI:
             },
         )
         try:
-            with urllib.request.urlopen(request) as response:
+            with urllib.request.urlopen(request, timeout=60) as response:
                 payload = response.read()
         except urllib.error.HTTPError as error:
             detail = error.read().decode(errors="replace")[:1000]
-            raise GitHubAPIError(f"GitHub API {error.code} for {path}: {detail}") from error
+            raise self._http_error(error, path, detail) from error
         text = payload.decode()
         if accept.endswith("diff"):
             return text
@@ -98,11 +148,11 @@ class GitHubAPI:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(request) as response:
+            with urllib.request.urlopen(request, timeout=60) as response:
                 payload = json.loads(response.read())
         except urllib.error.HTTPError as error:
             detail = error.read().decode(errors="replace")[:1000]
-            raise GitHubAPIError(f"GitHub GraphQL API {error.code}: {detail}") from error
+            raise self._http_error(error, "graphql", detail) from error
         if payload.get("errors"):
             raise GitHubAPIError(f"GitHub GraphQL errors: {payload['errors']}")
         return payload["data"]
@@ -138,7 +188,7 @@ async def _problem_statement(
     if issue_sections:
         return "\n\n---\n\n".join(issue_sections)
     body = str(pr.get("body") or "").strip()
-    return body or str(pr["title"])
+    return (str(pr["title"]) + "\n\n" + body).strip()
 
 
 async def _enrich_pr(
@@ -152,7 +202,16 @@ async def _enrich_pr(
     title = str(pr["title"])
     file_payload = pr.get("_files")
     if file_payload is None:
-        file_payload = await api.json(f"repos/{repo}/pulls/{number}/files", {"per_page": 100})
+        file_payload = []
+        for page in range(1, 31):
+            chunk = await api.json(
+                f"repos/{repo}/pulls/{number}/files", {"per_page": 100, "page": page}
+            )
+            file_payload.extend(chunk)
+            if len(chunk) < 100:
+                break
+        else:
+            return RejectedPullRequest(number, title, ("file-list-truncated",))
     files = tuple(ChangedFile.from_api(item) for item in file_payload)
     reasons = candidate_rejection_reasons(
         files,
@@ -168,7 +227,7 @@ async def _enrich_pr(
     if not merge_commit:
         return RejectedPullRequest(number, title, ("missing-merge-commit",))
 
-    issue_numbers = linked_issue_numbers(str(pr.get("body") or ""), repo)
+    issue_numbers = linked_issue_numbers(title + "\n\n" + str(pr.get("body") or ""), repo)
     base_commit = str(pr.get("_base_commit") or "")
     commit_payload: dict[str, Any] = {}
     try:
@@ -184,6 +243,8 @@ async def _enrich_pr(
                 _problem_statement(api, repo, pr, issue_numbers),
             )
     except GitHubAPIError as error:
+        if "No commit found for SHA" in str(error):
+            return RejectedPullRequest(number, title, ("unavailable-merge-commit",))
         if "diff exceeded the maximum number of files" in str(error):
             return RejectedPullRequest(number, title, ("diff-too-large",))
         raise
@@ -221,6 +282,7 @@ async def _enrich_pr(
             "html_url": pr.get("html_url", ""),
             "build_system": profile.build_system,
             "accelerator": accelerator or "cpu",
+            "statement_source_evidence": statement_source_evidence(raw_problem_statement),
             **({"modal_gpu": "L4"} if accelerator == "cuda" else {}),
         },
     )

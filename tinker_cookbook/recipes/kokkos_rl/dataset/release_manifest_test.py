@@ -77,3 +77,17 @@ digest = "sha256:new"
     updated = build_manifest(dataset, old_instances, [evidence])
     assert updated["oracle_passed"] == 2
     assert all(i["registry_digest"] == i["validation_digest"] for i in updated["instances"])
+
+
+def test_collect_evidence_rejects_errors_and_conflicting_repeats(tmp_path):
+    from .release_manifest import _collect_evidence
+    _write_trial(tmp_path / 'first', 'task', 'oracle', 'hash', 1)
+    _write_trial(tmp_path / 'second', 'task', 'oracle', 'hash', 0)
+    with pytest.raises(ValueError, match='conflicting'):
+        _collect_evidence([tmp_path])
+    result_path = tmp_path / 'second/task__trial/result.json'
+    value = json.loads(result_path.read_text())
+    value['exception_info'] = {'exception_type': 'TimeoutError'}
+    result_path.write_text(json.dumps(value))
+    evidence = _collect_evidence([tmp_path])
+    assert evidence[('task', 'oracle', 'hash')].reward == 1

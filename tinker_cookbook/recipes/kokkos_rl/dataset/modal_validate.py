@@ -473,14 +473,17 @@ async def validate_instance_in_sandbox(
             timeout=command_timeout,
         )
         await _run_and_record(report, sandbox, build_command, timeout=command_timeout)
-        for command in (*instance.f2p_commands, *instance.p2p_commands):
-            await _run_and_record(
-                report,
-                sandbox,
-                normalize_test_command(command, test_patch=instance.test_patch, instance=instance),
-                timeout=command_timeout,
-                runtime_check=True,
-            )
+        for _ in range(flaky_repetitions):
+            for command in (*instance.f2p_commands, *instance.p2p_commands):
+                await _run_and_record(
+                    report,
+                    sandbox,
+                    normalize_test_command(
+                        command, test_patch=instance.test_patch, instance=instance
+                    ),
+                    timeout=command_timeout,
+                    runtime_check=True,
+                )
         report.passed = True
     except Exception as error:
         report.error = f"{type(error).__name__}: {error}"

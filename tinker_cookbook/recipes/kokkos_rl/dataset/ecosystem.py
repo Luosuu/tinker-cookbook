@@ -37,6 +37,7 @@ REPOSITORY_PROFILES = {
             repo="kokkos/kokkos-kernels",
             default_branch="develop",
             source_prefixes=(
+                "src/",  # Historical layout before the module directories moved to the root.
                 "batched/",
                 "blas/",
                 "common/",

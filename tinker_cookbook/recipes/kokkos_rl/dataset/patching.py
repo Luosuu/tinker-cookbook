@@ -57,16 +57,54 @@ def is_forbidden_agent_path(path: str, repo: str = "kokkos/kokkos") -> bool:
 def linked_issue_numbers(text: str, repo: str = "kokkos/kokkos") -> tuple[int, ...]:
     issue_url_re = re.compile(rf"https?://github\.com/{re.escape(repo)}/issues/(\d+)")
     matches = ISSUE_REFERENCE_RE.findall(text) + issue_url_re.findall(text)
+    matches += re.findall(r"(?i)\bissue\s+#?(\d+)", text)
+    matches += re.findall(r"(?i)\b(?:addresses?|seen in|see|alternative to|variant to)\s+#(\d+)", text)
+    matches += re.findall(rf"https?://github\.com/{re.escape(repo)}/pull/(\d+)", text)
     return tuple(dict.fromkeys(int(match) for match in matches))
 
 
 def sanitize_problem_statement(text: str) -> str:
     """Remove common gold-patch leakage while retaining the user-facing bug report."""
 
-    text = FENCED_CODE_RE.sub("[implementation suggestion omitted]", text)
+    text = statement_source_evidence(text)["sanitized"]
     text = SOURCE_LINE_URL_RE.sub("[source location omitted]", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
+
+
+def statement_source_evidence(text: str) -> dict:
+    """Retain standalone public reproducers and account for every removed fence.
+
+    This is source extraction, not a semantic guarantee: later source-grounding
+    and leakage checks remain mandatory. No private patch or audit input is used.
+    """
+    fragments = []
+    for match in FENCED_CODE_RE.finditer(text):
+        block = match[0]
+        context = text[max(0, match.start() - 180) : match.start()]
+        reproducer = bool(
+            re.search(r"reproduc|segfault|crash|fail|bug|example|allowed to do|compile error|type.mismatch|original view|internal view", context, re.I)
+            and re.search(r"Kokkos::|\bmain\s*\(|#include|error:|assert|\.rehash\(|\.capacity\(", block)
+            and not re.search(r"suggest|workaround|proposed fix|replace with|hack the code|fixed code|solution", context, re.I)
+            and not re.search(r"(?m)^(?:diff --git|@@ |\+\+\+|--- )", block)
+        )
+        fragments.append(
+            {
+                "start": match.start(),
+                "end": match.end(),
+                "text": block,
+                "classification": "public_reproducer" if reproducer else "omitted_code",
+            }
+        )
+    sanitized = text
+    for fragment in reversed(fragments):
+        if fragment["classification"] == "omitted_code":
+            sanitized = (
+                sanitized[: fragment["start"]]
+                + "[implementation suggestion omitted]"
+                + sanitized[fragment["end"] :]
+            )
+    return {"raw": text, "sanitized": sanitized, "fragments": fragments}
 
 
 def split_unified_diff(patch: str) -> list[tuple[str, str]]:

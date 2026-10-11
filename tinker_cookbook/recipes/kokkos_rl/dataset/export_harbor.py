@@ -70,8 +70,10 @@ def _dockerfile(instance: KokkosInstance) -> str:
     }.get(toolchain, ERA_IMAGES[instance.era])
     build_command = _build_command(instance)
     commands = [
-        f"git clone https://github.com/{instance.repo}.git /workspace/repo",
-        f"git -C /workspace/repo checkout {shlex.quote(instance.base_commit)}",
+        "git init /workspace/repo",
+        f"git -C /workspace/repo remote add origin https://github.com/{instance.repo}.git",
+        f"git -C /workspace/repo fetch --depth=1 origin {shlex.quote(instance.base_commit)}",
+        "git -C /workspace/repo checkout --detach FETCH_HEAD",
         "git -C /workspace/repo submodule update --init --recursive",
         # Retain the original base object as a shallow boundary. The verifier
         # pins this immutable SHA in its trusted script, independent of agent
@@ -79,6 +81,19 @@ def _dockerfile(instance: KokkosInstance) -> str:
         _clean_room_command(instance.base_commit),
     ]
     if instance.repo != "kokkos/kokkos" and profile.build_system == "cmake":
+        dependency_ref = str(
+            instance.metadata.get("kokkos_dependency_commit", KOKKOS_DEPENDENCY_REF)
+        )
+        dependency_checkout = (
+            "git init /workspace/kokkos && git -C /workspace/kokkos remote add origin https://github.com/kokkos/kokkos.git"
+            + " && git -C /workspace/kokkos fetch --depth 1 origin "
+            + shlex.quote(dependency_ref)
+            + " && git -C /workspace/kokkos checkout --detach FETCH_HEAD"
+            if "kokkos_dependency_commit" in instance.metadata
+            else "git clone --branch "
+            + shlex.quote(KOKKOS_DEPENDENCY_REF)
+            + " --depth 1 https://github.com/kokkos/kokkos.git /workspace/kokkos"
+        )
         dependency_configure = (
             "cmake -S /workspace/kokkos -B /workspace/kokkos-build -G Ninja "
             "-DCMAKE_INSTALL_PREFIX=/opt/kokkos -DKokkos_ENABLE_SERIAL=ON "
@@ -100,9 +115,7 @@ def _dockerfile(instance: KokkosInstance) -> str:
             )
         commands.extend(
             [
-                "git clone --branch "
-                + shlex.quote(KOKKOS_DEPENDENCY_REF)
-                + " --depth 1 https://github.com/kokkos/kokkos.git /workspace/kokkos",
+                dependency_checkout,
                 dependency_configure,
                 "cmake --build /workspace/kokkos-build --parallel",
                 "cmake --install /workspace/kokkos-build",
@@ -217,7 +230,7 @@ fi
         "import json\n"
         + f"exec(compile({guard!r}, '<coverage-guard>', 'exec'))\n"
         + f"exec(compile({runner!r}, '<verifier-results>', 'exec'))\n"
-        + f"run_suite(json.loads({json.dumps(plan)!r}), coverage_error)\n"
+        + f"run_suite(json.loads({json.dumps(plan)!r}), coverage_error, classify_command_outcome)\n"
         + "KOKKOS_SUITE\n"
     )
 

@@ -254,3 +254,14 @@ def test_tampering_blocks_build_and_tests(tmp_path):
     assert all(
         r["status"] == "blocked" and r["blocked_by"] == "setup" for r in report["checks"][1:]
     )
+
+
+def test_export_fetches_only_base_instead_of_relying_on_git_gc():
+    from .export_harbor import _dockerfile
+    from .models_test import _instance
+
+    instance = _instance()
+    definition = _dockerfile(instance)
+    assert "git init /workspace/repo" in definition
+    assert "git -C /workspace/repo fetch --depth=1 origin " + instance.base_commit in definition
+    assert "git clone https://github.com/" + instance.repo not in definition

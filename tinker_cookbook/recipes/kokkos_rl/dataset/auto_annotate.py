@@ -12,7 +12,7 @@ import re
 import shlex
 import urllib.error
 import urllib.request
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import asdict, dataclass, field
 from pathlib import Path, PurePosixPath
 from typing import Protocol
@@ -40,6 +40,7 @@ from tinker_cookbook.recipes.kokkos_rl.dataset.test_commands import (
     normalize_filter,
     normalize_test_command,
 )
+from tinker_cookbook.recipes.kokkos_rl.dataset.validate import ValidationReport
 from tinker_cookbook.renderers import Message, Renderer, get_renderer, get_text_content
 from tinker_cookbook.renderers.tml_v0 import TmlV0Renderer
 from tinker_cookbook.utils.git_rev import recipe_user_metadata
@@ -318,7 +319,10 @@ def _candidate_cmake_paths(instance: KokkosInstance) -> list[str]:
         while str(parent) not in {"", "."}:
             paths.add(str(parent / "CMakeLists.txt"))
             parent = parent.parent
-    return sorted(paths, key=lambda value: (value.count("/"), value), reverse=True)[:3]
+    selected = sorted(paths, key=lambda value: (value.count("/"), value), reverse=True)[:3]
+    if instance.repo == "kokkos/kokkos-kernels":
+        selected.append("cmake/kokkoskernels_tribits.cmake")
+    return selected
 
 
 def _fetch_cmake_context_sync(instance: KokkosInstance) -> str:
@@ -340,7 +344,15 @@ def _fetch_cmake_context_sync(instance: KokkosInstance) -> str:
         for index, line in enumerate(lines):
             if any(stem and stem in line for stem in stems):
                 selected.update(range(max(0, index - 90), min(len(lines), index + 25)))
-            if "kokkos_add_executable" in line or "add_executable" in line:
+            if any(
+                marker in line.lower()
+                for marker in (
+                    "add_executable",
+                    "kokkos_subpackage(",
+                    "set(exe_name",
+                    "set(package_name",
+                )
+            ):
                 selected.update(range(max(0, index - 3), min(len(lines), index + 4)))
         if selected:
             rendered = "\n".join(f"{index + 1}: {lines[index]}" for index in sorted(selected))
@@ -349,6 +361,9 @@ def _fetch_cmake_context_sync(instance: KokkosInstance) -> str:
 
 
 async def _fetch_cmake_context(instance: KokkosInstance) -> str:
+    cached = instance.metadata.get("preflight_build_context")
+    if isinstance(cached, str) and cached:
+        return cached
     if get_repository_profile(instance.repo).build_system != "cmake":
         return ""
     return await asyncio.to_thread(_fetch_cmake_context_sync, instance)
@@ -540,6 +555,23 @@ def _normalize_toolchain_annotation(
         if uses_recent_core_unit_tests
         else ""
     )
+    # Historical Kokkos used subpackage prefixes, e.g. KokkosContainers_UnitTest_Serial.
+    # Infer only from the base revision's declarations, never from a guessed date.
+    subpackages = set(
+        re.findall(
+            r"KOKKOS_SUBPACKAGE\s*\(\s*(Core|Containers|Algorithms)\s*\)", build_context, re.I
+        )
+    )
+    historical_target = ""
+    if (
+        instance.repo == "kokkos/kokkos"
+        and metadata.get("toolchain") == "cpu"
+        and len(subpackages) == 1
+        and "UnitTest_${Tag}" in build_context
+    ):
+        historical_target = "Kokkos" + next(iter(subpackages)).capitalize() + "_UnitTest_Serial"
+        annotation["build_targets"] = [historical_target]
+        annotation["build_command"] = ""
     targets = annotation.get("build_targets")
     if instance.repo == "kokkos/kokkos" and isinstance(targets, list):
         generic_targets = {"all", "clean", "install", "test", "kokkoscore"}
@@ -547,7 +579,9 @@ def _normalize_toolchain_annotation(
             (
                 target
                 if not isinstance(target, str)
-                or target.startswith("Kokkos_")
+                or target.startswith(
+                    ("Kokkos_", "KokkosCore_", "KokkosContainers_", "KokkosAlgorithms_")
+                )
                 or target in generic_targets
                 else f"Kokkos_{target}"
             )
@@ -646,6 +680,60 @@ def _normalize_toolchain_annotation(
         # Preserve requested runtime P2P checks even for compile-failure tasks.
         # A bad selector must be repaired, not silently removed to pass validation.
 
+    if (
+        instance.repo == "kokkos/kokkos-kernels"
+        and re.search(r"SET\s*\(\s*PACKAGE_NAME\s+KokkosKernels\s*\)", build_context, re.I)
+        and re.search(
+            r"SET\s*\(\s*EXE_NAME\s+\$\{PACKAGE_NAME\}_\$\{ROOT_NAME\}\s*\)", build_context, re.I
+        )
+    ):
+        # Historical TriBITS wrappers prefix executable names. Preserve selectors;
+        # only normalize names supported by the base revision's CMake declarations.
+        target_pattern = (
+            r"(?<![\w])(?<!KokkosKernels_)(?:blas|sparse|graph|common)_(?:serial|openmp)\b"
+        )
+        if isinstance(annotation.get("build_targets"), list):
+            annotation["build_targets"] = [
+                re.sub(target_pattern, lambda match: "KokkosKernels_" + match[0], target)
+                if isinstance(target, str)
+                else target
+                for target in annotation["build_targets"]
+            ]
+        if isinstance(annotation.get("build_command"), str):
+            annotation["build_command"] = re.sub(
+                target_pattern,
+                lambda match: "KokkosKernels_" + match[0],
+                annotation["build_command"],
+            )
+        for key in ("f2p_commands", "p2p_commands"):
+            commands = annotation.get(key)
+            if not isinstance(commands, list):
+                continue
+            normalized = []
+            for command in commands:
+                match = (
+                    re.match(
+                        r"^(?:[\w./-]+/)?((?:KokkosKernels_)?(?:blas|sparse|graph|common)_(?:serial|openmp))(?=\s|$)",
+                        command,
+                    )
+                    if isinstance(command, str)
+                    else None
+                )
+                if match:
+                    target = (
+                        match[1]
+                        if match[1].startswith("KokkosKernels_")
+                        else "KokkosKernels_" + match[1]
+                    )
+                    command = (
+                        '"$(find build -type f -name '
+                        + shlex.quote(target)
+                        + ' -perm -111 -print -quit)"'
+                        + command[match.end() :]
+                    )
+                normalized.append(command)
+            annotation[key] = normalized
+
     if profile.full_build_for_validation:
         annotation["build_command"] = "cmake --build build --parallel"
         annotation["build_targets"] = []
@@ -716,6 +804,7 @@ async def annotate_and_validate_instance(
     command_timeout: int = 1200,
     flaky_repetitions: int = 3,
     sandbox_factory: ModalValidationSandboxFactory = default_validation_sandbox_factory,
+    validation_runner: Callable[..., Awaitable[ValidationReport]] | None = None,
 ) -> AutoAnnotationResult:
     """Iteratively propose annotations and retain only a Modal-verified instance."""
 
@@ -747,7 +836,10 @@ async def annotate_and_validate_instance(
             attempt.annotation = annotation
             previous_annotation = annotation
             annotated = apply_reviewed_test_overrides(apply_annotations(instance, annotation))
-            validation_report = await validate_instance_in_sandbox(
+            from .preflight import require_baseline_selection
+
+            require_baseline_selection(annotated)
+            validation_report = await (validation_runner or validate_instance_in_sandbox)(
                 annotated,
                 sandbox_timeout=sandbox_timeout,
                 command_timeout=command_timeout,
@@ -760,9 +852,37 @@ async def annotate_and_validate_instance(
                 result.validated_instance = annotated
                 break
             feedback = _validation_feedback(attempt.validation)
+            if any(
+                row.exit_code < 0 or row.exit_code in {124, 126, 127, 137, 143}
+                for row in validation_report.results
+            ) or any(
+                marker in validation_report.error.lower()
+                for marker in (
+                    "apptainer",
+                    "sandbox",
+                    "timed out",
+                    "timeout",
+                    "no space left",
+                    "cannot allocate memory",
+                    "connection",
+                    "authentication",
+                )
+            ):
+                break  # Infrastructure repair must not consume model annotation retries.
         except Exception as error:
             attempt.error = f"{type(error).__name__}: {error}"
             feedback = attempt.error
+            if any(
+                marker in attempt.error.lower()
+                for marker in (
+                    "rivanna job",
+                    "apptainer",
+                    "timeout",
+                    "connection",
+                    "authentication",
+                )
+            ):
+                break
     return result
 
 
@@ -819,7 +939,9 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--reports-dir", type=Path, required=True)
     parser.add_argument("--failed-output", type=Path)
-    parser.add_argument("--provider", choices=("openai", "tinker", "tinker-chat"), default="openai")
+    parser.add_argument(
+        "--provider", choices=("openai", "tinker", "tinker-chat", "chat"), default="openai"
+    )
     parser.add_argument("--model-name", default="thinkingmachines/Inkling:peft:262144")
     parser.add_argument("--openai-model", default="gpt-5.6-terra")
     parser.add_argument(
@@ -830,6 +952,8 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--checkpoint-url")
     parser.add_argument("--renderer-name")
     parser.add_argument("--base-url")
+    parser.add_argument("--api-key-env", default="TINKER_API_KEY")
+    parser.add_argument("--provider-parameters", type=json.loads, default={})
     parser.add_argument("--max-tokens", type=int, default=8192)
     parser.add_argument("--temperature", type=float, default=1.0)
     parser.add_argument("--thinking-effort", type=float, default=0.7)
@@ -844,7 +968,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--flaky-repetitions", type=int, default=3)
     parser.add_argument(
         "--sandbox-backend",
-        choices=("modal", "contree"),
+        choices=("modal", "contree", "rivanna"),
         default="contree",
         help="cloud sandbox used to validate generated tasks (default: contree)",
     )
@@ -862,13 +986,24 @@ def _parse_args() -> argparse.Namespace:
 
 
 async def _main(args: argparse.Namespace) -> None:
+    if args.provider == "chat" and not args.base_url:
+        raise ValueError("--provider chat requires an explicit --base-url")
+    if not isinstance(args.provider_parameters, dict):
+        raise ValueError("--provider-parameters must be a JSON object")
     _load_env_file(args.env_file)
+    from .rivanna_validate import rivanna_validation_sandbox_factory
+
     completer: AnnotationCompleter
-    if args.provider == "tinker-chat" or (args.reports_dir / "inference_config.json").exists():
+    if (
+        args.provider in {"tinker-chat", "chat"}
+        or (args.reports_dir / "inference_config.json").exists()
+    ):
         prepare_annotation_state(
             args.reports_dir,
             {
                 "provider": args.provider,
+                "api_key_env": args.api_key_env,
+                "provider_parameters": args.provider_parameters,
                 "model": args.checkpoint_url or args.model_name,
                 "openai_model": args.openai_model,
                 "base_url": args.base_url or TINKER_CHAT_BASE_URL,
@@ -883,7 +1018,7 @@ async def _main(args: argparse.Namespace) -> None:
                 "candidates_sha256": hashlib.sha256(args.candidates.read_bytes()).hexdigest(),
             },
         )
-    if args.provider == "tinker-chat":
+    if args.provider in {"tinker-chat", "chat"}:
         if args.renderer_name:
             raise ValueError(
                 "Hosted Chat Completions uses the server renderer; omit --renderer-name"
@@ -895,6 +1030,8 @@ async def _main(args: argparse.Namespace) -> None:
             temperature=args.temperature,
             base_url=args.base_url or TINKER_CHAT_BASE_URL,
             reports_dir=args.reports_dir / "api_calls",
+            api_key_env=args.api_key_env,
+            extra_body=(args.provider_parameters if args.provider == "chat" else None),
         )
     elif args.provider == "openai":
         completer = OpenAIAnnotationCompleter(
@@ -956,9 +1093,11 @@ async def _main(args: argparse.Namespace) -> None:
                 command_timeout=args.command_timeout,
                 flaky_repetitions=args.flaky_repetitions,
                 sandbox_factory=(
-                    contree_validation_sandbox_factory
-                    if args.sandbox_backend == "contree"
-                    else default_validation_sandbox_factory
+                    {
+                        "contree": contree_validation_sandbox_factory,
+                        "rivanna": rivanna_validation_sandbox_factory,
+                        "modal": default_validation_sandbox_factory,
+                    }[args.sandbox_backend]
                 ),
             )
             report_path.write_text(json.dumps(item.to_dict(), indent=2, sort_keys=True) + "\n")

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -40,6 +41,8 @@ def _collect_evidence(roots: list[Path]) -> dict[tuple[str, str, str], TrialEvid
     for root in roots:
         for result_path in root.glob("**/result.json"):
             value = json.loads(result_path.read_text())
+            if value.get("exception_info") or value.get("error"):
+                continue
             task_name = value.get("task_name")
             agent_info = value.get("agent_info")
             verifier_result = value.get("verifier_result")
@@ -50,7 +53,13 @@ def _collect_evidence(roots: list[Path]) -> dict[tuple[str, str, str], TrialEvid
             rewards = verifier_result.get("rewards")
             if not isinstance(rewards, dict) or not isinstance(rewards.get("reward"), int | float):
                 continue
-            lock = json.loads((result_path.parent / "lock.json").read_text())
+            reward = rewards["reward"]
+            if isinstance(reward, bool) or not math.isfinite(reward) or reward not in (0, 1):
+                continue
+            lock_path = result_path.parent / "lock.json"
+            if not lock_path.is_file():
+                continue
+            lock = json.loads(lock_path.read_text())
             task = lock.get("task")
             if not isinstance(task, dict):
                 continue
@@ -58,7 +67,10 @@ def _collect_evidence(roots: list[Path]) -> dict[tuple[str, str, str], TrialEvid
             digest = str(task.get("digest", ""))
             instance_id = task_name.split("/", maxsplit=1)[-1]
             item = TrialEvidence(agent, digest, result_path, float(rewards["reward"]))
-            evidence[(instance_id, agent, digest)] = item
+            key = (instance_id, agent, digest)
+            if key in evidence and evidence[key].reward != item.reward:
+                raise ValueError(f"conflicting repeated evidence for {instance_id}/{agent}")
+            evidence[key] = item
     return evidence
 
 

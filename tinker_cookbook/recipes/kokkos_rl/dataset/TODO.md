@@ -70,3 +70,64 @@ Parallelism is intentionally not enabled by this prototype. Commands may mutate
 a shared build tree or depend on preceding commands. A subsequent optimization
 must declare safe runtime groups and keep setup, builds, and dependency boundaries
 serial; measure runtime-only time before choosing a concurrency level.
+
+## Automatic training expansion (2026-10-01 development batch)
+
+- [x] Add bounded, resumable historical mining with explicit pending counts and
+  exclusion reasons; paginate REST file lists and support historical kernels `src/`.
+- [x] Add conservative frozen-family and patch overlap exclusion before prompting.
+- [x] Add provider-neutral Chat Completions options to annotation and auditing.
+- [x] Add a local inference / credential-free Rivanna Slurm execution bridge.
+- [x] Distinguish infrastructure exits from expected F2P failure and repeat gold checks.
+- [x] Implement fail-closed construction/audit/export/independent acceptance gates.
+- [x] Complete a successful new-task end-to-end acceptance on Rivanna, including
+  fresh exported NOP/Oracle repeats and protected-test tampering. Implementation
+  and unit tests alone do not close this item.
+- [ ] Generalize Rivanna account/image settings and add historical kernels dependency
+  version profiles; validate kernels and accelerator tasks before enabling them.
+- [ ] Strengthen semantic family detection, stage-resume behavior after interrupted
+  model calls, and instruction leakage checks beyond the conservative initial lane.
+- [ ] Reach 100 **additional fully accepted** training tasks. This is a milestone,
+  not an extrapolation from the candidate funnel. Keep the frozen 80/20 data intact.
+
+The current UVA endpoint reports Slurm cluster name `shen`; the Rivanna worker
+recognizes that verified identifier as well as `rivanna`. All execution evidence
+must come from the configured UVA allocation. Local tests are development checks.
+
+### Bounded continuation
+
+- Public-source revision and independent re-audit are implemented with a maximum
+  of two revisions. Pending request markers prevent blind replay after interruption.
+- Historical CPU kernels can now specify an immutable Kokkos dependency, shared
+  by construction and export. This is an experimental lane until real acceptance.
+- The follow-up batch fixes four candidate IDs before execution; a statement-only
+  revision never invalidates or silently replaces the earlier construction record.
+  Missing final export evidence still prevents training admission.
+
+The bounded continuation completed with no new admitted tasks: public-source
+revision still failed the contract audit for one revisited task; one additional
+candidate passed construction but lacked a supported statement; another selected
+zero runtime tests; two historical kernels builds hit the command time limit.
+These outcomes do not establish an end-to-end successful release. Adapter timeout
+classification and the no-extra-model-retry rule now have regression coverage.
+Historical kernels target normalization follows the base CMake prefix declaration
+and preserves runtime selectors. This later repair is regression-tested, not a
+claim of full candidate revalidation. All new checks ran in Rivanna allocations.
+
+### Source and inventory gated continuation
+
+The fixed two-candidate round admitted `kokkos__kokkos-2842` after construction,
+public-source statement revision and independent audit, then fresh exported
+NOP/Oracle/NOP/Oracle/tampered-NOP trials with rewards 0/1/0/1/0 (Rivanna job
+20716827). Both Oracle runs passed every check; NOP exhibited the declared
+compile-stage regression; the tampered run explicitly rejected protected edits.
+`kokkos__kokkos-2841` remains quarantined for a baseline compiler compatibility
+failure before any annotation call. The original full-clone export failure is
+preserved; depth-one acquisition repaired its reference-object leakage.
+
+Round-three source-only regression jobs culminated in 73 passing checks on
+Rivanna. Source extraction retains reproducer variants and raw fragment offsets;
+preflight records actual CMake target ownership and gtest names before inference.
+The admitted JSONL and complete evidence remain in the parent workspace under
+`artifacts/kokkos-expansion-20261001/round3`; the frozen 100-task data is unchanged.
+This establishes one completed admission, not the 100-new-task milestone.

@@ -128,3 +128,23 @@ return exact_gold_fix();
     assert "exact_gold_fix" not in sanitized
     assert "#L10" not in sanitized
     assert "Bug summary" in sanitized
+
+
+def test_reproducer_preserves_commented_alternative_and_tracks_removed_code():
+    from .patching import statement_source_evidence
+
+    text = "This reproducer crashes:\n```cpp\n#include <Library.hpp>\nint main() { Map a; /* Map b(0); */ a.copy(); }\n```\nProposed fix:\n```cpp\nexact_gold_fix();\n```"
+    evidence = statement_source_evidence(text)
+    assert "/* Map b(0); */" in sanitize_problem_statement(text)
+    assert "exact_gold_fix" not in sanitize_problem_statement(text)
+    assert [x["classification"] for x in evidence["fragments"]] == [
+        "public_reproducer",
+        "omitted_code",
+    ]
+    assert evidence["raw"] == text
+    for fragment in evidence["fragments"]:
+        assert text[fragment["start"] : fragment["end"]] == fragment["text"]
+
+
+def test_nonclosing_issue_references_are_not_lost():
+    assert linked_issue_numbers('Address issue #586; as seen in #691; see #586') == (586, 691)

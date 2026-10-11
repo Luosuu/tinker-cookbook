@@ -13,6 +13,7 @@ from pathlib import Path
 def run_suite(
     plan: dict[str, object],
     coverage_check: Callable[[str, str, int], str | None],
+    outcome_classifier: Callable[[str, str, int, bool], dict],
 ) -> None:
     directory = Path("/logs/verifier")
     directory.mkdir(parents=True, exist_ok=True)
@@ -40,37 +41,10 @@ def run_suite(
                     capture_output=True,
                 )
                 output = completed.stdout + "\n" + completed.stderr
-                error = (
-                    coverage_check(command, output, completed.returncode)
-                    if stage in {"f2p", "p2p"}
-                    else None
-                )
-                if stage in {"f2p", "p2p"} and (
-                    "no tests ran" in output or re.search(r"collected 0 items", output)
-                ):
-                    error = "A requested runtime test command selected zero tests"
-                infrastructure = (
-                    completed.returncode < 0
-                    or completed.returncode in {126, 127, 137, 143}
-                    or any(
-                        marker in output
-                        for marker in [
-                            "No space left on device",
-                            "Cannot allocate memory",
-                            "Resource temporarily unavailable",
-                            "Killed signal terminated",
-                        ]
-                    )
-                )
-                status = (
-                    "error"
-                    if error or infrastructure
-                    else ("passed" if completed.returncode == 0 else "failed")
-                )
+                outcome = outcome_classifier(command, output, completed.returncode, stage in {"f2p", "p2p"})
                 row.update(
-                    status=status,
-                    exit_code=completed.returncode,
-                    error=error or ("Process or resource failure" if infrastructure else None),
+                    status=outcome["status"], exit_code=completed.returncode,
+                    error=outcome["error"], outcome=outcome,
                     elapsed_s=round(time.monotonic() - start, 6),
                 )
                 (directory / (identifier + ".stdout")).write_text(completed.stdout)
