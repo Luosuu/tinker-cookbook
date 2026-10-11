@@ -148,3 +148,22 @@ def test_agent_directory_explicit_overrides_environment(monkeypatch, tmp_path):
         module.pi_agent_directory(module.CLIConfig())
     monkeypatch.setenv("PI_HPC_AGENT_DIR", str(explicit))
     assert module.pi_agent_directory(module.CLIConfig()) == explicit
+
+def test_identity_remains_compatible_with_legacy_package(tmp_path):
+    import shutil
+    source = module.pi_agent_directory(module.CLIConfig())
+    for name in ["runner.mjs", "integration.mjs", "plugins.mjs", "package.json", "skills/hpc-debug/SKILL.md"]:
+        target = tmp_path / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source / name, target)
+    legacy = module.harness_identity(module.CLIConfig(pi_agent_dir=str(tmp_path)))
+    assert legacy["protocol_budget_support"] is False
+    assert "protocol.mjs" not in legacy["resource_sha256"]
+    (tmp_path / "protocol.mjs").write_text("// protocol revision")
+    modern = module.harness_identity(module.CLIConfig(pi_agent_dir=str(tmp_path)))
+    assert modern["protocol_budget_support"] is True
+    assert "protocol.mjs" in modern["resource_sha256"]
+
+
+def test_protocol_corrections_default_to_disabled():
+    assert module.CLIConfig().max_protocol_repairs == 0

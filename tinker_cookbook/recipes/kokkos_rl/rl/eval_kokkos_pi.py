@@ -62,6 +62,8 @@ class CLIConfig:
     thinking_effort: float = 0.9
     temperature: float = 1.0
     context_window: int = 262144
+    max_protocol_repairs: int = 0
+    max_wall_seconds: int = 3600
     max_turns: int = 40
     max_tool_calls: int = 80
     max_tokens: int = 16384
@@ -93,15 +95,18 @@ def harness_identity(config: CLIConfig) -> dict[str, object]:
         "plugin_profile": config.plugin_profile,
         "pi_version": package["dependencies"]["@earendil-works/pi-coding-agent"],
         "agent_version": package["version"],
+        "protocol_budget_support": (pi_dir / "protocol.mjs").is_file(),
         "resource_sha256": {
             name: hashlib.sha256((pi_dir / name).read_bytes()).hexdigest()
             for name in (
                 "runner.mjs",
                 "integration.mjs",
                 "plugins.mjs",
+
                 f"skills/{selected_skill(config)}/SKILL.md",
                 "package.json",
-            )
+            ) + tuple(name for name in ("protocol.mjs", "package-lock.json")
+                      if (pi_dir / name).is_file())
         },
     }
 
