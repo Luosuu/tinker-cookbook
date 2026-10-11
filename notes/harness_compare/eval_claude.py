@@ -20,6 +20,7 @@ from tinker_cookbook.recipes.kokkos_rl.rl.candidate_artifact import capture_cand
 from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos import load_env_file
 from tinker_cookbook.sandbox.apptainer_sandbox import apptainer_sandbox_factory
 
+from protocol_gateway import GatewayServer, Ledger
 from completion_quality import classify_stream
 from continuation import CONTINUE_PROMPT, continuation_reason, sum_usage
 
@@ -41,6 +42,7 @@ async def evaluate(task_name: str, output: Path, root: Path, sample_index: int =
     (output / "config.json").write_text(json.dumps(config, indent=2))
     started = time.monotonic()
     sandbox = None
+    gateway = None
     calls = 0
     bridge_errors = 0
     model_turns = 0
@@ -59,6 +61,11 @@ async def evaluate(task_name: str, output: Path, root: Path, sample_index: int =
             raise ValueError("Task or sample is outside the frozen design")
         if design["model"] != config["model"]:
             raise RuntimeError("Model differs from frozen design")
+        config["protocol_gateway"] = design.get("protocol_gateway", False)
+        config["protocol_repair"] = design.get("protocol_repair", False)
+        config["max_sampled_tokens"] = design.get("max_sampled_tokens", 65536)
+        config["max_input_tokens"] = design.get("max_input_tokens", 5_000_000)
+        config["max_protocol_repairs"] = design.get("max_protocol_repairs", 2)
         config["max_model_turns"] = design["max_model_turns"]
         config["max_tool_calls"] = design["max_tool_calls"]
         config["max_wall_seconds"] = design["max_wall_seconds"]
@@ -132,6 +139,15 @@ async def evaluate(task_name: str, output: Path, root: Path, sample_index: int =
                     command = request["command"]
                     if not isinstance(command, str):
                         raise ValueError("invalid command")
+                    if gateway and not gateway.ledger.admit_tool():
+                        response = {"error": "episode tool or wall admission budget exhausted"}
+                        events.write(json.dumps({"type":"budget_rejection", **response}) + "\n")
+                        events.flush()
+                        writer.write((json.dumps(response)+"\n").encode())
+                        await writer.drain()
+                        writer.close()
+                        await writer.wait_closed()
+                        return
                     calls += 1
                     if calls > config["max_tool_calls"]:
                         raise RuntimeError("tool call budget exhausted")
@@ -164,10 +180,16 @@ async def evaluate(task_name: str, output: Path, root: Path, sample_index: int =
                 "args": [str(Path(__file__).resolve().parent / "mcp_hpc.py")],
                 "env": {"HPC_BRIDGE_SOCKET": socket_path},
             }}}))
+            if config['protocol_gateway']:
+                gateway = GatewayServer(os.environ['TINKER_API_KEY'], output, Ledger(
+                    max_requests=config['max_model_turns'], max_tools=config['max_tool_calls'],
+                    max_output=config['max_sampled_tokens'], max_input=config['max_input_tokens'],
+                    max_seconds=config['max_wall_seconds'], max_repairs=config['max_protocol_repairs']),
+                    repair=config['protocol_repair'])
             env = dict(
                 os.environ,
                 HPC_BRIDGE_SOCKET=socket_path,
-                ANTHROPIC_BASE_URL="https://tinker.thinkingmachines.dev/services/tinker-prod/anthropic/api",
+                ANTHROPIC_BASE_URL=gateway.url if gateway else "https://tinker.thinkingmachines.dev/services/tinker-prod/anthropic/api",
                 ANTHROPIC_API_KEY=os.environ["TINKER_API_KEY"],
                 CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC="1",
             )
@@ -241,7 +263,7 @@ async def evaluate(task_name: str, output: Path, root: Path, sample_index: int =
                         raise RuntimeError("Claude Code wall-time budget exhausted")
                     try:
                         await asyncio.wait_for(
-                            asyncio.gather(process.wait(), record_output()), timeout=remaining
+                            asyncio.gather(process.wait(), record_output()), timeout=None if gateway else remaining
                         )
                     except TimeoutError:
                         process.kill()
@@ -276,6 +298,12 @@ async def evaluate(task_name: str, output: Path, root: Path, sample_index: int =
                         "result_count": len(invocation_results),
                     }) + "\n")
                     continuation_log.flush()
+                    if gateway and gateway.ledger.stop in {"missing_usage", "provider_output_overrun"}:
+                        raise RuntimeError(gateway.ledger.stop)
+                    if gateway and gateway.ledger.stop:
+                        budget_limited = gateway.ledger.stop.endswith('budget') or 'admission' in gateway.ledger.stop
+                        continuation_stop_reason = gateway.ledger.stop
+                        break
                     if process_returncode != 0 and not budget_limited:
                         raise RuntimeError(f"Claude Code exit={process_returncode}; see stderr.log")
                     if not budget_limited and (
@@ -338,6 +366,9 @@ async def evaluate(task_name: str, output: Path, root: Path, sample_index: int =
             error=f"{type(exc).__name__}: {exc}",
         )
     finally:
+        if gateway is not None:
+            (output / 'gateway-ledger.json').write_text(json.dumps(asdict(gateway.ledger), indent=2))
+            await asyncio.to_thread(gateway.close)
         if sandbox is not None:
             try:
                 await sandbox.cleanup()
