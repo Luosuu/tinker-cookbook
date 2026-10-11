@@ -32,6 +32,7 @@ from tinker_cookbook.recipes.harbor_rl.harbor_env import (
     load_harbor_tasks_from_dir,
 )
 from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborReward
+from tinker_cookbook.recipes.kokkos_rl.harness.profile import apply_profile, profile_text
 from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos import load_env_file
 from tinker_cookbook.recipes.kokkos_rl.rl.rollout_data import RecordedRollout, eligible
 from tinker_cookbook.recipes.kokkos_rl.rl.tasks import prepared_kokkos_tasks
@@ -42,6 +43,7 @@ from tinker_cookbook.supervised.types import SupervisedDataset, SupervisedDatase
 @chz.chz
 class Config:
     output_dir: str
+    harness_profile: str = "baseline"
     tasks_dir: str = "data/kokkos/SWE-kokkos-bench-v2"
     model_name: str = "thinkingmachines/Inkling-Small:peft:262144"
     sandbox_backend: str = "contree"
@@ -299,7 +301,10 @@ async def main(config: Config) -> None:
                 load_harbor_tasks_from_dir(Path(config.tasks_dir)),
                 Path(config.qualified_bundle_dir),
             )
+        workflow = profile_text(config.harness_profile)
         resolved = chz.asdict(config)
+        if config.harness_profile == "baseline":
+            resolved.pop("harness_profile")
         config_path = root / "config.json"
         if config_path.exists() and json.loads(config_path.read_text()) != resolved:
             raise ValueError("Experiment config changed; use a fresh directory")
@@ -344,6 +349,8 @@ async def main(config: Config) -> None:
             "train": [t.task_name for t in training],
             "heldout": [t.task_name for t in heldout],
         }
+        if workflow:
+            manifest["harness_sha256"] = hashlib.sha256(workflow.encode()).hexdigest()
         manifest_path = root / "manifest.json"
         if qualified is not None:
             manifest["qualification"] = qualified
@@ -491,7 +498,11 @@ async def main(config: Config) -> None:
                 checkpoint_url=checkpoint,
                 export_kokkos_rollouts=True,
             )
-            result = await run_eval(cfg, selected, sandbox_factory=factory)
+            result = await run_eval(
+                cfg,
+                [apply_profile(task, config.harness_profile) for task in selected],
+                sandbox_factory=factory,
+            )
             write_json(directory / "efficiency.json", delivery_metrics(result, directory))
             if any(r.error is not None for r in result):
                 raise RuntimeError("Unresolved infrastructure errors in " + label)

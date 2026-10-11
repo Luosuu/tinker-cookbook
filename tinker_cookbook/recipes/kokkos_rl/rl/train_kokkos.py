@@ -38,6 +38,7 @@ class CLIConfig:
     """
 
     model_name: str = "openai/gpt-oss-120b:peft:131072"
+    harness_profile: str = "baseline"
     tasks_dir: str = "data/kokkos/SWE-kokkos-bench-v2"
     lora_rank: int = 32
     renderer_name: str | None = None
@@ -177,7 +178,7 @@ def _build_sandbox_factory(cli_config: CLIConfig) -> SandboxFactory:
 async def main(cli_config: CLIConfig) -> None:
     load_env_file(Path(cli_config.env_file))
     tasks_dir = Path(cli_config.tasks_dir)
-    with prepared_kokkos_tasks(tasks_dir) as prepared:
+    with prepared_kokkos_tasks(tasks_dir, harness_profile=cli_config.harness_profile) as prepared:
         tasks = select_tasks(prepared, cli_config.task_names)
         if not tasks:
             raise ValueError(f"No Harbor tasks found under {tasks_dir}")

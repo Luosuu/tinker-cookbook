@@ -52,6 +52,7 @@ BASH_TOOL: dict[str, Any] = {
 @chz.chz
 class CLIConfig:
     model_name: str = "gpt-5.6-terra"
+    harness_profile: str = "baseline"
     tasks_dir: str = "data/kokkos/SWE-kokkos-bench-v2"
     output_path: str = "notes/experiments/SWE-kokkos-bench/gpt-5.6-terra/pass-at-1"
     env_file: str = ".env"
@@ -602,7 +603,7 @@ async def run_eval(
 async def main(config: CLIConfig) -> None:
     load_env_file(Path(config.env_file))
     tasks_dir = Path(config.tasks_dir)
-    with prepared_kokkos_tasks(tasks_dir) as prepared:
+    with prepared_kokkos_tasks(tasks_dir, harness_profile=config.harness_profile) as prepared:
         tasks = select_tasks(prepared, config.task_names)
         sandbox_factory = ContreeDockerfileSandboxFactory(
             cache_path=Path(config.contree_cache_path),

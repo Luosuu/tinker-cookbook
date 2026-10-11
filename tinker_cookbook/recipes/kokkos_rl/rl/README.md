@@ -194,3 +194,13 @@ trials have valid grading. API/infrastructure errors and interrupted attempts re
 review and are never automatically resampled on restart. Costs use the captured catalog
 rates with undiscounted input pricing where no cache rate is published; they are estimates,
 not invoices. Keep credentials in the environment or `.env`, never in artifacts.
+
+## Native Pi HPC integrations
+
+`eval_kokkos_pi` accepts `hpc_mode=baseline|prompt|skill|hook`. It loads guidance
+through Pi's native prompt templates, skills, or extension events while preserving
+original benchmark instructions. All arms share the same sandbox tool and verifier.
+See [the harness guide](../harness/README.md) for the comparison protocol and training limits.
+
+The `harness_profile=hpc-debug-v1` option on native Tinker entrypoints is the older
+instruction-prefix experiment. Do not combine it with Pi-native integration arms.

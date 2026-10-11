@@ -13,10 +13,13 @@ from pathlib import Path
 from tinker_cookbook.recipes.harbor_rl.harbor_env import HarborTask, load_harbor_tasks_from_dir
 from tinker_cookbook.recipes.kokkos_rl.dataset.export_harbor import _dockerfile, _test_script
 from tinker_cookbook.recipes.kokkos_rl.dataset.models import KokkosInstance
+from tinker_cookbook.recipes.kokkos_rl.harness.profile import apply_profile, profile_text
 
 
 @contextmanager
-def prepared_kokkos_tasks(tasks_dir: Path) -> Iterator[list[HarborTask]]:
+def prepared_kokkos_tasks(
+    tasks_dir: Path, *, harness_profile: str = "baseline"
+) -> Iterator[list[HarborTask]]:
     """Use the fixed verifier even for historical exports with mutable HEAD guards.
 
     Preserve instructions, hidden tests, and published evidence. Regenerate only
@@ -24,6 +27,7 @@ def prepared_kokkos_tasks(tasks_dir: Path) -> Iterator[list[HarborTask]]:
     kept alive for the entire training/evaluation run. Changed Dockerfile bytes
     also invalidate the prepared sandbox image cache.
     """
+    profile_text(harness_profile)  # Validate before preparing any task.
     with tempfile.TemporaryDirectory(prefix="kokkos-tasks-") as directory:
         tasks: list[HarborTask] = []
         for task in load_harbor_tasks_from_dir(tasks_dir):
@@ -34,5 +38,5 @@ def prepared_kokkos_tasks(tasks_dir: Path) -> Iterator[list[HarborTask]]:
             shutil.copytree(task.task_dir, destination)
             (destination / "environment" / "Dockerfile").write_text(_dockerfile(instance))
             (destination / "tests" / "test.sh").write_text(_test_script(instance))
-            tasks.append(replace(task, task_dir=destination))
+            tasks.append(apply_profile(replace(task, task_dir=destination), harness_profile))
         yield tasks

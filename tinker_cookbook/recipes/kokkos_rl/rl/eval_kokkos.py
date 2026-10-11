@@ -21,8 +21,10 @@ DEFAULT_CONTREE_CACHE_PATH = "/tmp/tinker-examples/kokkos_rl/contree_images.json
 @chz.chz
 class CLIConfig:
     model_name: str = "openai/gpt-oss-120b:peft:131072"
+    harness_profile: str = "baseline"
     tasks_dir: str = "data/kokkos/SWE-kokkos-bench-v2"
     output_path: str = "notes/experiments/kokkos_rl/evals"
+    export_kokkos_rollouts: bool = False
     checkpoint_url: str | None = None
     env_file: str = ".env"
 
@@ -100,11 +102,12 @@ def select_tasks(tasks: list, task_names: str | None) -> list:
 async def main(cli_config: CLIConfig) -> None:
     load_env_file(Path(cli_config.env_file))
     tasks_dir = Path(cli_config.tasks_dir)
-    with prepared_kokkos_tasks(tasks_dir) as prepared:
+    with prepared_kokkos_tasks(tasks_dir, harness_profile=cli_config.harness_profile) as prepared:
         tasks = select_tasks(prepared, cli_config.task_names)
         eval_config = EvalConfig(
             model_name=cli_config.model_name,
             checkpoint_url=cli_config.checkpoint_url,
+            export_kokkos_rollouts=cli_config.export_kokkos_rollouts,
             output_path=str(Path(cli_config.output_path) / cli_config.model_name.replace("/", "-")),
             max_turns=cli_config.max_turns,
             max_tokens=cli_config.max_tokens,
