@@ -9,6 +9,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 from openai import AsyncOpenAI, omit
@@ -21,6 +22,18 @@ TINKER_CHAT_BASE_URL = "https://tinker.thinkingmachines.dev/services/tinker-prod
 
 
 def create_chat_client(base_url: str, api_key_env: str = "TINKER_API_KEY") -> AsyncOpenAI:
+    endpoint = urlsplit(base_url)
+    if (
+        endpoint.scheme not in {"http", "https"}
+        or not endpoint.netloc
+        or endpoint.username
+        or endpoint.password
+        or endpoint.query
+        or endpoint.fragment
+    ):
+        raise ValueError(
+            "base_url must be an HTTP(S) endpoint without embedded credentials or query parameters"
+        )
     key = os.environ.get(api_key_env)
     if not key:
         raise ValueError(f"{api_key_env} is required")
@@ -137,6 +150,7 @@ class ChatAnnotationCompleter:
         base_url: str = TINKER_CHAT_BASE_URL,
         api_key_env: str = "TINKER_API_KEY",
         temperature: float = 1.0,
+        extra_body: dict[str, object] | None = None,
     ) -> None:
         if not math.isfinite(thinking_effort) or not 0 <= thinking_effort <= 0.99:
             raise ValueError("Chat reasoning effort must be finite and in [0, 0.99]")
@@ -144,6 +158,22 @@ class ChatAnnotationCompleter:
         self.model, self.max_tokens = model, max_tokens
         self.effort, self.temperature = thinking_effort, temperature
         self.reports_dir = reports_dir
+        self.extra_body = (
+            dict(extra_body)
+            if extra_body is not None
+            else {"reasoning_effort": thinking_effort, "separate_reasoning": True}
+        )
+        if set(self.extra_body) & {
+            "model",
+            "messages",
+            "max_tokens",
+            "stream",
+            "tools",
+            "api_key",
+            "authorization",
+            "token",
+        }:
+            raise ValueError("Provider parameters cannot override core request fields")
 
     async def __call__(self, messages: list[Message]) -> Message:
         payload = [message_to_jsonable(m) for m in messages]
@@ -152,7 +182,7 @@ class ChatAnnotationCompleter:
             messages=cast(list[ChatCompletionMessageParam], payload),
             max_tokens=self.max_tokens,
             temperature=self.temperature,
-            extra_body={"reasoning_effort": self.effort, "separate_reasoning": True},
+            extra_body=self.extra_body,
         )
         self.reports_dir.mkdir(parents=True, exist_ok=True)
         (self.reports_dir / f"{uuid4().hex}.json").write_text(
@@ -163,7 +193,8 @@ class ChatAnnotationCompleter:
                     ).hexdigest(),
                     "model": self.model,
                     "base_url": str(self.client.base_url),
-                    "thinking_effort": self.effort,
+                    "provider_parameters": self.extra_body,
+                    "thinking_effort": self.extra_body.get("reasoning_effort"),
                     "max_tokens": self.max_tokens,
                     "temperature": self.temperature,
                     "response": response.model_dump(),
