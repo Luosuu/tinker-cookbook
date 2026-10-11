@@ -1,8 +1,46 @@
 # Handoff: DSH harness iteration for Inkling-Small on SWE-kokkos-bench
 
-Branch `dsh-inkling-kokkos`, 79 commits from `2b49b47`. Written so a fresh agent can continue
-without re-deriving the project. Read [`RESULTS.md`](RESULTS.md) for the full evidence chain;
-this file is the orientation, the reusable lessons, and the open threads.
+Branch `dsh-inkling-kokkos`. Written so a fresh agent can continue without re-deriving the
+project. Read [`RESULTS.md`](RESULTS.md) for the full evidence chain; this file is the
+orientation, the reusable lessons, and the open threads.
+
+## Start here (next agent)
+
+- **Goal, stated precisely:** find a DSH config whose pass@1 is significantly above *same-period*
+  native AND DSH-control, combined across blocks at p < 0.05, every change opt-in with a mechanism
+  and a guard test, all results (positive and negative) recorded here and in `RESULTS.md`.
+- **Where it stands:** `--state-target` is the leading real lever (+2.0 pass@1 vs native over two
+  clean blocks, p ≈ 0.10 — not yet significant). `--env-brief` is unproven (+3.0 then −2.2).
+  `--managed-checkpoint`, the first-edit nudge, and all earlier nudges are null/rejected. No
+  config has cleared the p < 0.05 bar yet, so the goal is **not met**.
+- **The bottleneck is infrastructure, not ideas.** Getting *clean* same-period blocks is the hard
+  part: `/tmp` is wiped on reboot (kills the image cache and in-flight runs), and the native
+  direct-OAI endpoint intermittently 502s / collapses. Blocks 3 and 4 were lost to this.
+- **In-flight when this handoff was written:** block 5 (native20-23 / control full72-75 /
+  state-target full76-79) was running in `/tmp/dsh-contree`; a reboot will have wiped it. Treat it
+  as gone and launch a fresh block.
+- **One block = one command** (warms the cache, then runs native + two DSH arms, 4 draws each):
+
+  ```bash
+  ARM_A_FLAGS="" ARM_B_FLAGS="--state-target" PER_RUN=3 \
+    bash notes/dsh_inkling/harness/contree/launch_pass4.sh /tmp/dsh-contree <dsh_n> <native_n>
+  ```
+
+  Pick `<dsh_n>`/`<native_n>` above any existing run numbers. Needs `full_network`. ~5 h.
+- **Analyse, and gate on infra health first:**
+
+  ```bash
+  python -m notes.dsh_inkling.block_report --drop-infra \
+    --arm native=/tmp/dsh-contree/native<n>,... \
+    --arm control=/tmp/dsh-contree/full<a>,... \
+    --arm state=/tmp/dsh-contree/full<b>,...
+  ```
+
+  A block is only trustworthy if **every arm kept ~90 %+ of episodes and native scored ~45-50**.
+  If native is &lt;40 or lost &gt;20 % of episodes, discard the cross-arm result and relaunch.
+- **To reach p < 0.05:** accumulate 2-4 clean native-vs-state-target blocks and combine the
+  draw-level deltas by inverse-variance weighting (see RESULTS "Same-period pass@4"). Never pool an
+  arm from one period against a baseline from another.
 
 ## Objective and status
 
