@@ -6,6 +6,7 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 import shlex
 import shutil
 import time
@@ -61,6 +62,7 @@ class CLIConfig:
     hpc_mode: str = "baseline"
     guidance: str = "none"
     file_tools: str = "none"
+    build_check: str = "none"
     pi_agent_dir: str | None = None
     thinking_effort: float = 0.9
     temperature: float = 1.0
@@ -96,6 +98,7 @@ def harness_identity(config: CLIConfig) -> dict[str, object]:
         "hpc_mode": config.hpc_mode,
         "guidance": config.guidance,
         "file_tools": config.file_tools,
+        "build_check": config.build_check,
         "hpc_skill": selected_skill(config),
         "plugin_profile": config.plugin_profile,
         "pi_version": package["dependencies"]["@earendil-works/pi-coding-agent"],
@@ -117,12 +120,29 @@ def harness_identity(config: CLIConfig) -> dict[str, object]:
                     "observation.mjs",
                     "guidance.mjs",
                     "file-tools.mjs",
+                    "build-check.mjs",
                     "package-lock.json",
                 )
                 if (pi_dir / name).is_file()
             )
         },
     }
+
+
+INTERNAL_OUTPUT_CHARS = 400_000
+
+
+def grader_build_command(task: HarborTask) -> str | None:
+    """The visible build the task's own verifier runs, or None for non-CMake verifiers."""
+    script = (task.task_dir / "tests" / "test.sh").read_text()
+    targets: list[str] = []
+    for target in re.findall(r"cmake --build build --target ([\w.]+)", script):
+        if target not in targets:
+            targets.append(target)
+    if not targets:
+        return None
+    flags = " ".join(f"--target {target}" for target in targets)
+    return f'cmake --build build {flags} --parallel "${{CMAKE_BUILD_PARALLEL_LEVEL:-1}}"'
 
 
 async def sandbox_file_op(sandbox: SandboxInterface, event: dict) -> dict[str, object]:
@@ -171,6 +191,7 @@ async def pi_rollout(
         **dump_config(config),
         "instruction": task.instruction,
         "system_prompt": HARBOR_SYSTEM_PROMPT,
+        "build_check_command": grader_build_command(task) if config.build_check != "none" else None,
     }
     # Each invocation owns fresh evidence. Never overwrite an interrupted rollout.
     with (
@@ -196,27 +217,39 @@ async def pi_rollout(
                 events.write(json.dumps(event) + "\n")
                 events.flush()
                 if event["type"] == "bash":
-                    calls += 1
+                    # Harness build checks are not model tool calls.
+                    if not event.get("internal"):
+                        calls += 1
                     if calls > config.max_tool_calls:
                         raise RuntimeError("Pi exceeded the sandbox tool budget")
                     command = event["command"]
                     if not isinstance(command, str):
                         raise ValueError("Invalid sandbox command")
+                    # The agent summarizes harness build output itself; its first error can
+                    # follow many progress lines.
+                    limit = INTERNAL_OUTPUT_CHARS if event.get("internal") else (
+                        config.max_tool_output_chars
+                    )
                     result = await sandbox.run_command(
                         command,
                         workdir=None,
                         timeout=config.command_timeout,
-                        max_output_bytes=config.max_tool_output_chars,
+                        max_output_bytes=limit,
                     )
                     reply = {
                         "id": event["id"],
                         "result": {
                             "exit_code": result.exit_code,
-                            "stdout": result.stdout[: config.max_tool_output_chars],
-                            "stderr": result.stderr[: config.max_tool_output_chars],
+                            "stdout": result.stdout[:limit],
+                            "stderr": result.stderr[:limit],
                         },
                     }
-                    events.write(json.dumps({"type": "sandbox_result", **reply}) + "\n")
+                    events.write(
+                        json.dumps(
+                            {"type": "sandbox_result", "internal": bool(event.get("internal")), **reply}
+                        )
+                        + "\n"
+                    )
                     events.flush()
                     process.stdin.write((json.dumps(reply) + "\n").encode())
                     await process.stdin.drain()

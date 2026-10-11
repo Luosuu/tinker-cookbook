@@ -26,6 +26,7 @@ PI_OPTIONS = {
     "max_protocol_repairs",
     "guidance",
     "file_tools",
+    "build_check",
 }
 
 

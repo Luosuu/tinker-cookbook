@@ -177,6 +177,66 @@ def test_protocol_corrections_default_to_disabled():
     assert module.CLIConfig().max_protocol_repairs == 0
 
 
+def test_build_check_uses_the_verifiers_own_targets(tmp_path: Path):
+    (tmp_path / "tests").mkdir()
+    script = tmp_path / "tests" / "test.sh"
+    script.write_text(
+        "cmake --build build --target Kokkos_CoreUnitTest_Serial1 --parallel 4\n"
+        "cmake --build build --target Kokkos_CoreUnitTest_Serial1\n"
+        "cmake --build build --target Kokkos_CoreTestCompileOnly\n"
+    )
+    task = HarborTask("task", "fix", tmp_path)
+    assert module.grader_build_command(task) == (
+        "cmake --build build --target Kokkos_CoreUnitTest_Serial1 "
+        '--target Kokkos_CoreTestCompileOnly --parallel "${CMAKE_BUILD_PARALLEL_LEVEL:-1}"'
+    )
+    script.write_text("python -m pytest tests/test_x.py\n")
+    assert module.grader_build_command(task) is None
+
+
+@pytest.mark.asyncio
+async def test_harness_build_checks_are_not_charged_to_the_tool_budget(tmp_path: Path, monkeypatch):
+    reader = asyncio.StreamReader()
+    for event in [
+        {"type": "bash", "id": 1, "command": "sed -i s/a/b/ x"},
+        {"type": "bash", "id": 2, "command": "state", "internal": True},
+        {"type": "bash", "id": 3, "command": "cmake --build build", "internal": True},
+        {"type": "result", "result": {"turns": 1}},
+    ]:
+        reader.feed_data((json.dumps(event) + "\n").encode())
+    reader.feed_eof()
+
+    class Input:
+        messages: list = []
+
+        def write(self, data):
+            self.messages.append(json.loads(data))
+
+        async def drain(self):
+            pass
+
+    class Process:
+        stdin = Input()
+        stdout = reader
+        returncode = 0
+
+        async def wait(self):
+            return 0
+
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", AsyncMock(return_value=Process()))
+    sandbox = AsyncMock()
+    sandbox.run_command.return_value = SandboxResult(stdout="x" * 50_000, stderr="", exit_code=0)
+    result = await module.pi_rollout(
+        module.CLIConfig(max_tool_calls=1), HarborTask("task", "fix", tmp_path), sandbox, tmp_path
+    )
+    assert result["turns"] == 1
+    limits = [call.kwargs["max_output_bytes"] for call in sandbox.run_command.await_args_list]
+    assert limits == [16384, module.INTERNAL_OUTPUT_CHARS, module.INTERNAL_OUTPUT_CHARS]
+    replies = [m for m in Process.stdin.messages if "result" in m]
+    assert len(replies[0]["result"]["stdout"]) == 16384
+    assert len(replies[2]["result"]["stdout"]) == 50_000
+
+
 def test_file_operations_are_served_inside_the_sandbox():
     sandbox = AsyncMock()
     sandbox.read_file.return_value = SandboxResult(exit_code=0, stdout="int x;\n", stderr="")
