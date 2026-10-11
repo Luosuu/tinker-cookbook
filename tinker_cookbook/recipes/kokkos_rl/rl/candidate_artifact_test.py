@@ -11,8 +11,41 @@ from tinker_cookbook.recipes.harbor_rl.eval_state_test import make_task
 from tinker_cookbook.recipes.kokkos_rl.rl.candidate_artifact import (
     capture_candidate,
     export_command,
+    verifier_baseline,
 )
 from tinker_cookbook.sandbox import SandboxInterface
+
+BASE = "0410363d77b78d32937a8b77e01c8373cf90230d"
+OTHER = "708abe21a7e9759cf52560d076e48b4b4562ec29"
+
+
+def _v24_verifier(*, embedded: str = BASE, declared: str = BASE) -> str:
+    """The v2.4 shape: the baseline line lives inside an escaped script string."""
+    check = json.dumps({"command": f"cd /workspace/repo || exit 1\nbaseline={embedded}\n"})
+    plan = json.dumps({"task": "kokkos__kokkos-6375", "base_commit": declared, "checks": [check]})
+    return f"#!/usr/bin/env bash\npython3 - <<'S'\nrun_suite(json.loads({plan!r}))\nS\n"
+
+
+def test_baseline_from_a_plain_export_line():
+    assert verifier_baseline(f"set -e\nbaseline={BASE}\ngit diff $baseline\n") == BASE
+
+
+def test_baseline_from_the_v24_embedded_plan():
+    assert verifier_baseline(_v24_verifier()) == BASE
+
+
+@pytest.mark.parametrize(
+    "script",
+    [
+        _v24_verifier(embedded=OTHER),
+        _v24_verifier(declared=OTHER) + f'"base_commit": "{BASE}"',
+        f"baseline={BASE}\nbaseline={OTHER}\n",
+        "no baseline here",
+    ],
+)
+def test_ambiguous_or_missing_baseline_is_refused(script):
+    with pytest.raises(ValueError, match="one immutable baseline"):
+        verifier_baseline(script)
 
 
 def test_candidate_export_includes_agent_commits_and_untracked_files_without_mutating_repo(

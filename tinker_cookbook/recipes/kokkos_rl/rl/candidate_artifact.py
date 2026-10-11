@@ -38,6 +38,25 @@ def export_command(baseline: str) -> str:
     return f"python3 -c {shlex.quote(EXPORT_SCRIPT)} {baseline}"
 
 
+def verifier_baseline(script: str) -> str:
+    """Return the one immutable baseline commit the verifier compares against.
+
+    Older exports declare it on its own `baseline=` line. The v2.4 verifier embeds that line
+    inside an escaped script string and states it as the plan's `base_commit`; every
+    occurrence must agree.
+    """
+    lines = re.findall(r"^baseline=([0-9a-f]{40})$", script, re.MULTILINE)
+    if len(lines) == 1:
+        return lines[0]
+    if lines:
+        raise ValueError("Task verifier does not identify one immutable baseline")
+    declared = set(re.findall(r'"base_commit": "([0-9a-f]{40})"', script))
+    mentioned = set(re.findall(r"baseline=([0-9a-f]{40})", script))
+    if len(declared) != 1 or not mentioned <= declared:
+        raise ValueError("Task verifier does not identify one immutable baseline")
+    return declared.pop()
+
+
 async def capture_candidate(
     sandbox: SandboxInterface, *, task: HarborTask, results_dir: Path
 ) -> None:
@@ -48,15 +67,9 @@ async def capture_candidate(
         "complete": False,
     }
     try:
-        matches = re.findall(
-            r"^baseline=([0-9a-f]{40})$",
-            (task.task_dir / "tests/test.sh").read_text(),
-            re.MULTILINE,
-        )
-        if len(matches) != 1:
-            raise ValueError("Task verifier does not identify one immutable baseline")
+        baseline = verifier_baseline((task.task_dir / "tests/test.sh").read_text())
         result = await sandbox.run_command(
-            export_command(matches[0]),
+            export_command(baseline),
             workdir="/workspace/repo",
             timeout=60,
             max_output_bytes=6 * 1024 * 1024,
