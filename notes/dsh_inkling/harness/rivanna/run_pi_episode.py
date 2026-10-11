@@ -27,6 +27,7 @@ PI_OPTIONS = {
     "guidance",
     "file_tools",
     "build_check",
+    "symbol_brief",
 }
 
 

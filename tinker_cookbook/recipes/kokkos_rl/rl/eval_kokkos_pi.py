@@ -63,6 +63,7 @@ class CLIConfig:
     guidance: str = "none"
     file_tools: str = "none"
     build_check: str = "none"
+    symbol_brief: str = "none"
     pi_agent_dir: str | None = None
     thinking_effort: float = 0.9
     temperature: float = 1.0
@@ -99,6 +100,7 @@ def harness_identity(config: CLIConfig) -> dict[str, object]:
         "guidance": config.guidance,
         "file_tools": config.file_tools,
         "build_check": config.build_check,
+        "symbol_brief": config.symbol_brief,
         "hpc_skill": selected_skill(config),
         "plugin_profile": config.plugin_profile,
         "pi_version": package["dependencies"]["@earendil-works/pi-coding-agent"],
@@ -121,6 +123,7 @@ def harness_identity(config: CLIConfig) -> dict[str, object]:
                     "guidance.mjs",
                     "file-tools.mjs",
                     "build-check.mjs",
+                    "symbol-brief.mjs",
                     "package-lock.json",
                 )
                 if (pi_dir / name).is_file()
