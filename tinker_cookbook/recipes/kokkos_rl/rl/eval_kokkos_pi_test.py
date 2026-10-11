@@ -167,3 +167,50 @@ def test_identity_remains_compatible_with_legacy_package(tmp_path):
 
 def test_protocol_corrections_default_to_disabled():
     assert module.CLIConfig().max_protocol_repairs == 0
+
+
+def test_pi_tool_result_is_byte_identical_to_the_native_loop():
+    """The Pi arm must show the model exactly what the native loop shows it.
+
+    Native renders the bash result with json.dumps and keeps the first third and last two
+    thirds of 16384 characters; compiler errors live in the tail.
+    """
+    import random
+    import shutil
+    import subprocess
+
+    from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos_openai import _truncate_tool_output
+
+    node = shutil.which("node")
+    if node is None:
+        pytest.skip("node is not installed")
+    pi_dir = module.pi_agent_directory(module.CLIConfig())
+    if not (pi_dir / "observation.mjs").is_file():
+        pytest.skip("installed Pi agent predates native-identical tool results")
+    rng = random.Random(0)
+    alphabet = "ab \n\t\"\\/\x00\x1b\x7f\u00e9\u2014\u2028\U0001f600{}"
+    cases = [
+        {
+            "exit_code": rng.choice([0, 1, 2, 124, -1]),
+            "stdout": "".join(rng.choice(alphabet) for _ in range(rng.choice([0, 10, 9000, 20000]))),
+            "stderr": "".join(rng.choice(alphabet) for _ in range(rng.choice([0, 50, 17000]))),
+        }
+        for _ in range(12)
+    ]
+    script = (
+        "import { toolResultText } from " + json.dumps((pi_dir / "observation.mjs").as_uri()) + ";"
+        "let s='';for await (const c of process.stdin) s+=c;"
+        "process.stdout.write(JSON.stringify(JSON.parse(s).map(r => toolResultText(r, 16384))));"
+    )
+    rendered = json.loads(
+        subprocess.run(
+            [node, "--input-type=module", "-e", script],
+            input=json.dumps(cases),
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    )
+    for case, pi_text in zip(cases, rendered, strict=True):
+        native = _truncate_tool_output(json.dumps(case), 16384)
+        assert pi_text == native

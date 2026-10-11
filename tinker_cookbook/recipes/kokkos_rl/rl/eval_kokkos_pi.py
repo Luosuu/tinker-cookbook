@@ -105,7 +105,7 @@ def harness_identity(config: CLIConfig) -> dict[str, object]:
 
                 f"skills/{selected_skill(config)}/SKILL.md",
                 "package.json",
-            ) + tuple(name for name in ("protocol.mjs", "package-lock.json")
+            ) + tuple(name for name in ("protocol.mjs", "observation.mjs", "package-lock.json")
                       if (pi_dir / name).is_file())
         },
     }

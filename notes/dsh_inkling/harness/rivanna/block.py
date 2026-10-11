@@ -49,12 +49,22 @@ EPISODE_BUDGET = {
 
 
 def parse_arm(spec: str) -> tuple[str, dict]:
+    """``name=native``, ``name=pi [key=value ...]``, or ``name=<DSH flags>``."""
     name, _, flags = spec.partition("=")
     if not name or not name.replace("_", "").isalnum():
         raise ValueError(f"invalid arm name in {spec!r}")
-    if flags.strip() == "native":
+    tokens = shlex.split(flags)
+    if tokens == ["native"]:
         return name, {"kind": "native", "flags": []}
-    return name, {"kind": "dsh", "flags": shlex.split(flags)}
+    if tokens[:1] == ["pi"]:
+        options = {}
+        for token in tokens[1:]:
+            key, sep, value = token.partition("=")
+            if not sep:
+                raise ValueError(f"Pi arm options are key=value, got {token!r}")
+            options[key] = value
+        return name, {"kind": "pi", "flags": [], "options": options}
+    return name, {"kind": "dsh", "flags": tokens}
 
 
 def interleave(tasks: list[str], arms: list[str], draws: int, seed: int) -> list[dict]:
@@ -110,6 +120,27 @@ def plan(args: argparse.Namespace) -> None:
     arms = dict(parse_arm(spec) for spec in args.arm)
     if len(arms) != len(args.arm):
         raise SystemExit("duplicate arm names")
+    pi = None
+    if any(arm["kind"] == "pi" for arm in arms.values()):
+        if args.pi_agent_dir is None:
+            raise SystemExit("Pi arms need --pi-agent-dir")
+        pi_dir = args.pi_agent_dir.resolve()
+        pi = {
+            "dir": str(pi_dir),
+            **git_identity(pi_dir),
+            "version": json.loads((pi_dir / "package.json").read_text())["version"],
+        }
+        if pi["dirty"] and not args.allow_dirty:
+            raise SystemExit("refusing: the Pi agent checkout has uncommitted changes")
+        if not (pi_dir / "node_modules/@earendil-works/pi-coding-agent").is_dir():
+            raise SystemExit(f"run npm ci in {pi_dir} first")
+        from notes.dsh_inkling.harness.rivanna.run_pi_episode import pi_config
+
+        for arm in arms.values():
+            if arm["kind"] == "pi":
+                pi_config(
+                    pi_agent_dir=pi_dir, grader_timeout=1, sandbox_timeout=1, options=arm["options"]
+                )
     tasks_root = args.tasks_root.resolve()
     names = (
         [line.strip() for line in args.tasks_file.read_text().splitlines() if line.strip()]
@@ -151,6 +182,7 @@ def plan(args: argparse.Namespace) -> None:
         "bridge_sha256": sha256_file(bridge),
         "profile_sha256": sha256_file(HARNESS / "contree/dsh.patch.yml.in"),
         "persona_sha256": sha256_file(HARNESS / "contree/persona-reference.txt"),
+        "pi_agent": pi,
         "pools": {pool: len(items) for pool, items in pools.items()},
     }
     (block / "design.json").write_text(json.dumps(design, indent=2))
@@ -202,6 +234,29 @@ def run_slot(args: argparse.Namespace) -> None:
     )
     budget = design["budget"]
     env_file = Path(design["env_file"])
+    if arm["kind"] == "pi":
+        import asyncio
+
+        from notes.dsh_inkling.harness.rivanna.run_pi_episode import run
+
+        pi_dir = Path(design["pi_agent"]["dir"])
+        if git_identity(pi_dir)["commit"] != design["pi_agent"]["commit"]:
+            raise SystemExit("Pi agent checkout does not match the frozen design commit")
+        asyncio.run(
+            run(
+                task=task,
+                output=output,
+                tasks_root=tasks_root,
+                code_root=REPO_ROOT,
+                env_file=env_file,
+                pi_agent_dir=pi_dir,
+                grader_timeout=budget["grader_timeout"],
+                sandbox_timeout=budget["sandbox_timeout"],
+                max_infra_retries=budget["native_max_infra_retries"],
+                options=arm["options"],
+            )
+        )
+        return
     if arm["kind"] == "native":
         import asyncio
 
@@ -320,6 +375,7 @@ def main() -> None:
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--env-file", type=Path, required=True)
     p.add_argument("--dsh-runtime", type=Path, required=True)
+    p.add_argument("--pi-agent-dir", type=Path)
     p.add_argument("--allow-dirty", action="store_true")
     p.set_defaults(func=plan)
     p = sub.add_parser("freeze")

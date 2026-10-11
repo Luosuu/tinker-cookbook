@@ -63,6 +63,38 @@ def test_arm_specs() -> None:
     )
     with pytest.raises(ValueError):
         parse_arm("bad name=--state-target")
+    assert parse_arm("pi=pi") == ("pi", {"kind": "pi", "flags": [], "options": {}})
+    assert parse_arm("pi_hook=pi hpc_mode=hook hpc_skill=swe-kokkos-debug") == (
+        "pi_hook",
+        {
+            "kind": "pi",
+            "flags": [],
+            "options": {"hpc_mode": "hook", "hpc_skill": "swe-kokkos-debug"},
+        },
+    )
+    with pytest.raises(ValueError):
+        parse_arm("pi=pi hook")
+
+
+def test_pi_arm_keeps_the_native_budget(tmp_path: Path) -> None:
+    """A Pi arm may choose its integration, never its budget or inference settings."""
+    from notes.dsh_inkling.harness.rivanna.run_pi_episode import pi_config
+
+    config = pi_config(pi_agent_dir=tmp_path, grader_timeout=2400, sandbox_timeout=7200, options={})
+    assert (config.max_turns, config.max_tool_calls, config.max_tool_output_chars) == (
+        40,
+        80,
+        16384,
+    )
+    assert (config.thinking_effort, config.temperature, config.max_protocol_repairs) == (
+        0.9,
+        1.0,
+        0,
+    )
+    with pytest.raises(ValueError, match="unsupported"):
+        pi_config(
+            pi_agent_dir=tmp_path, grader_timeout=1, sandbox_timeout=1, options={"max_turns": "80"}
+        )
 
 
 def test_unguarded_payload_is_refused(tmp_path: Path) -> None:
