@@ -10,6 +10,7 @@ classes fail fast instead of surfacing as an unexplained score.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shlex
 import subprocess
@@ -318,8 +319,13 @@ def test_env_brief_reports_layout_and_build_facts(tmp_path: Path) -> None:
     exe.write_text("#!/bin/sh\n")
     exe.chmod(0o755)
 
+    # Task images run without LANG, so `sort` uses the C collation there.
     raw = subprocess.run(
-        ["bash", "-c", _env_brief_script(str(repo))], capture_output=True, text=True, check=True
+        ["bash", "-c", _env_brief_script(str(repo))],
+        capture_output=True,
+        text=True,
+        check=True,
+        env={**os.environ, "LC_ALL": "C"},
     ).stdout
     brief = _format_env_brief(raw)
 
