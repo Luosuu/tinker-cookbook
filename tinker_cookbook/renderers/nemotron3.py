@@ -65,6 +65,7 @@ import json
 from collections.abc import Mapping
 
 from tinker_cookbook.renderers.base import (
+    ContentPart,
     ImagePart,
     Message,
     RenderContext,
@@ -151,6 +152,11 @@ class Nemotron3Renderer(Qwen3_5Renderer):
       message when none is present, matching HF template behavior.
     """
 
+    @property
+    def has_extension_property(self) -> bool:
+        """With thinking preserved, history renders each turn as a supervised example does."""
+        return not self.strip_thinking_from_history
+
     def _normalize_messages(self, messages: list[Message]) -> list[Message]:
         """Prepend empty system message if not present.
 
@@ -228,6 +234,11 @@ class Nemotron3Renderer(Qwen3_5Renderer):
             if has_nonempty_text and not has_tool_calls:
                 return "<think></think>\n"
         return "<think></think>"
+
+    def _trim_content(self, content: str | list[ContentPart]) -> str | list[ContentPart]:
+        # Nemotron's template does not trim user, system, or tool content, so list
+        # content passes through unchanged.
+        return content.strip() if isinstance(content, str) else content
 
     def render_message(self, message: Message, ctx: RenderContext) -> RenderedMessage:
         """Render a message, using idx < last_user_index for thinking stripping.

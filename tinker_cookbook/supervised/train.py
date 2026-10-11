@@ -28,7 +28,7 @@ from tinker_cookbook.eval.evaluators import (
 )
 from tinker_cookbook.exceptions import ConfigurationError
 from tinker_cookbook.supervised.common import compute_bpb, compute_mean_nll
-from tinker_cookbook.supervised.nll_evaluator import NLLEvaluator
+from tinker_cookbook.supervised.nll_evaluator import SamplerNLLEvaluator
 from tinker_cookbook.supervised.types import SupervisedDatasetBuilder
 from tinker_cookbook.tokenizer_utils import get_tokenizer
 from tinker_cookbook.utils import ml_log, trace
@@ -97,10 +97,11 @@ class Config:
 
     Example::
 
+        from tinker_cookbook import cli_utils
         from tinker_cookbook.supervised import train
 
         config = train.Config(
-            log_path="~/logs/sft-run",
+            log_path=cli_utils.runs_path("sft-run"),
             model_name="Qwen/Qwen3-8B",
             dataset_builder=my_dataset_builder,
             learning_rate=1e-4,
@@ -384,7 +385,7 @@ async def main(config: Config):
     if maybe_test_dataset is not None:
         # Pass the tokenizer so the evaluator also reports test/bpb (bits per
         # byte), a tokenizer-independent NLL that is comparable across models.
-        evaluators.append(NLLEvaluator.from_dataset(maybe_test_dataset, tokenizer=tokenizer))
+        evaluators.append(SamplerNLLEvaluator.from_dataset(maybe_test_dataset, tokenizer=tokenizer))
 
     infrequent_evaluators = [evaluator() for evaluator in config.infrequent_evaluator_builders]
     logger.info(
