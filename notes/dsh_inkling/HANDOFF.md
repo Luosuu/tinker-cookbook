@@ -13,7 +13,12 @@ orientation, the reusable lessons, and the open threads.
   clean blocks, p ≈ 0.10 — not yet significant). `--env-brief` is unproven (+3.0 then −2.2).
   `--managed-checkpoint`, the first-edit nudge, and all earlier nudges are null/rejected. No
   config has cleared the p < 0.05 bar yet, so the goal is **not met**.
-- **The bottleneck is infrastructure, not ideas.** Getting *clean* same-period blocks is the hard
+- **First Rivanna block (v2.4, `dsh-blocks/block-r01`):** native 55.2, control 53.1,
+  state-target 54.1 pass@1; state-target −1.0 vs native (p ≈ 0.64). Its mechanism reproduces
+  (target builds 7% → 79%) but untargeted builders already pass 53% there, so the lever has
+  little to fix on v2.4. Find the next lever in the Rivanna failure taxonomy. Rivanna has
+  none of the ConTree infrastructure loss below: 0-3 infra errors per 400 episodes.
+- **The bottleneck on ConTree was infrastructure, not ideas.** Getting *clean* same-period blocks is the hard
   part: `/tmp` is wiped on reboot (kills the image cache and in-flight runs), and the native
   direct-OAI endpoint intermittently 502s / collapses. Blocks 3 and 4 were lost to this.
 - **In-flight when this handoff was written:** block 5 (native20-23 / control full72-75 /

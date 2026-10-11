@@ -1317,6 +1317,41 @@ Why the checkpoint did not reach more episodes: it waits for request 32 and a co
 neither edits nor builds, so the many episodes that keep editing until the request cap never
 see it, and those that already built after their last edit do not need it.
 
+## First Rivanna block: the state-target mechanism moves, the score does not
+
+Native, DSH control and DSH + state-target, four draws each, on the published v2.4 payload in
+its prebuilt Rivanna SIFs (`dsh-blocks/block-r01`, code `a9589d3`). Each episode had its own
+4-CPU/16 GB Slurm allocation, 36 concurrent; arm order was interleaved task by task. 1,197 of
+1,200 episodes finished when this was written; the three outstanding are
+`kokkos__kokkos-8182`, the known verifier timeout. Infra errors: native 0, control 3,
+state 3, all 2400 s verifier timeouts on the same task. Every control episode passed the
+prompt-equivalence audit (164-char system, one user message, `bash` only).
+
+| arm | draws | pass@1 | pass@2 |
+| --- | --- | ---: | ---: |
+| native loop | 53.0, 55.0, 60.6, 52.0 | 55.2% | 65.2% |
+| DSH control | 57.0, 52.0, 50.0, 53.5 | 53.1% | 61.7% |
+| DSH + state-target | 52.0, 53.0, 56.0, 55.6 | 54.1% | 61.8% |
+
+| comparison | paired pass@1 | 95% CI | W/L | McNemar p | draw-level p |
+| --- | ---: | --- | ---: | ---: | ---: |
+| control vs native | −2.0 | −6.4 to +2.4 | 18/24 | 0.441 | 0.405 |
+| state-target vs native | −1.0 | −5.3 to +3.3 | 20/18 | 0.871 | 0.638 |
+| state-target vs control | +1.0 | −3.3 to +5.3 | 18/18 | 1.000 | 0.570 |
+
+**The mechanism reproduces exactly.** Episodes that built the grader's own target rose from 7%
+(control) to 79% (state-target), against 5% → 73% on ConTree.
+
+**It no longer has anything to fix.** In the control arm, episodes that never built the grader
+target still passed 53% of the time (ConTree: 33%), and those that did passed 67%. With the
+v2.4 verifier and a 16 GB sandbox the library-compiles-but-test-target-does-not failure is
+rare, so moving everyone onto the test target buys about one point. Native also scored
+higher than on ConTree (55.2 against 48-50) and passes the trust gate on episode retention.
+
+Rivanna blocks use a different dataset and sandbox from ConTree blocks, so this block is not
+pooled with blocks 1-4. As the first Rivanna block it puts state-target at −1.0 against
+native, the opposite sign to the ConTree estimate.
+
 ## Status
 
 The objective — beat the native harness significantly under matched conditions — is **not yet
@@ -1332,9 +1367,13 @@ met**. Current best estimate across three same-period blocks:
   23% wall time. Not credited.
 - **first-edit-nudge**: rejected, a time confound (a same-period control matched it).
 
-The immediate next step for the objective is a clean block of **native vs state-target vs
-state-target+env-brief** with a healthy native arm, repeated until the combined cross-block test
-reaches p < 0.05 or rules the effect out.
+- **First Rivanna block (v2.4 payload)**: state-target −1.0 vs native, control −2.0, neither
+  significant; the target-build mechanism moved 7% → 79% but untargeted builders already pass
+  53% there, so the ConTree failure mode it fixes is mostly absent.
+
+The ConTree estimate for state-target rests on a failure mode that the Rivanna v2.4 setup
+largely does not have. The next lever should come from the Rivanna failure taxonomy (what the
+roughly 45% of failing episodes actually do there), not from repeating state-target blocks.
 
 ### Earlier framing (superseded, kept for the record)
 
