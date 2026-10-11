@@ -19,7 +19,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[4]
 
 # Keys a block arm may set; everything else is the matched native budget.
-PI_OPTIONS = {"hpc_mode", "hpc_skill", "plugin_profile", "max_protocol_repairs"}
+PI_OPTIONS = {"hpc_mode", "hpc_skill", "plugin_profile", "max_protocol_repairs", "guidance"}
 
 
 def pi_config(*, pi_agent_dir: Path, grader_timeout: int, sandbox_timeout: int, options: dict):

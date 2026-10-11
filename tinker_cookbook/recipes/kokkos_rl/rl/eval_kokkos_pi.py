@@ -58,6 +58,7 @@ class CLIConfig:
     hpc_skill: str = "hpc-debug"
     plugin_profile: str = "none"
     hpc_mode: str = "baseline"
+    guidance: str = "none"
     pi_agent_dir: str | None = None
     thinking_effort: float = 0.9
     temperature: float = 1.0
@@ -91,6 +92,7 @@ def harness_identity(config: CLIConfig) -> dict[str, object]:
     package = json.loads((pi_dir / "package.json").read_text())
     return {
         "hpc_mode": config.hpc_mode,
+        "guidance": config.guidance,
         "hpc_skill": selected_skill(config),
         "plugin_profile": config.plugin_profile,
         "pi_version": package["dependencies"]["@earendil-works/pi-coding-agent"],
@@ -105,8 +107,11 @@ def harness_identity(config: CLIConfig) -> dict[str, object]:
 
                 f"skills/{selected_skill(config)}/SKILL.md",
                 "package.json",
-            ) + tuple(name for name in ("protocol.mjs", "observation.mjs", "package-lock.json")
-                      if (pi_dir / name).is_file())
+            ) + tuple(
+                name
+                for name in ("protocol.mjs", "observation.mjs", "guidance.mjs", "package-lock.json")
+                if (pi_dir / name).is_file()
+            )
         },
     }
 
