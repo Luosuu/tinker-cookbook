@@ -75,7 +75,12 @@ def _commands(directory: Path) -> list[str]:
         out = []
         for line in events.read_text().splitlines():
             event = json.loads(line)
-            if event.get("type") == "bash" and isinstance(event.get("command"), str):
+            # Harness build checks and state probes are not the model's commands.
+            if (
+                event.get("type") == "bash"
+                and not event.get("internal")
+                and isinstance(event.get("command"), str)
+            ):
                 out.append(event["command"])
         return out
     out = []

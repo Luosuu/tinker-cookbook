@@ -96,7 +96,15 @@ def test_outcomes_read_each_arms_own_evidence(tmp_path: Path) -> None:
         commands=[],
         error="RuntimeError: 502",
     )
+    # A harness build check after the edit is not the model building its change.
+    events = tmp_path / "runs/pi-d0/results/t1/events.jsonl"
+    probe = {"type": "bash", "command": "cmake --build build --target X", "internal": True}
+    events.write_text(events.read_text() + json.dumps(probe) + "\n")
     episodes = load_block(tmp_path)
+    assert [c for e in episodes if e.arm == "pi" and e.draw == "0" for c in e.commands] == [
+        "cat a",
+        "sed -i s/a/b/ x",
+    ]
     out = report(episodes)
     native, pi = out["arms"]["native"], out["arms"]["pi"]
     assert native["failure_outcomes"] == {"no_source_change": 1}, "sandbox files are not edits"

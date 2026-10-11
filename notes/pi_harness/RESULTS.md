@@ -74,3 +74,45 @@ r01: median 18 s, p75 163 s, p90 239 s.
 
 Unlike the DSH managed checkpoint (call 32 or later, at most twice, fired in 29% of
 episodes), it runs after every source change.
+
+## Block p01: native vs Pi vs Pi + build check
+
+`dsh-blocks/block-p01`, code `0efdb4b`, pi-hpc-agent 0.5.0, four draws of all 100 tasks per
+arm, 36 concurrent 4-CPU/16 GB episodes, arm order interleaved task by task. 1,190 of 1,200
+episodes had finished when recorded (the rest are long-running); zero infra errors.
+
+| arm | draws | pass@1 | pass@2 |
+| --- | --- | ---: | ---: |
+| native | 58.0, 52.0, 57.0, 55.1 | 55.5% | 64.8% |
+| Pi | 54.0, 54.5, 60.6, 49.0 | 54.2% | 62.7% |
+| Pi + build check | 62.6, 56.6, 56.6, 56.7 | 58.2% | 67.0% |
+
+| comparison | paired pass@1 (95% CI) | draw-level delta, p |
+| --- | --- | --- |
+| Pi vs native | −1.2 (−5.0 to +2.5) | −1.0, p = 0.72 |
+| Pi + check vs native | +2.1 (−1.9 to +6.1) | +2.6, p = 0.20 |
+| Pi + check vs Pi | +3.4 (−1.4 to +8.1) | +3.6, p = 0.20 |
+
+**Parity holds:** with the 0.2.0 fixes the Pi loop scores like native, as DSH did.
+
+**The build check moves its mechanism:** grader build failures fell from 85 (Pi) to 51.
+The model's own habit did not change: failures whose last edit the model never built itself
+stayed at 77 (Pi) and 80 (Pi + check); the harness builds for it. Part of the gain moved into
+compiled-but-wrong patches (fail-to-pass failures 24 → 31). (An earlier count of 43 included
+the harness's own build commands as the model's.) No-source-change failures (67 → 79) are draw
+noise, not reverts: 77 of the 79 never triggered a check and only 2 used `git checkout`.
+
+## Correction to the identifier-search count
+
+An earlier count reported 8-24 pre-edit searches per episode for instruction identifiers.
+It matched the boilerplate `/workspace/repo` path, which every command contains. With
+identifiers taken from the task prose (scoped names, snake/camel case, calls), the counts are
+3.2 (solved), 4.8 (build failed), 6.5 (fail-to-pass failed) and 8.8 (no source change) of
+9-26 pre-edit searches.
+
+### Symbol brief (0.6.0)
+
+Before turn 1 the harness greps the task's identifiers over source files and delivers the
+locations once, as a separate message: rarest identifiers first, definitions before uses,
+ubiquitous names only listed. For kokkos-6289 it lists the two functions the task removes
+and every call site to change.
