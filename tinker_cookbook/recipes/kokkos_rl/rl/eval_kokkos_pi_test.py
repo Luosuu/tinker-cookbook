@@ -149,10 +149,18 @@ def test_agent_directory_explicit_overrides_environment(monkeypatch, tmp_path):
     monkeypatch.setenv("PI_HPC_AGENT_DIR", str(explicit))
     assert module.pi_agent_directory(module.CLIConfig()) == explicit
 
+
 def test_identity_remains_compatible_with_legacy_package(tmp_path):
     import shutil
+
     source = module.pi_agent_directory(module.CLIConfig())
-    for name in ["runner.mjs", "integration.mjs", "plugins.mjs", "package.json", "skills/hpc-debug/SKILL.md"]:
+    for name in [
+        "runner.mjs",
+        "integration.mjs",
+        "plugins.mjs",
+        "package.json",
+        "skills/hpc-debug/SKILL.md",
+    ]:
         target = tmp_path / name
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source / name, target)
@@ -167,6 +175,31 @@ def test_identity_remains_compatible_with_legacy_package(tmp_path):
 
 def test_protocol_corrections_default_to_disabled():
     assert module.CLIConfig().max_protocol_repairs == 0
+
+
+def test_file_operations_are_served_inside_the_sandbox():
+    sandbox = AsyncMock()
+    sandbox.read_file.return_value = SandboxResult(exit_code=0, stdout="int x;\n", stderr="")
+    sandbox.write_file.return_value = SandboxResult(exit_code=0, stdout="", stderr="")
+    sandbox.run_command.return_value = SandboxResult(exit_code=1, stdout="", stderr="")
+
+    def call(event):
+        return asyncio.run(module.sandbox_file_op(sandbox, event))
+
+    assert call({"op": "read", "path": "/workspace/repo/a.hpp"}) == {
+        "ok": True,
+        "content": "int x;\n",
+    }
+    assert call({"op": "write", "path": "/workspace/repo/a.hpp", "content": "int y;\n"})["ok"]
+    sandbox.write_file.assert_awaited_with("/workspace/repo/a.hpp", "int y;\n", timeout=120)
+    assert call({"op": "access", "path": "/workspace/repo/a b.hpp"})["ok"] is False
+    assert sandbox.run_command.await_args.args[0] == (
+        "test -r '/workspace/repo/a b.hpp' && test -w '/workspace/repo/a b.hpp'"
+    )
+    assert call({"op": "read", "path": "relative.hpp"})["ok"] is False
+    assert call({"op": "delete", "path": "/workspace/repo/a.hpp"})["ok"] is False
+    sandbox.read_file.return_value = SandboxResult(exit_code=1, stdout="", stderr="No such file")
+    assert call({"op": "read", "path": "/x"}) == {"ok": False, "error": "No such file"}
 
 
 def test_pi_tool_result_is_byte_identical_to_the_native_loop():
@@ -188,11 +221,13 @@ def test_pi_tool_result_is_byte_identical_to_the_native_loop():
     if not (pi_dir / "observation.mjs").is_file():
         pytest.skip("installed Pi agent predates native-identical tool results")
     rng = random.Random(0)
-    alphabet = "ab \n\t\"\\/\x00\x1b\x7f\u00e9\u2014\u2028\U0001f600{}"
+    alphabet = 'ab \n\t"\\/\x00\x1b\x7f\u00e9\u2014\u2028\U0001f600{}'
     cases = [
         {
             "exit_code": rng.choice([0, 1, 2, 124, -1]),
-            "stdout": "".join(rng.choice(alphabet) for _ in range(rng.choice([0, 10, 9000, 20000]))),
+            "stdout": "".join(
+                rng.choice(alphabet) for _ in range(rng.choice([0, 10, 9000, 20000]))
+            ),
             "stderr": "".join(rng.choice(alphabet) for _ in range(rng.choice([0, 50, 17000]))),
         }
         for _ in range(12)

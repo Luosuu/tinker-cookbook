@@ -6,6 +6,7 @@ import asyncio
 import hashlib
 import json
 import os
+import shlex
 import shutil
 import time
 from dataclasses import asdict, replace
@@ -59,6 +60,7 @@ class CLIConfig:
     plugin_profile: str = "none"
     hpc_mode: str = "baseline"
     guidance: str = "none"
+    file_tools: str = "none"
     pi_agent_dir: str | None = None
     thinking_effort: float = 0.9
     temperature: float = 1.0
@@ -93,6 +95,7 @@ def harness_identity(config: CLIConfig) -> dict[str, object]:
     return {
         "hpc_mode": config.hpc_mode,
         "guidance": config.guidance,
+        "file_tools": config.file_tools,
         "hpc_skill": selected_skill(config),
         "plugin_profile": config.plugin_profile,
         "pi_version": package["dependencies"]["@earendil-works/pi-coding-agent"],
@@ -109,11 +112,39 @@ def harness_identity(config: CLIConfig) -> dict[str, object]:
                 "package.json",
             ) + tuple(
                 name
-                for name in ("protocol.mjs", "observation.mjs", "guidance.mjs", "package-lock.json")
+                for name in (
+                    "protocol.mjs",
+                    "observation.mjs",
+                    "guidance.mjs",
+                    "file-tools.mjs",
+                    "package-lock.json",
+                )
                 if (pi_dir / name).is_file()
             )
         },
     }
+
+
+async def sandbox_file_op(sandbox: SandboxInterface, event: dict) -> dict[str, object]:
+    """Serve one read/edit file operation from the Pi agent inside the task sandbox."""
+    op, path = event.get("op"), event.get("path")
+    if not isinstance(path, str) or not path.startswith("/"):
+        return {"ok": False, "error": f"Invalid sandbox path: {path!r}"}
+    if op == "read":
+        result = await sandbox.read_file(path, timeout=60)
+        if result.exit_code != 0:
+            return {"ok": False, "error": result.stderr.strip() or f"Cannot read {path}"}
+        return {"ok": True, "content": result.stdout}
+    if op == "write":
+        if not isinstance(event.get("content"), str):
+            return {"ok": False, "error": "write requires string content"}
+        result = await sandbox.write_file(path, event["content"], timeout=120)
+        return {"ok": result.exit_code == 0, "error": result.stderr.strip()}
+    if op == "access":
+        quoted = shlex.quote(path)
+        result = await sandbox.run_command(f"test -r {quoted} && test -w {quoted}", timeout=30)
+        return {"ok": result.exit_code == 0, "error": f"Cannot access {path}"}
+    return {"ok": False, "error": f"Unknown file operation: {op!r}"}
 
 
 async def pi_rollout(
@@ -186,6 +217,23 @@ async def pi_rollout(
                         },
                     }
                     events.write(json.dumps({"type": "sandbox_result", **reply}) + "\n")
+                    events.flush()
+                    process.stdin.write((json.dumps(reply) + "\n").encode())
+                    await process.stdin.drain()
+                elif event["type"] == "file":
+                    reply = {"id": event["id"], "result": await sandbox_file_op(sandbox, event)}
+                    events.write(
+                        json.dumps(
+                            {
+                                "type": "file_result",
+                                "id": event["id"],
+                                "op": event["op"],
+                                "path": event["path"],
+                                "ok": reply["result"]["ok"],
+                            }
+                        )
+                        + "\n"
+                    )
                     events.flush()
                     process.stdin.write((json.dumps(reply) + "\n").encode())
                     await process.stdin.drain()
