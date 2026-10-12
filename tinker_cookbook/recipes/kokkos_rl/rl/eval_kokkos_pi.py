@@ -51,7 +51,7 @@ def pi_agent_directory(config: CLIConfig) -> Path:
 
 @chz.chz
 class CLIConfig:
-    tasks_dir: str = "data/kokkos/SWE-kokkos-bench-v2"
+    tasks_dir: str = "data/kokkos/SWE-kokkos-bench-v2.5"
     task_names: str | None = None
     output_path: str = "notes/experiments/kokkos_rl/pi"
     model_name: str = "thinkingmachines/Inkling-Small:peft:262144"

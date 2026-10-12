@@ -1,0 +1,124 @@
+diff --git a/core/unit_test/TestMathematicalFunctions.hpp b/core/unit_test/TestMathematicalFunctions.hpp
+index c8403584f47..4349f89dc6a 100644
+--- a/core/unit_test/TestMathematicalFunctions.hpp
++++ b/core/unit_test/TestMathematicalFunctions.hpp
+@@ -2184,6 +2184,119 @@ TEST(TEST_CATEGORY, mathematical_functions_isnan) {
+   TestIsNaN<TEST_EXECSPACE>();
+ }
+ 
++#define DEVICE_ASSERT(CALL)                          \
++  if (!(CALL)) {                                     \
++    printf(KOKKOS_IMPL_STRINGIFY(CALL) " failed\n"); \
++    ++e;                                             \
++  }
++
++template <class Space>
++struct TestIsNormal {
++  TestIsNormal() { run(); }
++  void run() const {
++    int errors = 0;
++    Kokkos::parallel_reduce(Kokkos::RangePolicy<Space>(0, 1), *this, errors);
++    ASSERT_EQ(errors, 0);
++  }
++  KOKKOS_FUNCTION void operator()(int, int& e) const {
++    using KE::denorm_min;
++    using KE::infinity;
++    using KE::norm_min;
++    using KE::quiet_NaN;
++    using KE::signaling_NaN;
++    using Kokkos::isnormal;
++    if (isnormal(0) || !isnormal(1) || !isnormal(INT_MAX)) {
++      ++e;
++      Kokkos::printf("failed isnormal(integral)\n");
++    }
++    if (isnormal(0.f) || !isnormal(2.f) || !isnormal(-3.f) ||
++        isnormal(quiet_NaN<float>::value) ||
++        isnormal(signaling_NaN<float>::value) ||
++        isnormal(infinity<float>::value) ||
++        isnormal(denorm_min<float>::value) ||
++        !isnormal(norm_min<float>::value)) {
++      ++e;
++      Kokkos::printf("failed isnormal(float)\n");
++    }
++#if !(defined(KOKKOS_ENABLE_CUDA) && defined(KOKKOS_COMPILER_MSVC))
++    if (isnormal(static_cast<KE::half_t>(0.f)) ||
++        !isnormal(static_cast<KE::half_t>(2.f)) ||
++        !isnormal(static_cast<KE::half_t>(-2.f))
++#if !(defined(KOKKOS_ENABLE_CUDA) &&                         \
++      defined(KOKKOS_ENABLE_CUDA_RELOCATABLE_DEVICE_CODE) && \
++      defined(KOKKOS_COMPILER_CLANG))
++        // FIXME internal compiler error for Clang+Cuda and RDC
++        || isnormal(quiet_NaN<KE::half_t>::value) ||
++        isnormal(signaling_NaN<KE::half_t>::value) ||
++        isnormal(infinity<KE::half_t>::value) ||
++        isnormal(denorm_min<KE::half_t>::value) ||
++        !isnormal(norm_min<KE::half_t>::value)
++#endif
++    ) {
++      ++e;
++      Kokkos::printf("failed isnormal(KE::half_t)\n");
++    }
++    if (isnormal(static_cast<KE::bhalf_t>(0.f)) ||
++        !isnormal(static_cast<KE::bhalf_t>(2.f)) ||
++        !isnormal(static_cast<KE::bhalf_t>(-2.f)) ||
++        isnormal(quiet_NaN<KE::bhalf_t>::value) ||
++        isnormal(signaling_NaN<KE::bhalf_t>::value) ||
++        isnormal(infinity<KE::bhalf_t>::value) ||
++        isnormal(denorm_min<KE::bhalf_t>::value) ||
++        !isnormal(norm_min<KE::bhalf_t>::value)) {
++      ++e;
++      Kokkos::printf("failed isnormal(KE::bhalf_t)\n");
++    }
++#endif
++    if (isnormal(0.) || !isnormal(3.) || !isnormal(-3.) ||
++        isnormal(quiet_NaN<double>::value) ||
++        isnormal(signaling_NaN<double>::value) ||
++        isnormal(infinity<double>::value) ||
++        isnormal(denorm_min<double>::value) ||
++        !isnormal(norm_min<double>::value)) {
++      ++e;
++      Kokkos::printf("failed isnormal(double)\n");
++    }
++#ifdef MATHEMATICAL_FUNCTIONS_HAVE_LONG_DOUBLE_OVERLOADS
++    if (isnormal(0.l) || !isnormal(4.l) || !isnormal(-4.l) ||
++        isnormal(quiet_NaN<long double>::value) ||
++        isnormal(signaling_NaN<long double>::value) ||
++        isnormal(infinity<long double>::value) ||
++        isnormal(denorm_min<long double>::value) ||
++        !isnormal(norm_min<long double>::value)) {
++      ++e;
++      Kokkos::printf("failed isnormal(long double)\n");
++    }
++#endif
++    // special values
++    if (isnormal(INFINITY) || isnormal(NAN) ||
++#ifdef MATHEMATICAL_FUNCTIONS_HAVE_LONG_DOUBLE_OVERLOADS
++        !isnormal(LDBL_MAX) || !isnormal(LDBL_MIN) || isnormal(LDBL_TRUE_MIN) ||
++#endif
++        !isnormal(FLT_MAX) || !isnormal(FLT_MIN) || isnormal(FLT_TRUE_MIN) ||
++        !isnormal(DBL_MAX) || !isnormal(DBL_MIN) || isnormal(DBL_TRUE_MIN)) {
++      ++e;
++      Kokkos::printf("failed isnormal(floating_point) special values\n");
++    }
++
++    KOKKOS_TEST_WORKAROUND_DEPRECATED_STD_ITERATOR_WARNINGS_PUSH()
++    static_assert(std::is_same_v<decltype(isnormal(1)), bool>);
++    static_assert(std::is_same_v<decltype(isnormal(2.f)), bool>);
++    static_assert(std::is_same_v<decltype(isnormal(3.)), bool>);
++    KOKKOS_TEST_WORKAROUND_DEPRECATED_STD_ITERATOR_WARNINGS_POP()
++#ifdef MATHEMATICAL_FUNCTIONS_HAVE_LONG_DOUBLE_OVERLOADS
++    static_assert(std::is_same_v<decltype(isnormal(4.l)), bool>);
++#endif
++  }
++};
++
++TEST(TEST_CATEGORY, mathematical_functions_isnormal) {
++#if __FINITE_MATH_ONLY__
++  GTEST_SKIP() << "skipping when compiling with -ffinite-math-only";
++#endif
++  TestIsNormal<TEST_EXECSPACE>();
++}
++
+ KE::half_t ref_test_fallback_half(KE::half_t) {
+ #if defined(KOKKOS_ENABLE_SYCL) && defined(KOKKOS_IMPL_SYCL_HALF_TYPE_DEFINED)
+   // When SYCL is enabled, half_t is available on both the GPU and the CPU.

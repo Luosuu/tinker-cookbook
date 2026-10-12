@@ -1,0 +1,138 @@
+diff --git a/core/src/Kokkos_Graph.hpp b/core/src/Kokkos_Graph.hpp
+index 05d774ac61a..c19f604ebee 100644
+--- a/core/src/Kokkos_Graph.hpp
++++ b/core/src/Kokkos_Graph.hpp
+@@ -216,6 +216,7 @@ decltype(auto) Graph<ExecutionSpace>::native_graph_exec() {
+ #include <Kokkos_GraphNode.hpp>
+ 
+ #include <impl/Kokkos_GraphNodeImpl.hpp>
++#include <impl/Kokkos_GraphNodeThenImpl.hpp>
+ #include <impl/Kokkos_Default_Graph_Impl.hpp>
+ #include <Cuda/Kokkos_Cuda_Graph_Impl.hpp>
+ #if defined(KOKKOS_ENABLE_HIP)
+diff --git a/core/src/Kokkos_GraphNode.hpp b/core/src/Kokkos_GraphNode.hpp
+index a000234de6c..5914853a9c0 100644
+--- a/core/src/Kokkos_GraphNode.hpp
++++ b/core/src/Kokkos_GraphNode.hpp
+@@ -130,12 +130,8 @@ class GraphNodeRef {
+ 
+   template <class NextKernelDeduced>
+   auto _then_kernel(NextKernelDeduced&& arg_kernel) const {
+-    // readability note:
+-    //   std::remove_cvref_t<NextKernelDeduced> is a specialization of
+-    //   Kokkos::Impl::GraphNodeKernelImpl:
+-    static_assert(Kokkos::Impl::is_specialization_of<
+-                      Kokkos::Impl::remove_cvref_t<NextKernelDeduced>,
+-                      Kokkos::Impl::GraphNodeKernelImpl>::value,
++    static_assert(Kokkos::Impl::is_graph_kernel_v<
++                      Kokkos::Impl::remove_cvref_t<NextKernelDeduced>>,
+                   "Kokkos internal error");
+ 
+     auto graph_ptr = m_graph_impl.lock();
+@@ -228,6 +224,28 @@ class GraphNodeRef {
+   //----------------------------------------------------------------------------
+   // <editor-fold desc="then_parallel_for"> {{{2
+ 
++  // TODO We should do better than a p-for (that uses registers, heavier).
++  //      This should "just" launch the function on device with our driver.
++  template <typename Label, typename Functor,
++            typename = std::enable_if_t<std::is_invocable_r_v<
++                void, const Kokkos::Impl::remove_cvref_t<Functor>>>>
++  auto then(Label&& label, const ExecutionSpace& exec,
++            Functor&& functor) const {
++    using next_kernel_t =
++        Kokkos::Impl::GraphNodeThenImpl<ExecutionSpace,
++                                        Kokkos::Impl::remove_cvref_t<Functor>>;
++    return this->_then_kernel(next_kernel_t{std::forward<Label>(label), exec,
++                                            std::forward<Functor>(functor)});
++  }
++
++  template <typename Label, typename Functor,
++            typename = std::enable_if_t<std::is_invocable_r_v<
++                void, const Kokkos::Impl::remove_cvref_t<Functor>>>>
++  auto then(Label&& label, Functor&& functor) const {
++    return this->then(std::forward<Label>(label), ExecutionSpace{},
++                      std::forward<Functor>(functor));
++  }
++
+   template <
+       class Policy, class Functor,
+       std::enable_if_t<
+diff --git a/core/src/impl/Kokkos_GraphImpl_fwd.hpp b/core/src/impl/Kokkos_GraphImpl_fwd.hpp
+index 1656b5bb77e..da236548670 100644
+--- a/core/src/impl/Kokkos_GraphImpl_fwd.hpp
++++ b/core/src/impl/Kokkos_GraphImpl_fwd.hpp
+@@ -32,6 +32,9 @@ template <class ExecutionSpace, class Policy, class Functor,
+           class KernelTypeTag, class... Args>
+ class GraphNodeKernelImpl;
+ 
++template <class ExecutionSpace, class Functor>
++struct GraphNodeThenImpl;
++
+ struct _graph_node_kernel_ctor_tag {};
+ struct _graph_node_predecessor_ctor_tag {};
+ struct _graph_node_is_root_ctor_tag {};
+diff --git a/core/src/impl/Kokkos_GraphNodeThenImpl.hpp b/core/src/impl/Kokkos_GraphNodeThenImpl.hpp
+new file mode 100644
+index 00000000000..d74ad6ea439
+--- /dev/null
++++ b/core/src/impl/Kokkos_GraphNodeThenImpl.hpp
+@@ -0,0 +1,58 @@
++//@HEADER
++// ************************************************************************
++//
++//                        Kokkos v. 4.0
++//       Copyright (2022) National Technology & Engineering
++//               Solutions of Sandia, LLC (NTESS).
++//
++// Under the terms of Contract DE-NA0003525 with NTESS,
++// the U.S. Government retains certain rights in this software.
++//
++// Part of Kokkos, under the Apache License v2.0 with LLVM Exceptions.
++// See https://kokkos.org/LICENSE for license information.
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++//
++//@HEADER
++
++#ifndef KOKKOS_IMPL_KOKKOS_GRAPHNODETHENIMPL_HPP
++#define KOKKOS_IMPL_KOKKOS_GRAPHNODETHENIMPL_HPP
++
++#include <Kokkos_ExecPolicy.hpp>
++#include <impl/Kokkos_GraphImpl_fwd.hpp>
++
++namespace Kokkos::Impl {
++
++// Helper for the 'then', such that the user can indeed pass a callable that
++// takes no argument.
++template <typename Functor>
++struct ThenWrapper {
++  Functor functor;
++  template <typename T>
++  KOKKOS_FUNCTION void operator()(const T) const {
++    functor();
++  }
++};
++
++template <typename ExecutionSpace, typename Functor>
++struct GraphNodeThenImpl
++    : public GraphNodeKernelImpl<
++          ExecutionSpace, Kokkos::RangePolicy<ExecutionSpace, IsGraphKernelTag>,
++          ThenWrapper<Functor>, ParallelForTag> {
++  using base_t =
++      GraphNodeKernelImpl<ExecutionSpace,
++                          Kokkos::RangePolicy<ExecutionSpace, IsGraphKernelTag>,
++                          ThenWrapper<Functor>, ParallelForTag>;
++  using wrapper_t = ThenWrapper<Functor>;
++
++  template <typename Label, typename T>
++  GraphNodeThenImpl(Label&& label_, const ExecutionSpace& exec, T&& functor)
++      : base_t(
++            std::forward<Label>(label_), exec,
++            wrapper_t{std::forward<T>(functor)},
++            Kokkos::RangePolicy<ExecutionSpace, IsGraphKernelTag>(exec, 0, 1)) {
++  }
++};
++
++}  // namespace Kokkos::Impl
++
++#endif  // KOKKOS_IMPL_KOKKOS_GRAPHNODETHENIMPL_HPP

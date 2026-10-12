@@ -42,3 +42,25 @@ def test_long_budget_stays_above_measured_use():
     assert LONG_250.wall_seconds >= 3 * 1_787
     assert LONG_250.build_check_max_runs > 8
     assert LONG_250.build_check_max_seconds > 1_200
+
+
+def test_v25_payload_is_graded_as_published(tmp_path):
+    """Regenerating a guarded v2.4+ verifier would drop its release repairs."""
+    import shutil
+    from pathlib import Path
+
+    from tinker_cookbook.recipes.kokkos_rl.rl.tasks import is_guarded, prepared_kokkos_tasks
+
+    source = Path(__file__).parents[3] / "data/kokkos/SWE-kokkos-bench-v2.5/kokkos__kokkos-6289"
+    shutil.copytree(source, tmp_path / source.name)
+    assert is_guarded(source)
+    with prepared_kokkos_tasks(tmp_path) as tasks:
+        (task,) = tasks
+        for rel in ("tests/test.sh", "environment/Dockerfile", "task.toml"):
+            assert (task.task_dir / rel).read_bytes() == (source / rel).read_bytes(), rel
+    import tomllib
+
+    config = tomllib.loads((source / "task.toml").read_text())
+    assert config["metadata"]["budget"] == LONG_250.name
+    assert config["agent"]["timeout_sec"] == LONG_250.wall_seconds
+    assert config["verifier"]["timeout_sec"] == LONG_250.grader_seconds

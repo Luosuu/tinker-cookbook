@@ -1,0 +1,44 @@
+diff --git a/core/src/Kokkos_View.hpp b/core/src/Kokkos_View.hpp
+index 12f8ce92e64..f346c236712 100644
+--- a/core/src/Kokkos_View.hpp
++++ b/core/src/Kokkos_View.hpp
+@@ -1657,6 +1657,39 @@ KOKKOS_INLINE_FUNCTION auto subview(const View<D, P...>& src, Args... args) {
+       Args...>::type(src, args...);
+ }
+ 
++#ifdef KOKKOS_ENABLE_IMPL_MDSPAN
++// Constructing the return type inline in the subview function body
++// led to compiler errors with CUDA 12.2 - related to the weird issue
++// where it tries to inject C++ Ranges function somewhere
++// However, this does not make the code more complex so I use the extra
++// struct unconditionally.
++namespace Impl {
++template <class V, class... Slices>
++struct SubviewReturnType {
++  using sub_mapping_t =
++      decltype(submdspan_mapping(std::declval<typename V::mapping_type>(),
++                                 transform_kokkos_slice_to_mdspan_slice(
++                                     std::declval<Slices>())...)
++                   .mapping);
++  using sub_extents_t  = typename sub_mapping_t::extents_type;
++  using sub_layout_t   = typename sub_mapping_t::layout_type;
++  using sub_accessor_t = typename V::accessor_type::offset_policy;
++  using sub_view_t = View<typename V::element_type, sub_extents_t, sub_layout_t,
++                          sub_accessor_t>;
++};
++}  // namespace Impl
++
++// std::pair isn't device-compatible
++template <class E, class I, size_t... Exts, class L, class A, class... Slices>
++  requires(!Impl::ContainsStdPair<Slices...>)
++KOKKOS_INLINE_FUNCTION auto subview(
++    const View<E, Kokkos::extents<I, Exts...>, L, A>& src, Slices... slices) {
++  using sub_view_t = typename Impl::SubviewReturnType<
++      View<E, Kokkos::extents<I, Exts...>, L, A>, Slices...>::sub_view_t;
++  return sub_view_t(src, slices...);
++}
++#endif
++
+ template <class V, class... Args>
+ using Subview = decltype(subview(std::declval<V>(), std::declval<Args>()...));
+ 

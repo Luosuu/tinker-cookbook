@@ -23,7 +23,7 @@ DEFAULT_CONTREE_CACHE_PATH = "/tmp/tinker-examples/kokkos_rl/contree_images.json
 class CLIConfig:
     model_name: str = "thinkingmachines/Inkling-Small:peft:262144"
     harness_profile: str = "baseline"
-    tasks_dir: str = "data/kokkos/SWE-kokkos-bench-v2"
+    tasks_dir: str = "data/kokkos/SWE-kokkos-bench-v2.5"
     output_path: str = "notes/experiments/kokkos_rl/evals"
     export_kokkos_rollouts: bool = False
     checkpoint_url: str | None = None

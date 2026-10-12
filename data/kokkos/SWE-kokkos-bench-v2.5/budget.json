@@ -1,0 +1,16 @@
+{
+  "name": "long-250",
+  "max_turns": 250,
+  "max_tool_calls": 500,
+  "max_tokens": 16384,
+  "max_sampled_tokens": 131072,
+  "max_input_tokens": 65536000,
+  "max_context_tokens": 262144,
+  "max_tool_output_chars": 16384,
+  "wall_seconds": 7200,
+  "command_seconds": 900,
+  "grader_seconds": 2400,
+  "sandbox_seconds": 10800,
+  "build_check_max_runs": 24,
+  "build_check_max_seconds": 3600
+}

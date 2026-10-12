@@ -1,0 +1,17 @@
+diff --git a/core/src/Kokkos_CopyViews.hpp b/core/src/Kokkos_CopyViews.hpp
+index f29bb6fdeb1..8fb71acc9ae 100644
+--- a/core/src/Kokkos_CopyViews.hpp
++++ b/core/src/Kokkos_CopyViews.hpp
+@@ -2851,12 +2851,6 @@ inline std::enable_if_t<Impl::is_view_ctor_property<I>::value> resize(
+   impl_resize(Kokkos::view_alloc(arg_prop), v, layout);
+ }
+ 
+-template <class ExecutionSpace, class T, class... P>
+-inline void resize(const ExecutionSpace& exec_space, Kokkos::View<T, P...>& v,
+-                   const typename Kokkos::View<T, P...>::array_layout& layout) {
+-  impl_resize(Impl::ViewCtorProp<>(), exec_space, v, layout);
+-}
+-
+ template <class T, class... P>
+ inline void resize(Kokkos::View<T, P...>& v,
+                    const typename Kokkos::View<T, P...>::array_layout& layout) {

@@ -1,0 +1,217 @@
+diff --git a/core/src/Kokkos_Graph.hpp b/core/src/Kokkos_Graph.hpp
+index 6c96184cf99..6aa0d178d31 100644
+--- a/core/src/Kokkos_Graph.hpp
++++ b/core/src/Kokkos_Graph.hpp
+@@ -112,9 +112,30 @@ struct [[nodiscard]] Graph {
+     (*m_impl_ptr).submit(exec);
+   }
+ 
+-  decltype(auto) native_graph();
+-
+-  decltype(auto) native_graph_exec();
++#if defined(KOKKOS_ENABLE_CUDA)
++  cudaGraph_t cuda_graph() const
++  // FIXME_MSVC Did not work with Visual Studio 17 2022.
++#if !defined(KOKKOS_COMPILER_MSVC)
++    requires std::same_as<ExecutionSpace, Kokkos::Cuda>
++#endif
++  ;
++  cudaGraphExec_t cuda_graph_exec() const
++  // FIXME_MSVC Did not work with Visual Studio 17 2022.
++#if !defined(KOKKOS_COMPILER_MSVC)
++    requires std::same_as<ExecutionSpace, Kokkos::Cuda>
++#endif
++  ;
++#elif defined(KOKKOS_ENABLE_HIP)
++  hipGraph_t hip_graph() const
++    requires std::same_as<ExecutionSpace, Kokkos::HIP>;
++  hipGraphExec_t hip_graph_exec() const
++    requires std::same_as<ExecutionSpace, Kokkos::HIP>;
++#elif defined(KOKKOS_ENABLE_SYCL) && defined(KOKKOS_IMPL_SYCL_GRAPH_SUPPORT)
++  const auto& sycl_graph() const
++    requires std::same_as<ExecutionSpace, Kokkos::SYCL>;
++  const auto& sycl_graph_exec() const
++    requires std::same_as<ExecutionSpace, Kokkos::SYCL>;
++#endif
+ };
+ 
+ // </editor-fold> end Graph }}}1
+@@ -181,41 +202,58 @@ create_graph(Closure&& arg_closure) {
+ // </editor-fold> end create_graph }}}1
+ //==============================================================================
+ 
+-template <class ExecutionSpace>
+-decltype(auto) Graph<ExecutionSpace>::native_graph() {
+-  KOKKOS_EXPECTS(bool(m_impl_ptr));
+ #if defined(KOKKOS_ENABLE_CUDA)
+-  if constexpr (std::is_same_v<ExecutionSpace, Kokkos::Cuda>) {
+-    return m_impl_ptr->cuda_graph();
+-  }
+-#elif defined(KOKKOS_ENABLE_HIP)
+-  if constexpr (std::is_same_v<ExecutionSpace, Kokkos::HIP>) {
+-    return m_impl_ptr->hip_graph();
+-  }
+-#elif defined(KOKKOS_ENABLE_SYCL) && defined(KOKKOS_IMPL_SYCL_GRAPH_SUPPORT)
+-  if constexpr (std::is_same_v<ExecutionSpace, Kokkos::SYCL>) {
+-    return m_impl_ptr->sycl_graph();
+-  }
++template <class ExecutionSpace>
++cudaGraph_t Graph<ExecutionSpace>::cuda_graph() const
++// FIXME_MSVC Did not work with Visual Studio 17 2022.
++#if !defined(KOKKOS_COMPILER_MSVC)
++  requires std::same_as<ExecutionSpace, Kokkos::Cuda>
+ #endif
++{
++  KOKKOS_EXPECTS(bool(m_impl_ptr));
++  return m_impl_ptr->cuda_graph();
+ }
+-
+ template <class ExecutionSpace>
+-decltype(auto) Graph<ExecutionSpace>::native_graph_exec() {
++cudaGraphExec_t Graph<ExecutionSpace>::cuda_graph_exec() const
++// FIXME_MSVC Did not work with Visual Studio 17 2022.
++#if !defined(KOKKOS_COMPILER_MSVC)
++  requires std::same_as<ExecutionSpace, Kokkos::Cuda>
++#endif
++{
+   KOKKOS_EXPECTS(bool(m_impl_ptr));
+-#if defined(KOKKOS_ENABLE_CUDA)
+-  if constexpr (std::is_same_v<ExecutionSpace, Kokkos::Cuda>) {
+-    return m_impl_ptr->cuda_graph_exec();
+-  }
++  return m_impl_ptr->cuda_graph_exec();
++}
+ #elif defined(KOKKOS_ENABLE_HIP)
+-  if constexpr (std::is_same_v<ExecutionSpace, Kokkos::HIP>) {
+-    return m_impl_ptr->hip_graph_exec();
+-  }
++template <class ExecutionSpace>
++hipGraph_t Graph<ExecutionSpace>::hip_graph() const
++  requires std::same_as<ExecutionSpace, Kokkos::HIP>
++{
++  KOKKOS_EXPECTS(bool(m_impl_ptr));
++  return m_impl_ptr->hip_graph();
++}
++template <class ExecutionSpace>
++hipGraphExec_t Graph<ExecutionSpace>::hip_graph_exec() const
++  requires std::same_as<ExecutionSpace, Kokkos::HIP>
++{
++  KOKKOS_EXPECTS(bool(m_impl_ptr));
++  return m_impl_ptr->hip_graph_exec();
++}
+ #elif defined(KOKKOS_ENABLE_SYCL) && defined(KOKKOS_IMPL_SYCL_GRAPH_SUPPORT)
+-  if constexpr (std::is_same_v<ExecutionSpace, Kokkos::SYCL>) {
+-    return m_impl_ptr->sycl_graph_exec();
+-  }
+-#endif
++template <class ExecutionSpace>
++const auto& Graph<ExecutionSpace>::sycl_graph() const
++  requires std::same_as<ExecutionSpace, Kokkos::SYCL>
++{
++  KOKKOS_EXPECTS(bool(m_impl_ptr));
++  return m_impl_ptr->sycl_graph();
+ }
++template <class ExecutionSpace>
++const auto& Graph<ExecutionSpace>::sycl_graph_exec() const
++  requires std::same_as<ExecutionSpace, Kokkos::SYCL>
++{
++  KOKKOS_EXPECTS(bool(m_impl_ptr));
++  return m_impl_ptr->sycl_graph_exec();
++}
++#endif
+ 
+ }  // end namespace Experimental
+ }  // namespace Kokkos
+diff --git a/core/src/SYCL/Kokkos_SYCL_GraphNodeKernel.hpp b/core/src/SYCL/Kokkos_SYCL_GraphNodeKernel.hpp
+index cf357410376..42db3c330ff 100644
+--- a/core/src/SYCL/Kokkos_SYCL_GraphNodeKernel.hpp
++++ b/core/src/SYCL/Kokkos_SYCL_GraphNodeKernel.hpp
+@@ -19,7 +19,7 @@ namespace Impl {
+ template <typename Functor>
+ struct GraphNodeThenHostImpl<Kokkos::SYCL, Functor> {
+  private:
+-  using native_graph_t = sycl::ext::oneapi::experimental::command_graph<
++  using sycl_graph_t = sycl::ext::oneapi::experimental::command_graph<
+       sycl::ext::oneapi::experimental::graph_state::modifiable>;
+ 
+   std::optional<Functor> m_functor = std::nullopt;
+@@ -31,7 +31,7 @@ struct GraphNodeThenHostImpl<Kokkos::SYCL, Functor> {
+   explicit GraphNodeThenHostImpl(Functor functor)
+       : m_functor{std::move(functor)} {}
+ 
+-  void add_to_graph(native_graph_t& graph) {
++  void add_to_graph(sycl_graph_t& graph) {
+     KOKKOS_ENSURES(!m_node);
+     KOKKOS_ENSURES(m_functor.has_value());
+     m_node = graph.add([&](sycl::handler& cgh) {
+@@ -45,17 +45,17 @@ struct GraphNodeThenHostImpl<Kokkos::SYCL, Functor> {
+ 
+ template <typename Functor>
+ struct GraphNodeCaptureImpl<Kokkos::SYCL, Functor> {
+-  using native_graph_t = sycl::ext::oneapi::experimental::command_graph<
++  using sycl_graph_t = sycl::ext::oneapi::experimental::command_graph<
+       sycl::ext::oneapi::experimental::graph_state::modifiable>;
+ 
+   Functor m_functor;
+   std::optional<sycl::ext::oneapi::experimental::node> m_node = std::nullopt;
+ 
+-  void capture(const Kokkos::SYCL& exec, native_graph_t& graph) {
++  void capture(const Kokkos::SYCL& exec, sycl_graph_t& graph) {
+     auto& sycl_queue = exec.sycl_queue();
+ 
+-    native_graph_t recorded_graph(sycl_queue.get_context(),
+-                                  sycl_queue.get_device());
++    sycl_graph_t recorded_graph(sycl_queue.get_context(),
++                                sycl_queue.get_device());
+ 
+     recorded_graph.begin_recording(sycl_queue);
+     m_functor(exec);
+diff --git a/core/src/SYCL/Kokkos_SYCL_Graph_Impl.hpp b/core/src/SYCL/Kokkos_SYCL_Graph_Impl.hpp
+index 476e6264827..42cd360adf8 100644
+--- a/core/src/SYCL/Kokkos_SYCL_Graph_Impl.hpp
++++ b/core/src/SYCL/Kokkos_SYCL_Graph_Impl.hpp
+@@ -32,8 +32,10 @@ class GraphImpl<Kokkos::SYCL> {
+       GraphNodeImpl<Kokkos::SYCL, aggregate_impl_t,
+                     Kokkos::Experimental::TypeErasedTag>;
+ 
+-  using native_graph_t = sycl::ext::oneapi::experimental::command_graph<
++  using sycl_graph_t = sycl::ext::oneapi::experimental::command_graph<
+       sycl::ext::oneapi::experimental::graph_state::modifiable>;
++  using sycl_graph_exec_t = sycl::ext::oneapi::experimental::command_graph<
++      sycl::ext::oneapi::experimental::graph_state::executable>;
+ 
+   // Not movable or copyable; it spends its whole life as a shared_ptr in the
+   // Graph object.
+@@ -47,7 +49,7 @@ class GraphImpl<Kokkos::SYCL> {
+ 
+   explicit GraphImpl(const device_handle_t& device_handle);
+ 
+-  GraphImpl(const device_handle_t& device_handle, native_graph_t native_graph);
++  GraphImpl(const device_handle_t& device_handle, sycl_graph_t graph);
+ 
+   void add_node(std::shared_ptr<aggregate_node_impl_t> const& arg_node_ptr);
+ 
+@@ -88,10 +90,8 @@ class GraphImpl<Kokkos::SYCL> {
+ 
+  private:
+   device_handle_t m_device_handle;
+-  native_graph_t m_graph;
+-  std::optional<sycl::ext::oneapi::experimental::command_graph<
+-      sycl::ext::oneapi::experimental::graph_state::executable>>
+-      m_graph_exec;
++  sycl_graph_t m_graph;
++  std::optional<sycl_graph_exec_t> m_graph_exec;
+ 
+   std::vector<std::shared_ptr<node_details_t>> m_nodes;
+ };
+@@ -107,8 +107,8 @@ inline GraphImpl<Kokkos::SYCL>::GraphImpl(const device_handle_t& device_handle)
+               m_device_handle.m_exec.sycl_queue().get_device()) {}
+ 
+ inline GraphImpl<Kokkos::SYCL>::GraphImpl(const device_handle_t& device_handle,
+-                                          native_graph_t native_graph)
+-    : m_device_handle(device_handle), m_graph(std::move(native_graph)) {}
++                                          sycl_graph_t graph)
++    : m_device_handle(device_handle), m_graph(std::move(graph)) {}
+ 
+ inline void GraphImpl<Kokkos::SYCL>::add_node(
+     std::shared_ptr<aggregate_node_impl_t> const& arg_node_ptr) {

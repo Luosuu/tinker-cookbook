@@ -1,0 +1,12 @@
+diff --git a/core/src/Kokkos_View.hpp b/core/src/Kokkos_View.hpp
+index 38ff1c2cf7a..e136d7435a9 100644
+--- a/core/src/Kokkos_View.hpp
++++ b/core/src/Kokkos_View.hpp
+@@ -925,6 +925,7 @@ class View : public Impl::BasicViewFromTraits<DataType, Properties...>::type {
+ 
+   template <class P, class... Args>
+     requires(!std::is_null_pointer_v<P> &&
++             std::is_convertible_v<P, pointer_type> &&
+              std::is_constructible_v<typename base_t::data_handle_type, P> &&
+              sizeof...(Args) != rank() + 1)
+   KOKKOS_FUNCTION explicit View(P ptr_, Args... args)

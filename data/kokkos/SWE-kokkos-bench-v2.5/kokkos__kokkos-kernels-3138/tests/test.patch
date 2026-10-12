@@ -1,0 +1,292 @@
+diff --git a/batched/dense/unit_test/Test_Batched_Dense.hpp b/batched/dense/unit_test/Test_Batched_Dense.hpp
+index d5475fb7d5..31214de27a 100644
+--- a/batched/dense/unit_test/Test_Batched_Dense.hpp
++++ b/batched/dense/unit_test/Test_Batched_Dense.hpp
+@@ -7,6 +7,7 @@
+ #include "Test_Batched_SerialAxpy.hpp"
+ #include "Test_Batched_Copy.hpp"
+ #include "Test_Batched_Dot.hpp"
++#include "Test_Batched_Iamax.hpp"
+ #include "Test_Batched_Nrm.hpp"
+ #include "Test_Batched_Rot.hpp"
+ #include "Test_Batched_Rotg.hpp"
+@@ -47,7 +48,6 @@
+ #include "Test_Batched_SerialPbtrf.hpp"
+ #include "Test_Batched_SerialPbtrs.hpp"
+ #include "Test_Batched_SerialLaswp.hpp"
+-#include "Test_Batched_SerialIamax.hpp"
+ #include "Test_Batched_SerialGetrf.hpp"
+ #include "Test_Batched_SerialGetrs.hpp"
+ #include "Test_Batched_SerialGer.hpp"
+diff --git a/batched/dense/unit_test/Test_Batched_SerialIamax.hpp b/batched/dense/unit_test/Test_Batched_Iamax.hpp
+similarity index 59%
+rename from batched/dense/unit_test/Test_Batched_SerialIamax.hpp
+rename to batched/dense/unit_test/Test_Batched_Iamax.hpp
+index 44f143b060..135fc7578b 100644
+--- a/batched/dense/unit_test/Test_Batched_SerialIamax.hpp
++++ b/batched/dense/unit_test/Test_Batched_Iamax.hpp
+@@ -13,29 +13,42 @@ using namespace KokkosBatched;
+ namespace Test {
+ namespace Iamax {
+ 
+-template <typename DeviceType, typename XViewType, typename RViewType>
+-struct Functor_BatchedSerialIamax {
++template <typename DeviceType, typename XViewType, typename RViewType, typename ArgMode>
++struct Functor_BatchedIamax {
+   using execution_space = typename DeviceType::execution_space;
++  using member_type     = typename Kokkos::TeamPolicy<execution_space>::member_type;
++  using index_type      = typename RViewType::non_const_value_type;
+   XViewType m_x;
+   RViewType m_r;
+ 
+-  KOKKOS_INLINE_FUNCTION
+-  Functor_BatchedSerialIamax(const XViewType &x, const RViewType &r) : m_x(x), m_r(r) {}
++  Functor_BatchedIamax(const XViewType &x, const RViewType &r) : m_x(x), m_r(r) {}
+ 
+   KOKKOS_INLINE_FUNCTION
+-  void operator()(const int k) const {
+-    auto sub_x = Kokkos::subview(m_x, k, Kokkos::ALL());
+-    auto iamax = KokkosBatched::SerialIamax::invoke(sub_x);
+-    m_r(k)     = static_cast<int>(iamax);
++  void operator()(const member_type &member) const {
++    const int k      = member.league_rank();
++    auto sub_x       = Kokkos::subview(m_x, k, Kokkos::ALL());
++    index_type iamax = 0;
++    if constexpr (std::is_same_v<ArgMode, KokkosBatched::Mode::Serial>) {
++      iamax = static_cast<index_type>(KokkosBatched::SerialIamax::invoke(sub_x));
++    } else if constexpr (std::is_same_v<ArgMode, KokkosBatched::Mode::Team>) {
++      iamax = static_cast<index_type>(KokkosBatched::TeamIamax<member_type>::invoke(member, sub_x));
++    } else if constexpr (std::is_same_v<ArgMode, KokkosBatched::Mode::TeamVector>) {
++      iamax = static_cast<index_type>(KokkosBatched::TeamVectorIamax<member_type>::invoke(member, sub_x));
++    }
++    m_r(k) = iamax;
+   }
+ 
+   inline void run() {
+-    using value_type = typename XViewType::non_const_value_type;
+-    std::string name_region("KokkosBatched::Test::SerialIamax");
++    using value_type        = typename XViewType::non_const_value_type;
++    std::string name_region = std::is_same_v<ArgMode, KokkosBatched::Mode::Serial> ? "KokkosBatched::Test::SerialIamax"
++                              : std::is_same_v<ArgMode, KokkosBatched::Mode::Team>
++                                  ? "KokkosBatched::Test::TeamIamax"
++                                  : "KokkosBatched::Test::TeamVectorIamax";
+     std::string name_value_type = Test::value_type_name<value_type>();
+     std::string name            = name_region + name_value_type;
+     Kokkos::Profiling::pushRegion(name.c_str());
+-    Kokkos::RangePolicy<execution_space> policy(0, m_x.extent(0));
++    const int league_size = m_x.extent_int(0);
++    Kokkos::TeamPolicy<execution_space> policy(league_size, Kokkos::AUTO);
+     Kokkos::parallel_for(name.c_str(), policy, *this);
+     Kokkos::Profiling::popRegion();
+   }
+@@ -47,8 +60,12 @@ struct Functor_BatchedSerialIamax {
+ ///        A2: [0, 0, 0] -> 0
+ ///        A3: [0, -1, -1] -> 1
+ ///
++/// \tparam DeviceType Kokkos device type
++/// \tparam ScalarType Kokkos scalar type
++/// \tparam LayoutType Kokkos layout type for the views
++/// \tparam ArgMode: one of Mode::Serial, Mode::Team, Mode::TeamVector
+ /// \param N [in] Batch size of A
+-template <typename DeviceType, typename ScalarType, typename LayoutType>
++template <typename DeviceType, typename ScalarType, typename LayoutType, typename ArgMode>
+ void impl_test_batched_iamax_analytical(const std::size_t N) {
+   using View2DType        = Kokkos::View<ScalarType **, LayoutType, DeviceType>;
+   using StridedView2DType = Kokkos::View<ScalarType **, Kokkos::LayoutStride, DeviceType>;
+@@ -107,28 +124,28 @@ void impl_test_batched_iamax_analytical(const std::size_t N) {
+   Kokkos::deep_copy(A2_s, A2);
+   Kokkos::deep_copy(A3_s, A3);
+ 
+-  Functor_BatchedSerialIamax<DeviceType, View2DType, MaxView1DType>(A0, iamax0).run();
+-  Functor_BatchedSerialIamax<DeviceType, View2DType, MaxView1DType>(A1, iamax1).run();
+-  Functor_BatchedSerialIamax<DeviceType, View2DType, MaxView1DType>(A2, iamax2).run();
+-  Functor_BatchedSerialIamax<DeviceType, View2DType, MaxView1DType>(A3, iamax3).run();
++  Functor_BatchedIamax<DeviceType, View2DType, MaxView1DType, ArgMode>(A0, iamax0).run();
++  Functor_BatchedIamax<DeviceType, View2DType, MaxView1DType, ArgMode>(A1, iamax1).run();
++  Functor_BatchedIamax<DeviceType, View2DType, MaxView1DType, ArgMode>(A2, iamax2).run();
++  Functor_BatchedIamax<DeviceType, View2DType, MaxView1DType, ArgMode>(A3, iamax3).run();
+ 
+   // For strided views
+-  Functor_BatchedSerialIamax<DeviceType, StridedView2DType, MaxView1DType>(A0_s, iamax_s0).run();
+-  Functor_BatchedSerialIamax<DeviceType, StridedView2DType, MaxView1DType>(A1_s, iamax_s1).run();
+-  Functor_BatchedSerialIamax<DeviceType, StridedView2DType, MaxView1DType>(A2_s, iamax_s2).run();
+-  Functor_BatchedSerialIamax<DeviceType, StridedView2DType, MaxView1DType>(A3_s, iamax_s3).run();
++  Functor_BatchedIamax<DeviceType, StridedView2DType, MaxView1DType, ArgMode>(A0_s, iamax_s0).run();
++  Functor_BatchedIamax<DeviceType, StridedView2DType, MaxView1DType, ArgMode>(A1_s, iamax_s1).run();
++  Functor_BatchedIamax<DeviceType, StridedView2DType, MaxView1DType, ArgMode>(A2_s, iamax_s2).run();
++  Functor_BatchedIamax<DeviceType, StridedView2DType, MaxView1DType, ArgMode>(A3_s, iamax_s3).run();
+ 
+   Kokkos::fence();
+ 
+   // Copy to host for comparison
+-  auto h_iamax0   = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), iamax0);
+-  auto h_iamax1   = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), iamax1);
+-  auto h_iamax2   = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), iamax2);
+-  auto h_iamax3   = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), iamax3);
+-  auto h_iamax_s0 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), iamax_s0);
+-  auto h_iamax_s1 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), iamax_s1);
+-  auto h_iamax_s2 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), iamax_s2);
+-  auto h_iamax_s3 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), iamax_s3);
++  auto h_iamax0   = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, iamax0);
++  auto h_iamax1   = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, iamax1);
++  auto h_iamax2   = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, iamax2);
++  auto h_iamax3   = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, iamax3);
++  auto h_iamax_s0 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, iamax_s0);
++  auto h_iamax_s1 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, iamax_s1);
++  auto h_iamax_s2 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, iamax_s2);
++  auto h_iamax_s3 = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, iamax_s3);
+ 
+   // Check if max index is correct
+   for (std::size_t k = 0; k < N; k++) {
+@@ -145,9 +162,14 @@ void impl_test_batched_iamax_analytical(const std::size_t N) {
+ 
+ /// \brief Implementation details of batched pbtrs test
+ ///
++/// \tparam DeviceType Kokkos device type
++/// \tparam ScalarType Kokkos scalar type
++/// \tparam LayoutType Kokkos layout type for the views
++/// \tparam ArgMode: one of Mode::Serial, Mode::Team, Mode::TeamVector
++///
+ /// \param N [in] Batch size of RHS (banded matrix can also be batched matrix)
+ /// \param BlkSize [in] Block size of matrix A
+-template <typename DeviceType, typename ScalarType, typename LayoutType>
++template <typename DeviceType, typename ScalarType, typename LayoutType, typename ArgMode>
+ void impl_test_batched_iamax(const std::size_t N, const std::size_t BlkSize) {
+   using ats               = typename KokkosKernels::ArithTraits<ScalarType>;
+   using RealType          = typename ats::mag_type;
+@@ -175,10 +197,10 @@ void impl_test_batched_iamax(const std::size_t N, const std::size_t BlkSize) {
+   // Strided view can be copied only on the same device
+   Kokkos::deep_copy(A_s, A);
+ 
+-  Functor_BatchedSerialIamax<DeviceType, View2DType, MaxView1DType>(A, iamax).run();
++  Functor_BatchedIamax<DeviceType, View2DType, MaxView1DType, ArgMode>(A, iamax).run();
+ 
+   // For strided views
+-  Functor_BatchedSerialIamax<DeviceType, StridedView2DType, MaxView1DType>(A_s, iamax_s).run();
++  Functor_BatchedIamax<DeviceType, StridedView2DType, MaxView1DType, ArgMode>(A_s, iamax_s).run();
+ 
+   Kokkos::fence();
+ 
+@@ -190,7 +212,7 @@ void impl_test_batched_iamax(const std::size_t N, const std::size_t BlkSize) {
+       h_iamax_ref(k) = 0;
+     }
+   } else {
+-    auto h_A = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), A);
++    auto h_A = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, A);
+     for (std::size_t k = 0; k < N; k++) {
+       RealType amax = Kokkos::abs(h_A(k, 0));
+       int iamax_tmp = 0;
+@@ -206,8 +228,8 @@ void impl_test_batched_iamax(const std::size_t N, const std::size_t BlkSize) {
+   }
+ 
+   // Copy to host for comparison
+-  auto h_iamax   = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), iamax);
+-  auto h_iamax_s = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace(), iamax_s);
++  auto h_iamax   = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, iamax);
++  auto h_iamax_s = Kokkos::create_mirror_view_and_copy(Kokkos::HostSpace{}, iamax_s);
+ 
+   // Check if max index is correct
+   for (std::size_t k = 0; k < N; k++) {
+@@ -219,27 +241,27 @@ void impl_test_batched_iamax(const std::size_t N, const std::size_t BlkSize) {
+ }  // namespace Iamax
+ }  // namespace Test
+ 
+-template <typename DeviceType, typename ScalarType>
++template <typename DeviceType, typename ScalarType, typename ArgMode>
+ int test_batched_iamax() {
+ #if defined(KOKKOSKERNELS_INST_LAYOUTLEFT)
+   {
+     using LayoutType = Kokkos::LayoutLeft;
+-    Test::Iamax::impl_test_batched_iamax_analytical<DeviceType, ScalarType, LayoutType>(1);
+-    Test::Iamax::impl_test_batched_iamax_analytical<DeviceType, ScalarType, LayoutType>(2);
++    Test::Iamax::impl_test_batched_iamax_analytical<DeviceType, ScalarType, LayoutType, ArgMode>(1);
++    Test::Iamax::impl_test_batched_iamax_analytical<DeviceType, ScalarType, LayoutType, ArgMode>(2);
+     for (std::size_t i = 0; i < 10; i++) {
+-      Test::Iamax::impl_test_batched_iamax<DeviceType, ScalarType, LayoutType>(1, i);
+-      Test::Iamax::impl_test_batched_iamax<DeviceType, ScalarType, LayoutType>(2, i);
++      Test::Iamax::impl_test_batched_iamax<DeviceType, ScalarType, LayoutType, ArgMode>(1, i);
++      Test::Iamax::impl_test_batched_iamax<DeviceType, ScalarType, LayoutType, ArgMode>(2, i);
+     }
+   }
+ #endif
+ #if defined(KOKKOSKERNELS_INST_LAYOUTRIGHT)
+   {
+     using LayoutType = Kokkos::LayoutRight;
+-    Test::Iamax::impl_test_batched_iamax_analytical<DeviceType, ScalarType, LayoutType>(1);
+-    Test::Iamax::impl_test_batched_iamax_analytical<DeviceType, ScalarType, LayoutType>(2);
++    Test::Iamax::impl_test_batched_iamax_analytical<DeviceType, ScalarType, LayoutType, ArgMode>(1);
++    Test::Iamax::impl_test_batched_iamax_analytical<DeviceType, ScalarType, LayoutType, ArgMode>(2);
+     for (std::size_t i = 0; i < 10; i++) {
+-      Test::Iamax::impl_test_batched_iamax<DeviceType, ScalarType, LayoutType>(1, i);
+-      Test::Iamax::impl_test_batched_iamax<DeviceType, ScalarType, LayoutType>(2, i);
++      Test::Iamax::impl_test_batched_iamax<DeviceType, ScalarType, LayoutType, ArgMode>(1, i);
++      Test::Iamax::impl_test_batched_iamax<DeviceType, ScalarType, LayoutType, ArgMode>(2, i);
+     }
+   }
+ #endif
+@@ -248,17 +270,61 @@ int test_batched_iamax() {
+ }
+ 
+ #if defined(KOKKOSKERNELS_INST_FLOAT)
+-TEST_F(TestCategory, test_batched_iamax_float) { test_batched_iamax<TestDevice, float>(); }
++// Serial
++TEST_F(TestCategory, test_batched_serial_iamax_float) {
++  test_batched_iamax<TestDevice, float, KokkosBatched::Mode::Serial>();
++}
++// Team
++TEST_F(TestCategory, test_batched_team_iamax_float) {
++  test_batched_iamax<TestDevice, float, KokkosBatched::Mode::Team>();
++}
++// TeamVector
++TEST_F(TestCategory, test_batched_team_vector_iamax_float) {
++  test_batched_iamax<TestDevice, float, KokkosBatched::Mode::TeamVector>();
++}
+ #endif
+ 
+ #if defined(KOKKOSKERNELS_INST_DOUBLE)
+-TEST_F(TestCategory, test_batched_iamax_double) { test_batched_iamax<TestDevice, double>(); }
++// Serial
++TEST_F(TestCategory, test_batched_serial_iamax_double) {
++  test_batched_iamax<TestDevice, double, KokkosBatched::Mode::Serial>();
++}
++// Team
++TEST_F(TestCategory, test_batched_team_iamax_double) {
++  test_batched_iamax<TestDevice, double, KokkosBatched::Mode::Team>();
++}
++// TeamVector
++TEST_F(TestCategory, test_batched_team_vector_iamax_double) {
++  test_batched_iamax<TestDevice, double, KokkosBatched::Mode::TeamVector>();
++}
+ #endif
+ 
+ #if defined(KOKKOSKERNELS_INST_COMPLEX_FLOAT)
+-TEST_F(TestCategory, test_batched_iamax_fcomplex) { test_batched_iamax<TestDevice, Kokkos::complex<float>>(); }
++// Serial
++TEST_F(TestCategory, test_batched_serial_iamax_fcomplex) {
++  test_batched_iamax<TestDevice, Kokkos::complex<float>, KokkosBatched::Mode::Serial>();
++}
++// Team
++TEST_F(TestCategory, test_batched_team_iamax_fcomplex) {
++  test_batched_iamax<TestDevice, Kokkos::complex<float>, KokkosBatched::Mode::Team>();
++}
++// TeamVector
++TEST_F(TestCategory, test_batched_team_vector_iamax_fcomplex) {
++  test_batched_iamax<TestDevice, Kokkos::complex<float>, KokkosBatched::Mode::TeamVector>();
++}
+ #endif
+ 
+ #if defined(KOKKOSKERNELS_INST_COMPLEX_DOUBLE)
+-TEST_F(TestCategory, test_batched_iamax_dcomplex) { test_batched_iamax<TestDevice, Kokkos::complex<double>>(); }
++// Serial
++TEST_F(TestCategory, test_batched_serial_iamax_dcomplex) {
++  test_batched_iamax<TestDevice, Kokkos::complex<double>, KokkosBatched::Mode::Serial>();
++}
++// Team
++TEST_F(TestCategory, test_batched_team_iamax_dcomplex) {
++  test_batched_iamax<TestDevice, Kokkos::complex<double>, KokkosBatched::Mode::Team>();
++}
++// TeamVector
++TEST_F(TestCategory, test_batched_team_vector_iamax_dcomplex) {
++  test_batched_iamax<TestDevice, Kokkos::complex<double>, KokkosBatched::Mode::TeamVector>();
++}
+ #endif

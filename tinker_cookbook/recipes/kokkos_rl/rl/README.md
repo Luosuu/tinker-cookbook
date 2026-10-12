@@ -4,6 +4,25 @@ This package consumes an already exported Kokkos Harbor task directory. It reuse
 shared `harbor_rl` environment and rollout loop, so Kokkos-specific code only selects tasks
 and defines convenient defaults.
 
+## Budgets
+
+Rollout limits come from named budgets in `kokkos_rl/budget.py`. `long-250` is the default
+for SWE-kokkos-bench v2.5: 250 model requests, 500 tool calls, 131,072 output tokens per
+episode, a per-request context guard at the 262,144-token window (the episode stops and is
+graded), 7,200 s of agent time and a 2,400 s verifier. `v2.4` is the frozen 40-request
+budget of the v2.4 leaderboard and of the 40-request RFT rounds. `eval_kokkos`,
+`eval_kokkos_openai`, `eval_kokkos_tinker_chat`, `eval_kokkos_pi` and `self_train` default
+to `long-250`; the Nebius sweep, `baseline_recovery` and the donor scripts keep the
+budgets of the runs they reproduce. Scores under different budgets are not comparable; the
+derivation is in `notes/pi_harness/BUDGET.md`.
+
+`self_train` takes `budget=` (default `long-250`); `budget=v2.4` reproduces the earlier
+rounds. Under `long-250`, use `sandbox_backend=apptainer` on Rivanna with `tasks_dir`
+pointing at a guarded v2.5 payload whose environments name their SIF in `sif.path`
+(`sandbox_backend=modal` also works). ConTree is refused: its sandboxes live at most 3,600 s.
+Donor eligibility still requires a natural stop, so donors may be up to 250 requests long
+and up to the context window in tokens.
+
 ## Baseline evaluation
 
 ```bash
@@ -146,9 +165,9 @@ uv run python -m tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos_tinker_chat \
 
 The preset reads `TINKER_API_KEY` from the environment or `.env` and uses
 `https://tinker.thinkingmachines.dev/services/tinker-prod/oai/api/v1`.
-It defaults to effort 0.9, temperature 1, 40 turns, 80 tool calls, 16,384 output tokens per
-request and 65,536 per attempt. Input usage is cumulative across requests, capped at
-5,000,000 before starting another request; the final request can cross this input threshold.
+It defaults to effort 0.9, temperature 1 and the `long-250` budget (see Budgets above).
+Input usage is cumulative across requests; a request is not started if its prompt could
+exceed the context window.
 No whole-task retries run by default. The OpenAI SDK handles transient transport retries.
 ConTree, protected Harbor grading and tool-output truncation use the existing evaluator.
 

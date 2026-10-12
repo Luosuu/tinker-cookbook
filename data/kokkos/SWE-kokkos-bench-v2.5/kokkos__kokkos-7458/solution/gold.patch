@@ -1,0 +1,143 @@
+diff --git a/core/src/Kokkos_Atomics_Desul_Wrapper.hpp b/core/src/Kokkos_Atomics_Desul_Wrapper.hpp
+index e47e23f1ccb..d5c40608dde 100644
+--- a/core/src/Kokkos_Atomics_Desul_Wrapper.hpp
++++ b/core/src/Kokkos_Atomics_Desul_Wrapper.hpp
+@@ -29,9 +29,11 @@ static_assert(false,
+ 
+ namespace Kokkos {
+ 
+-// FIXME: These functions don't have any use/test in unit tests ...
+-// ==========================================================
+-inline const char* atomic_query_version() { return "KOKKOS_DESUL_ATOMICS"; }
++#ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4
++KOKKOS_DEPRECATED inline const char* atomic_query_version() {
++  return "KOKKOS_DESUL_ATOMICS";
++}
++#endif
+ 
+ #if defined(KOKKOS_COMPILER_GNU) && !defined(__PGIC__) && \
+     !defined(__CUDA_ARCH__)
+@@ -74,7 +76,9 @@ KOKKOS_INLINE_FUNCTION void store_fence()  { desul::atomic_thread_fence(desul::M
+ // load/store
+ template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T,    T> atomic_load (T const* ptr)                              { return desul::atomic_load (const_cast<std::remove_volatile_t<T>*>(ptr),      desul::MemoryOrderRelaxed(), KOKKOS_DESUL_MEM_SCOPE); }
+ template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_store(T* ptr, Impl::not_deduced_atomic_t<T> val) { return desul::atomic_store(const_cast<std::remove_volatile_t<T>*>(ptr), val, desul::MemoryOrderRelaxed(), KOKKOS_DESUL_MEM_SCOPE); }
+-template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_assign(T* ptr, Impl::not_deduced_atomic_t<T> val) { atomic_store(ptr, val); }
++#ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4
++template<class T> KOKKOS_DEPRECATED_WITH_COMMENT("Use atomic_store() instead!") KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_assign(T* ptr, Impl::not_deduced_atomic_t<T> val) { atomic_store(ptr, val); }
++#endif
+ 
+ // atomic_fetch_op
+ template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, T> atomic_fetch_add(T* ptr, Impl::not_deduced_atomic_t<T> val) { return desul::atomic_fetch_add(const_cast<std::remove_volatile_t<T>*>(ptr), val, desul::MemoryOrderRelaxed(), KOKKOS_DESUL_MEM_SCOPE); }
+@@ -117,26 +121,26 @@ template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_max(T
+ template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_min(T* ptr, Impl::not_deduced_atomic_t<T> val) { desul::atomic_min(const_cast<std::remove_volatile_t<T>*>(ptr), val, desul::MemoryOrderRelaxed(), KOKKOS_DESUL_MEM_SCOPE); }
+ template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_mul(T* ptr, Impl::not_deduced_atomic_t<T> val) { desul::atomic_mul(const_cast<std::remove_volatile_t<T>*>(ptr), val, desul::MemoryOrderRelaxed(), KOKKOS_DESUL_MEM_SCOPE); }
+ template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_div(T* ptr, Impl::not_deduced_atomic_t<T> val) { desul::atomic_div(const_cast<std::remove_volatile_t<T>*>(ptr), val, desul::MemoryOrderRelaxed(), KOKKOS_DESUL_MEM_SCOPE); }
+-// mod
++template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_mod(T* ptr, Impl::not_deduced_atomic_t<T> val) { (void)desul::atomic_fetch_mod(const_cast<std::remove_volatile_t<T>*>(ptr), val, desul::MemoryOrderRelaxed(), KOKKOS_DESUL_MEM_SCOPE); }
+ template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_and(T* ptr, Impl::not_deduced_atomic_t<T> val) { (void)desul::atomic_fetch_and(const_cast<std::remove_volatile_t<T>*>(ptr), val, desul::MemoryOrderRelaxed(), KOKKOS_DESUL_MEM_SCOPE); }
+ template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_or (T* ptr, Impl::not_deduced_atomic_t<T> val) { (void)desul::atomic_fetch_or (const_cast<std::remove_volatile_t<T>*>(ptr), val, desul::MemoryOrderRelaxed(), KOKKOS_DESUL_MEM_SCOPE); }
+-// xor
+-// nand
+-// lshift
+-// rshift
++template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_xor(T* ptr, Impl::not_deduced_atomic_t<T> val) { (void)desul::atomic_fetch_xor(const_cast<std::remove_volatile_t<T>*>(ptr), val, desul::MemoryOrderRelaxed(), KOKKOS_DESUL_MEM_SCOPE); }
++template<class T>  KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_nand(T* ptr, Impl::not_deduced_atomic_t<T> val) { (void)desul::atomic_nand_fetch(const_cast<std::remove_volatile_t<T>*>(ptr), val, desul::MemoryOrderRelaxed(), KOKKOS_DESUL_MEM_SCOPE); }
++template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_lshift(T* ptr, Impl::not_deduced_atomic_t<T> val) { (void)desul::atomic_fetch_lshift(const_cast<std::remove_volatile_t<T>*>(ptr), val, desul::MemoryOrderRelaxed(), KOKKOS_DESUL_MEM_SCOPE); }
++template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_rshift(T* ptr, Impl::not_deduced_atomic_t<T> val) { (void)desul::atomic_fetch_rshift(const_cast<std::remove_volatile_t<T>*>(ptr), val, desul::MemoryOrderRelaxed(), KOKKOS_DESUL_MEM_SCOPE); }
+ template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_inc(T* ptr) { desul::atomic_inc(const_cast<std::remove_volatile_t<T>*>(ptr), desul::MemoryOrderRelaxed(), KOKKOS_DESUL_MEM_SCOPE); }
+ template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_dec(T* ptr) { desul::atomic_dec(const_cast<std::remove_volatile_t<T>*>(ptr), desul::MemoryOrderRelaxed(), KOKKOS_DESUL_MEM_SCOPE); }
+-template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_increment(T* ptr) { atomic_inc(ptr); }
+-template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_decrement(T* ptr) { atomic_dec(ptr); }
++#ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4
++template<class T> KOKKOS_DEPRECATED_WITH_COMMENT("Use atomic_inc() instead!") KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_increment(T* ptr) { atomic_inc(ptr); }
++template<class T> KOKKOS_DEPRECATED_WITH_COMMENT("Use atomic_dec() instead!") KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, void> atomic_decrement(T* ptr) { atomic_dec(ptr); }
++#endif
+ 
+ // exchange
+ template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, T> atomic_exchange        (T* ptr, Impl::not_deduced_atomic_t<T> val)                                             { return desul::atomic_exchange        (const_cast<std::remove_volatile_t<T>*>(ptr), val,               desul::MemoryOrderRelaxed(), KOKKOS_DESUL_MEM_SCOPE); }
+ template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, T> atomic_compare_exchange(T* ptr, Impl::not_deduced_atomic_t<T> expected, Impl::not_deduced_atomic_t<T> desired) { return desul::atomic_compare_exchange(const_cast<std::remove_volatile_t<T>*>(ptr), expected, desired, desul::MemoryOrderRelaxed(), KOKKOS_DESUL_MEM_SCOPE); }
+-template<class T> KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, bool> atomic_compare_exchange_strong(T* const dest, Impl::not_deduced_atomic_t<T> expected, Impl::not_deduced_atomic_t<T> desired) {
+-  T expected_ref = expected;
+-  return desul::atomic_compare_exchange_strong(dest, expected_ref, desired,
+-                  desul::MemoryOrderRelaxed(), desul::MemoryOrderRelaxed(), KOKKOS_DESUL_MEM_SCOPE);
+-}
++#ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4
++template<class T> KOKKOS_DEPRECATED_WITH_COMMENT("Use atomic_compare_exchange() instead!") KOKKOS_FUNCTION Impl::enable_if_atomic_t<T, bool> atomic_compare_exchange_strong(T* const ptr, Impl::not_deduced_atomic_t<T> expected, Impl::not_deduced_atomic_t<T> desired) { return expected == atomic_compare_excahnge(ptr, expected, desired); }
++#endif
+ 
+ // clang-format on
+ }  // namespace Kokkos
+diff --git a/core/src/Kokkos_Crs.hpp b/core/src/Kokkos_Crs.hpp
+index 1703c2c0f2d..69223b64128 100644
+--- a/core/src/Kokkos_Crs.hpp
++++ b/core/src/Kokkos_Crs.hpp
+@@ -148,7 +148,7 @@ class GetCrsTransposeCounts {
+ 
+  public:
+   KOKKOS_INLINE_FUNCTION
+-  void operator()(index_type i) const { atomic_increment(&out[in.entries(i)]); }
++  void operator()(index_type i) const { atomic_inc(&out[in.entries(i)]); }
+   GetCrsTransposeCounts(InCrs const& arg_in, OutCounts const& arg_out)
+       : in(arg_in), out(arg_out) {
+     using policy_type  = RangePolicy<index_type, execution_space>;
+diff --git a/core/src/Kokkos_WorkGraphPolicy.hpp b/core/src/Kokkos_WorkGraphPolicy.hpp
+index efa56a086e3..4d226342815 100644
+--- a/core/src/Kokkos_WorkGraphPolicy.hpp
++++ b/core/src/Kokkos_WorkGraphPolicy.hpp
+@@ -120,7 +120,7 @@ class WorkGraphPolicy : public Kokkos::Impl::PolicyTraits<Properties...> {
+                                         (std::int32_t)BEGIN_TOKEN))) {
+         // Attempt to claim ready work index succeeded,
+         // update the hint and return work index
+-        atomic_increment(begin_hint);
++        atomic_inc(begin_hint);
+         return w;
+       }
+       // arrive here when ready_queue[i] == BEGIN_TOKEN
+@@ -169,7 +169,7 @@ class WorkGraphPolicy : public Kokkos::Impl::PolicyTraits<Properties...> {
+   void operator()(const TagCount, int i) const noexcept {
+     std::int32_t* const count_queue = &m_queue[m_graph.numRows()];
+ 
+-    atomic_increment(count_queue + m_graph.entries[i]);
++    atomic_inc(count_queue + m_graph.entries[i]);
+   }
+ 
+   KOKKOS_INLINE_FUNCTION
+diff --git a/core/src/View/Kokkos_ViewAtomic.hpp b/core/src/View/Kokkos_ViewAtomic.hpp
+index 9d8f0f34203..f77066b70f5 100644
+--- a/core/src/View/Kokkos_ViewAtomic.hpp
++++ b/core/src/View/Kokkos_ViewAtomic.hpp
+@@ -44,10 +44,10 @@ class AtomicDataElement {
+   }
+ 
+   KOKKOS_INLINE_FUNCTION
+-  void inc() const { Kokkos::atomic_increment(ptr); }
++  void inc() const { Kokkos::atomic_inc(ptr); }
+ 
+   KOKKOS_INLINE_FUNCTION
+-  void dec() const { Kokkos::atomic_decrement(ptr); }
++  void dec() const { Kokkos::atomic_dec(ptr); }
+ 
+   KOKKOS_INLINE_FUNCTION
+   const_value_type operator++() const {
+diff --git a/core/src/impl/Kokkos_ChaseLev.hpp b/core/src/impl/Kokkos_ChaseLev.hpp
+index f6f2098ea63..4ea0b8d343b 100644
+--- a/core/src/impl/Kokkos_ChaseLev.hpp
++++ b/core/src/impl/Kokkos_ChaseLev.hpp
+@@ -165,7 +165,7 @@ struct ChaseLevDeque {
+ #ifdef _WIN32
+         Kokkos::memory_fence();
+         bool const success =
+-            Kokkos::atomic_compare_exchange_strong(&m_top, t, t + 1);
++            (t == Kokkos::atomic_compare_exchange(&m_top, t, t + 1));
+         Kokkos::memory_fence();
+         if (!success) {
+           return_value = nullptr;
+@@ -226,7 +226,7 @@ struct ChaseLevDeque {
+ #ifdef _WIN32
+       Kokkos::memory_fence();
+       bool const success =
+-          Kokkos::atomic_compare_exchange_strong(&m_top, t, t + 1);
++          (t == Kokkos::atomic_compare_exchange(&m_top, t, t + 1));
+       Kokkos::memory_fence();
+       if (!success) {
+         return_value = nullptr;

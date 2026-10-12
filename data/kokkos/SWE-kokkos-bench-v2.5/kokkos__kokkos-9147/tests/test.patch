@@ -1,0 +1,208 @@
+diff --git a/core/unit_test/cuda/TestCuda_InterOp_Graph.cpp b/core/unit_test/cuda/TestCuda_InterOp_Graph.cpp
+index f99f1ac1dd9..431ee38e741 100644
+--- a/core/unit_test/cuda/TestCuda_InterOp_Graph.cpp
++++ b/core/unit_test/cuda/TestCuda_InterOp_Graph.cpp
+@@ -18,6 +18,11 @@ import kokkos.core;
+ 
+ namespace {
+ 
++template <typename T>
++__global__ void increment_kernel(T* const data) {
++  ++data[0];
++}
++
+ template <typename ViewType>
+ struct Increment {
+   ViewType data;
+@@ -149,6 +154,65 @@ TEST_F(TEST_CATEGORY_FIXTURE(GraphInterOp), construct_from_cuda_graph) {
+ 
+   ASSERT_EQ(data(), 1);
+ }
++
++// Retrieve the underlying CUDA node.
++TEST_F(TEST_CATEGORY_FIXTURE(GraphInterOp), interact_with_cuda_node) {
++  graph_t increment{Kokkos::Experimental::get_device_handle(this->exec)};
++
++  auto node_tpf =
++      increment.root_node().then_parallel_for(1, Increment<view_t>{data});
++
++  auto node_cap = node_tpf.cuda_capture(
++      this->exec, [data_ = data](const Kokkos::Cuda& exec_) {
++        increment_kernel<<<1, 1, 0, exec_.cuda_stream()>>>(data_.data());
++      });
++
++  testing::StaticAssertTypeEq<decltype(node_tpf.cuda_node()),
++                              cudaGraphNode_t>();
++  testing::StaticAssertTypeEq<decltype(node_cap.cuda_node()),
++                              cudaGraphNode_t>();
++
++  cudaGraphNode_t cuda_node_tpf = node_tpf.cuda_node();
++  cudaGraphNode_t cuda_node_cap = node_cap.cuda_node();
++
++  cudaGraphNodeType node_type;
++
++  KOKKOS_IMPL_CUDA_SAFE_CALL(cudaGraphNodeGetType(cuda_node_tpf, &node_type));
++  ASSERT_EQ(node_type, cudaGraphNodeTypeKernel);
++
++  KOKKOS_IMPL_CUDA_SAFE_CALL(cudaGraphNodeGetType(cuda_node_cap, &node_type));
++  ASSERT_EQ(node_type, cudaGraphNodeTypeGraph);
++
++  cudaGraph_t capture_graph;
++  KOKKOS_IMPL_CUDA_SAFE_CALL(
++      cudaGraphChildGraphNodeGetGraph(cuda_node_cap, &capture_graph));
++  size_t capture_num_nodes;
++  KOKKOS_IMPL_CUDA_SAFE_CALL(
++      cudaGraphGetNodes(capture_graph, nullptr, &capture_num_nodes));
++  ASSERT_EQ(capture_num_nodes, 1);
++
++  ASSERT_EQ(data(), 0);
++  increment.submit(this->exec);
++  this->exec.fence();
++  ASSERT_EQ(data(), 2);
++
++// cudaGraphNodeSetEnabled was introduced in CUDA 11.6.
++#if CUDA_VERSION >= 11060
++  KOKKOS_IMPL_CUDA_SAFE_CALL(cudaGraphNodeSetEnabled(
++      increment.cuda_graph_exec(), cuda_node_tpf, false));
++
++  increment.submit(this->exec);
++  this->exec.fence();
++  ASSERT_EQ(data(), 3);
++
++  KOKKOS_IMPL_CUDA_SAFE_CALL(cudaGraphNodeSetEnabled(
++      increment.cuda_graph_exec(), cuda_node_tpf, true));
++
++  increment.submit(this->exec);
++  this->exec.fence();
++  ASSERT_EQ(data(), 5);
++#endif
++}
+ // NOLINTEND(bugprone-unchecked-optional-access)
+ 
+ }  // namespace
+diff --git a/core/unit_test/hip/TestHIP_InterOp_Graph.cpp b/core/unit_test/hip/TestHIP_InterOp_Graph.cpp
+index 18422866cd6..93670bf7fbe 100644
+--- a/core/unit_test/hip/TestHIP_InterOp_Graph.cpp
++++ b/core/unit_test/hip/TestHIP_InterOp_Graph.cpp
+@@ -122,4 +122,46 @@ TEST(TEST_CATEGORY, graph_construct_from_hip_graph) {
+   ASSERT_EQ(data(), 1);
+ }
+ 
++// Retrieve the underlying HIP node.
++TEST(TEST_CATEGORY, interact_with_hip_node) {
++  using view_t = Kokkos::View<int, Kokkos::HIPManagedSpace>;
++
++  const Kokkos::HIP exec{};
++
++  view_t data(Kokkos::view_alloc(exec, "witness"));
++
++  Kokkos::Experimental::Graph graph{
++      Kokkos::Experimental::get_device_handle(exec)};
++
++  auto node = graph.root_node().then_parallel_for(1, Increment<view_t>{data});
++
++  static_assert(std::same_as<decltype(node.hip_node()), hipGraphNode_t>);
++
++  hipGraphNode_t hip_node = node.hip_node();
++
++  hipGraphNodeType node_type;
++  KOKKOS_IMPL_HIP_SAFE_CALL(hipGraphNodeGetType(hip_node, &node_type));
++
++  ASSERT_EQ(node_type, hipGraphNodeTypeKernel);
++
++  ASSERT_EQ(data(), 0);
++  graph.submit(exec);
++  exec.fence();
++  ASSERT_EQ(data(), 1);
++
++  KOKKOS_IMPL_HIP_SAFE_CALL(
++      hipGraphNodeSetEnabled(graph.hip_graph_exec(), hip_node, false));
++
++  graph.submit(exec);
++  exec.fence();
++  ASSERT_EQ(data(), 1);
++
++  KOKKOS_IMPL_HIP_SAFE_CALL(
++      hipGraphNodeSetEnabled(graph.hip_graph_exec(), hip_node, true));
++
++  graph.submit(exec);
++  exec.fence();
++  ASSERT_EQ(data(), 2);
++}
++
+ }  // namespace
+diff --git a/core/unit_test/sycl/TestSYCL_InterOp_Graph.cpp b/core/unit_test/sycl/TestSYCL_InterOp_Graph.cpp
+index 58b038d2e0a..163ffa46d83 100644
+--- a/core/unit_test/sycl/TestSYCL_InterOp_Graph.cpp
++++ b/core/unit_test/sycl/TestSYCL_InterOp_Graph.cpp
+@@ -126,4 +126,70 @@ TEST(TEST_CATEGORY, graph_construct_from_sycl_command_graph) {
+   ASSERT_EQ(data(), 1);
+ }
+ 
++// Retrieve the underlying SYCL node.
++TEST(TEST_CATEGORY, interact_with_sycl_node) {
++  using view_t = Kokkos::View<int, Kokkos::SYCLSharedUSMSpace>;
++
++  const Kokkos::SYCL exec{};
++
++  view_t data(Kokkos::view_alloc(exec, "witness"));
++
++  Kokkos::Experimental::Graph graph{
++      Kokkos::Experimental::get_device_handle(exec)};
++
++  auto node = graph.root_node().then_parallel_for(1, Increment<view_t>{data});
++
++  static_assert(std::same_as<decltype(node.sycl_node()),
++                             const sycl::ext::oneapi::experimental::node&>);
++
++  ASSERT_EQ(node.sycl_node().get_type(),
++            sycl::ext::oneapi::experimental::node_type::kernel);
++
++// 'update_range' on a node works from 2025.2.1 on.
++#if defined(KOKKOS_COMPILER_INTEL_LLVM) && \
++    KOKKOS_COMPILER_INTEL_LLVM >= 20250201
++  // According to
++  // https://github.com/intel/llvm/blob/sycl/sycl/doc/extensions/experimental/sycl_ext_oneapi_graph.asciidoc#83-node,
++  // the node has reference semantics.
++  // According to
++  // https://github.com/intel/llvm/blob/sycl/sycl/doc/extensions/experimental/sycl_ext_oneapi_graph.asciidoc#committing-updates,
++  // node updates will take effect immediately for nodes in modifiable
++  // command graphs.
++  auto sycl_node = node.sycl_node();
++  sycl_node.update_range(sycl::range<1>(0));
++
++  constexpr int value = 0;
++#else
++  constexpr int value = 1;
++#endif
++
++  ASSERT_EQ(data(), 0);
++  graph.submit(exec);
++  exec.fence();
++  ASSERT_EQ(data(), value);
++
++  graph.submit(exec);
++  exec.fence();
++  ASSERT_EQ(data(), 2 * value);
++
++// 'update' taking a node works from 2025.2.1 on.
++#if defined(KOKKOS_COMPILER_INTEL_LLVM) && \
++    KOKKOS_COMPILER_INTEL_LLVM >= 20250201
++  // According to
++  // https://github.com/intel/llvm/blob/sycl/sycl/doc/extensions/experimental/sycl_ext_oneapi_graph.asciidoc#committing-updates,
++  // a node update takes effect in an executable graph only after calling
++  // 'update'.
++  try {
++    auto sycl_graph_exec = graph.sycl_graph_exec();
++    ASSERT_TRUE(sycl_graph_exec.has_value());
++    sycl_graph_exec->update(sycl_node);
++    FAIL();
++  } catch (const std::exception& err) {
++    ASSERT_STREQ(err.what(),
++                 "update() cannot be called on a executable graph which was "
++                 "not created with property::updatable");
++  }
++#endif
++}
++
+ }  // namespace

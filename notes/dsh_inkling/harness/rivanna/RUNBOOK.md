@@ -24,7 +24,8 @@ datasets. Combine only within-block deltas from Rivanna blocks.
 | Path | Contents |
 | --- | --- |
 | `/scratch/fad3ew/openhands-smoke/genesis-cookbook` | git clone of `science-rl`; each block takes a detached worktree |
-| `.../dsh-iteration/tasks/` | 100 v2.4 payloads, each with `environment/sif.path` |
+| `.../v25-release-20261012/runtime-tasks/` | the 100 published v2.5 payloads, each with `environment/sif.path` (use these) |
+| `.../dsh-iteration/tasks/` | the v2.4 payloads with `sif.path`, for reproducing v2.4-budget blocks |
 | `.../dsh-iteration/dsh-runtime/` | DSH 0.2.0-rc.2 `node_modules` shared by every block |
 | `.../v24-release-20261002/images/` | the task SIFs (about 106 GB); do not rebuild |
 | `.../dsh-blocks/<block>/` | one block: `code/`, `design.json`, slot lists, `runs/`, `logs/` |
@@ -48,7 +49,7 @@ BLOCK=$B/dsh-blocks/block-r01
 mkdir -p $BLOCK && git -C $R worktree add --detach $BLOCK/code origin/science-rl
 cd $BLOCK/code
 $B/.venv/bin/python -m notes.dsh_inkling.harness.rivanna.block plan $BLOCK \
-  --tasks-root $B/dsh-iteration/tasks --env-file $B/inkling-eval.env \
+  --tasks-root $B/v25-release-20261012/runtime-tasks --env-file $B/inkling-eval.env \
   --dsh-runtime $B/dsh-iteration/dsh-runtime --draws 4 \
   --arm native=native --arm control= --arm state=--state-target
 bash notes/dsh_inkling/harness/rivanna/launch_block.sh $BLOCK 36 2

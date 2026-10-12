@@ -1,0 +1,97 @@
+diff --git a/core/src/Kokkos_Core.cppm b/core/src/Kokkos_Core.cppm
+index a66bf79bd51..50539dddf72 100644
+--- a/core/src/Kokkos_Core.cppm
++++ b/core/src/Kokkos_Core.cppm
+@@ -485,6 +485,7 @@ export {
+   using ::Kokkos::fmod;
+   using ::Kokkos::fmodf;
+   using ::Kokkos::fmodl;
++  using ::Kokkos::fpclassify;
+   using ::Kokkos::hypot;
+   using ::Kokkos::hypotf;
+   using ::Kokkos::hypotl;
+diff --git a/core/src/Kokkos_MathematicalFunctions.hpp b/core/src/Kokkos_MathematicalFunctions.hpp
+index 41b3cbed0dd..81d7011452c 100644
+--- a/core/src/Kokkos_MathematicalFunctions.hpp
++++ b/core/src/Kokkos_MathematicalFunctions.hpp
+@@ -604,7 +604,43 @@ KOKKOS_IMPL_MATH_BINARY_FUNCTION(nextafter)
+ // nexttoward
+ KOKKOS_IMPL_MATH_BINARY_FUNCTION(copysign)
+ // Classification and comparison
+-// fpclassify
++// fpclassify not available on Cuda and SYCL
++// FIXME_NVHPC nvhpc's fpclassify return FP_ZERO for subnormal values.
++#if defined(KOKKOS_ENABLE_CUDA) || defined(KOKKOS_ENABLE_SYCL) || \
++    defined(KOKKOS_COMPILER_NVHPC)
++#define KOKKOS_IMPL_MATH_FPCLASSIFY(SPECIFIER, TYPE)                       \
++  SPECIFIER int fpclassify(TYPE x) {                                       \
++    if (x != x) {                                                          \
++      return FP_NAN;                                                       \
++    } else if (x == 0) {                                                   \
++      return FP_ZERO;                                                      \
++    } else if (Kokkos::abs(x) < Kokkos::Experimental::norm_min_v<TYPE>) {  \
++      return FP_SUBNORMAL;                                                 \
++    } else if (Kokkos::abs(x) == Kokkos::Experimental::infinity_v<TYPE>) { \
++      return FP_INFINITE;                                                  \
++    } else {                                                               \
++      return FP_NORMAL;                                                    \
++    }                                                                      \
++  }
++
++KOKKOS_IMPL_MATH_FPCLASSIFY(KOKKOS_INLINE_FUNCTION, float)
++KOKKOS_IMPL_MATH_FPCLASSIFY(KOKKOS_INLINE_FUNCTION, double)
++KOKKOS_IMPL_MATH_FPCLASSIFY(inline, long double)
++
++#undef KOKKOS_IMPL_MATH_FPCLASSIFY
++
++template <class T>
++KOKKOS_INLINE_FUNCTION constexpr std::enable_if_t<std::is_integral_v<T>, int>
++fpclassify(T x) {
++  if (x == 0) {
++    return FP_ZERO;
++  } else {
++    return FP_NORMAL;
++  }
++}
++#else
++KOKKOS_IMPL_MATH_UNARY_FUNCTION(fpclassify)
++#endif
+ KOKKOS_IMPL_MATH_UNARY_PREDICATE(isfinite)
+ KOKKOS_IMPL_MATH_UNARY_PREDICATE(isinf)
+ KOKKOS_IMPL_MATH_UNARY_PREDICATE(isnan)
+diff --git a/core/src/impl/Kokkos_Half_MathematicalFunctions.hpp b/core/src/impl/Kokkos_Half_MathematicalFunctions.hpp
+index 10c66c7b1b6..19fd24c14d7 100644
+--- a/core/src/impl/Kokkos_Half_MathematicalFunctions.hpp
++++ b/core/src/impl/Kokkos_Half_MathematicalFunctions.hpp
+@@ -508,6 +508,31 @@ KOKKOS_INLINE_FUNCTION bool isnormal(Kokkos::Experimental::bhalf_t x) {
+ }
+ #endif
+ 
++#define KOKKOS_IMPL_HALF_MATH_FPCLASSIFY(TYPE)                             \
++  KOKKOS_INLINE_FUNCTION int fpclassify(TYPE x) {                          \
++    if (x != x) {                                                          \
++      return FP_NAN;                                                       \
++    } else if (x == 0) {                                                   \
++      return FP_ZERO;                                                      \
++    } else if (Kokkos::abs(x) < Kokkos::Experimental::norm_min_v<TYPE>) {  \
++      return FP_SUBNORMAL;                                                 \
++    } else if (Kokkos::abs(x) == Kokkos::Experimental::infinity_v<TYPE>) { \
++      return FP_INFINITE;                                                  \
++    } else {                                                               \
++      return FP_NORMAL;                                                    \
++    }                                                                      \
++  }
++
++#if defined(KOKKOS_HALF_T_IS_FLOAT) && !KOKKOS_HALF_T_IS_FLOAT
++KOKKOS_IMPL_HALF_MATH_FPCLASSIFY(Kokkos::Experimental::half_t)
++#endif
++
++#if defined(KOKKOS_BHALF_T_IS_FLOAT) && !KOKKOS_BHALF_T_IS_FLOAT
++KOKKOS_IMPL_HALF_MATH_FPCLASSIFY(Kokkos::Experimental::bhalf_t)
++#endif
++
++#undef KOKKOS_IMPL_HALF_MATH_FPCLASSIFY
++
+ #if defined(KOKKOS_HALF_T_IS_FLOAT) && !KOKKOS_HALF_T_IS_FLOAT
+ KOKKOS_INLINE_FUNCTION bool signbit(Kokkos::Experimental::half_t x) {
+   constexpr std::uint16_t sign_mask = 1u<<15;

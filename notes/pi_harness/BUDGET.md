@@ -54,14 +54,27 @@ Cost per episode rose with the budget: median cumulative input 0.65 M (native 25
 0.42 M (native 40), with 96% and 95% of it reported as cached, and median output 9.7 k
 against 6.7 k tokens.
 
-## Not changed
+## Released as SWE-kokkos-bench v2.5
 
-- The published v2.4 payloads are immutable; their `task.toml` keeps a 3,600 s agent
-  timeout. A dataset release for this budget should export with `agent_timeout_sec=7200` and
-  `verifier_timeout_sec=2400` (`export_harbor.export_instance`).
-- RFT self-training still fixes 40-request rollouts (`self_train.py`, `rollout_data.eligible`).
-  Training at 250 changes rollout length and cost and needs its own decision.
-- DSH arms on ConTree cannot use long-250: ConTree sandboxes live at most 3,600 s and the DSH
-  proxy enforces its own input cap, so blocks refuse DSH arms with a non-default token budget.
+[v2.5](https://hub.harborframework.com/datasets/luosuu/SWE-kokkos-bench) (revision 8, version
+`2cda7fb0-6e1e-4699-9af0-8a157f403b61`, content `sha256:c253fbcb19…`, tags `v2.5`, `2.5.0`,
+`latest`) is v2.4 with metadata-only changes: task version 2.5.0, agent timeout 7,200 s,
+verifier timeout 2,400 s, and `[metadata] budget = "long-250"`; `budget.json` ships with it.
+All 200 NOP/Oracle controls passed again on Rivanna before publication, and the published
+payload was read back byte-identical. The payload is in `data/kokkos/SWE-kokkos-bench-v2.5`.
+v2.4 is unchanged under its own tags.
+
+RFT self-training (`self_train`, default `budget=long-250`, `sandbox_backend=apptainer` on
+Rivanna) and the evaluators (`eval_kokkos`, `eval_kokkos_openai`, `eval_kokkos_tinker_chat`,
+`eval_kokkos_pi`, Rivanna blocks) now default to this budget and dataset. Guarded payloads are
+graded as published rather than regenerated.
+
+## Still at 40 requests
+
+- The Nebius sweep, `baseline_recovery` and the donor scripts reproduce 40-request runs.
+- DSH arms on ConTree: ConTree sandboxes live at most 3,600 s and the DSH proxy enforces its
+  own input cap, so blocks refuse DSH arms with a non-default token budget. Other ConTree
+  users get a 3,600 s sandbox under long-250; rare episodes longer than that plus grading end
+  as infrastructure errors.
 - Leaderboard scores at 40 and 250 requests are not comparable; report the budget name with
-  every score.
+  every score. The v2.4 leaderboard stays bound to v2.4.

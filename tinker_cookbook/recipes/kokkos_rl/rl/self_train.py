@@ -55,7 +55,7 @@ APPTAINER_THREADS = {
 class Config:
     output_dir: str
     harness_profile: str = "baseline"
-    tasks_dir: str = "data/kokkos/SWE-kokkos-bench-v2"
+    tasks_dir: str = "data/kokkos/SWE-kokkos-bench-v2.5"
     model_name: str = "thinkingmachines/Inkling-Small:peft:262144"
     # contree, modal, or apptainer (Rivanna; tasks_dir must be a guarded v2.4+ payload
     # whose environments name their SIF in sif.path).

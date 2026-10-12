@@ -1,0 +1,13 @@
+diff --git a/core/src/impl/Kokkos_SharedAlloc.hpp b/core/src/impl/Kokkos_SharedAlloc.hpp
+index 391a2e5373c..2a90eff4a76 100644
+--- a/core/src/impl/Kokkos_SharedAlloc.hpp
++++ b/core/src/impl/Kokkos_SharedAlloc.hpp
+@@ -611,7 +611,7 @@ union SharedAllocationTracker {
+   // Move:
+ 
+   KOKKOS_FORCEINLINE_FUNCTION
+-  SharedAllocationTracker(SharedAllocationTracker&& rhs)
++  SharedAllocationTracker(SharedAllocationTracker&& rhs) noexcept
+       : m_record_bits(rhs.m_record_bits) {
+     rhs.m_record_bits = DO_NOT_DEREF_FLAG;
+   }

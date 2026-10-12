@@ -35,6 +35,9 @@ DEFAULT_CONTREE_IMAGE = "python:3.12-slim"
 DEFAULT_MAX_OUTPUT_BYTES = 128 * 1024
 
 
+CONTREE_MAX_TIMEOUT_SECONDS = 3600
+
+
 @dataclass(kw_only=True)
 class _InstanceNetworking:
     """The ConTree API's per-instance network toggle."""
@@ -409,7 +412,9 @@ class ContreeDockerfileSandboxFactory:
         if runtime_build_parallelism is not None and runtime_build_parallelism < 1:
             raise ValueError("runtime_build_parallelism must be at least 1")
         self._cache_path = cache_path
-        self._timeout = timeout
+        # ConTree rejects instance timeouts above its 3600 s maximum; longer budgets get the
+        # longest sandbox ConTree allows.
+        self._timeout = min(timeout, CONTREE_MAX_TIMEOUT_SECONDS)
         self._runtime_build_parallelism = runtime_build_parallelism
         # Image preparation always runs with network (it clones and builds);
         # this governs the rollout sandboxes branched from the prepared image.

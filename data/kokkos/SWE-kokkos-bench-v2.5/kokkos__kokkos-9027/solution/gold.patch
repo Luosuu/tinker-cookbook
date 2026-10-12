@@ -1,0 +1,73 @@
+diff --git a/core/src/Kokkos_GraphNode.hpp b/core/src/Kokkos_GraphNode.hpp
+index e9336838225..e1c81e93648 100644
+--- a/core/src/Kokkos_GraphNode.hpp
++++ b/core/src/Kokkos_GraphNode.hpp
+@@ -380,9 +380,11 @@ class GraphNodeRef {
+         with_properties_if_unset(std::forward<Props>(props),
+                                  graph_ptr->get_device_handle(), "[unlabeled]");
+ 
+-    auto policy = Experimental::require(
+-        Policy(Kokkos::Impl::PolicyUpdate{}, (Policy&&)arg_policy,
+-               Kokkos::Impl::get_property<device_handle_t>(full_props).m_exec),
++    using policy_type = std::remove_cvref_t<Policy>;
++    auto policy       = Experimental::require(
++        policy_type(
++            Kokkos::Impl::PolicyUpdate{}, (Policy&&)arg_policy,
++            Kokkos::Impl::get_property<device_handle_t>(full_props).m_exec),
+         Kokkos::Impl::KernelInGraphProperty{});
+ 
+     using next_policy_t = decltype(policy);
+@@ -522,9 +524,11 @@ class GraphNodeRef {
+     // End of Kokkos reducer disaster
+     //----------------------------------------
+ 
+-    auto policy = Experimental::require(
+-        Policy(Kokkos::Impl::PolicyUpdate{}, (Policy&&)arg_policy,
+-               Kokkos::Impl::get_property<device_handle_t>(full_props).m_exec),
++    using policy_type = std::remove_cvref_t<Policy>;
++    auto policy       = Experimental::require(
++        policy_type(
++            Kokkos::Impl::PolicyUpdate{}, (Policy&&)arg_policy,
++            Kokkos::Impl::get_property<device_handle_t>(full_props).m_exec),
+         Kokkos::Impl::KernelInGraphProperty{});
+ 
+     using passed_reducer_type = typename return_value_adapter::reducer_type;
+@@ -568,6 +572,16 @@ class GraphNodeRef {
+                                       (ReturnType&&)return_value);
+   }
+ 
++  template <class Label, class Policy, class Functor, class ReturnType>
++    requires(ExecutionPolicyOn<std::remove_cvref_t<Policy>, ExecutionSpace> &&
++             Kokkos::Impl::is_view_label_v<std::remove_cvref_t<Label>>)
++  auto then_parallel_reduce(Label&& label, Policy&& policy, Functor&& functor,
++                            ReturnType&& return_value) const {
++    return this->then_parallel_reduce(node_props(std::forward<Label>(label)),
++                                      (Policy&&)policy, (Functor&&)functor,
++                                      (ReturnType&&)return_value);
++  }
++
+   template <class Functor, class ReturnType>
+   auto then_parallel_reduce(std::string label,
+                             typename execution_space::size_type idx_end,
+diff --git a/core/src/impl/Kokkos_GraphNodeImpl.hpp b/core/src/impl/Kokkos_GraphNodeImpl.hpp
+index a7dada4a6a1..92f4c04af6b 100644
+--- a/core/src/impl/Kokkos_GraphNodeImpl.hpp
++++ b/core/src/impl/Kokkos_GraphNodeImpl.hpp
+@@ -151,7 +151,7 @@ struct GraphNodeImpl<ExecutionSpace, Kernel,
+   GraphNodeImpl(GraphNodeImpl&&)                 = delete;
+   GraphNodeImpl& operator=(GraphNodeImpl const&) = delete;
+   GraphNodeImpl& operator=(GraphNodeImpl&&)      = delete;
+-  ~GraphNodeImpl() override                      = default;
++  ~GraphNodeImpl() noexcept override             = default;
+ 
+   // </editor-fold> end Rule of 6 for not copyable or movable }}}3
+   //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+@@ -226,7 +226,7 @@ struct GraphNodeImpl
+   GraphNodeImpl(GraphNodeImpl&&)                 = delete;
+   GraphNodeImpl& operator=(GraphNodeImpl const&) = delete;
+   GraphNodeImpl& operator=(GraphNodeImpl&&)      = delete;
+-  ~GraphNodeImpl() override                      = default;
++  ~GraphNodeImpl() noexcept override             = default;
+ 
+   // Normal kernel-and-predecessor or capture-and-predecessor constructor.
+   template <class KernelDeduced, class PredecessorPtrDeduced, class Tag,

@@ -54,7 +54,7 @@ BASH_TOOL: dict[str, Any] = {
 class CLIConfig:
     model_name: str = "gpt-5.6-terra"
     harness_profile: str = "baseline"
-    tasks_dir: str = "data/kokkos/SWE-kokkos-bench-v2"
+    tasks_dir: str = "data/kokkos/SWE-kokkos-bench-v2.5"
     output_path: str = "notes/experiments/SWE-kokkos-bench/gpt-5.6-terra/pass-at-1"
     env_file: str = ".env"
     api_mode: str = "responses"

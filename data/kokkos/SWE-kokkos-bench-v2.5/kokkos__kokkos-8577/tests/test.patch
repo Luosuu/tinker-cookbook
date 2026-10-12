@@ -1,0 +1,95 @@
+diff --git a/core/unit_test/TestArray.cpp b/core/unit_test/TestArray.cpp
+index bd48db4ad6a..89f6cb6355d 100644
+--- a/core/unit_test/TestArray.cpp
++++ b/core/unit_test/TestArray.cpp
+@@ -258,6 +258,68 @@ constexpr bool test_begin_end() {
+ 
+ static_assert(test_begin_end());
+ 
++constexpr bool test_begin_end_method() {
++  constexpr Kokkos::Array<float, 0> a0{};
++  static_assert(a0.begin() == nullptr);
++  static_assert(a0.end() == nullptr);
++  static_assert(a0.cbegin() == nullptr);
++  static_assert(a0.cend() == nullptr);
++
++  constexpr Kokkos::Array<float, 1> a1{};
++  static_assert(a1.begin() == &a1[0]);
++  static_assert(a1.end() == &a1[0] + a1.size());
++  static_assert(a1.cbegin() == &a1[0]);
++  static_assert(a1.cend() == &a1[0] + a1.size());
++
++  [[maybe_unused]] Kokkos::Array<double, 0> n0{};
++  static_assert(std::is_same_v<decltype(n0.begin()), double*>);
++  static_assert(std::is_same_v<decltype(n0.end()), double*>);
++  static_assert(std::is_same_v<decltype(n0.cbegin()), double const*>);
++  static_assert(std::is_same_v<decltype(n0.cend()), double const*>);
++  static_assert(std::is_same_v<double*, decltype(n0)::pointer>);
++  static_assert(noexcept(n0.begin()));
++  static_assert(noexcept(n0.end()));
++  static_assert(noexcept(n0.cbegin()));
++  static_assert(noexcept(n0.cend()));
++
++  [[maybe_unused]] Kokkos::Array<double, 0> const c0{};
++  static_assert(std::is_same_v<decltype(c0.begin()), double const*>);
++  static_assert(std::is_same_v<decltype(c0.end()), double const*>);
++  static_assert(std::is_same_v<decltype(c0.cbegin()), double const*>);
++  static_assert(std::is_same_v<decltype(c0.cend()), double const*>);
++  static_assert(std::is_same_v<double const*, decltype(c0)::const_pointer>);
++  static_assert(noexcept(c0.begin()));
++  static_assert(noexcept(c0.end()));
++  static_assert(noexcept(c0.cbegin()));
++  static_assert(noexcept(c0.cend()));
++
++  [[maybe_unused]] Kokkos::Array<double, 1> n1{};
++  static_assert(std::is_same_v<decltype(n1.begin()), double*>);
++  static_assert(std::is_same_v<decltype(n1.end()), double*>);
++  static_assert(std::is_same_v<decltype(n1.cbegin()), double const*>);
++  static_assert(std::is_same_v<decltype(n1.cend()), double const*>);
++  static_assert(std::is_same_v<double*, decltype(n1)::pointer>);
++  static_assert(noexcept(n1.begin()));
++  static_assert(noexcept(n1.end()));
++  static_assert(noexcept(n1.cbegin()));
++  static_assert(noexcept(n1.cend()));
++
++  [[maybe_unused]] Kokkos::Array<double, 1> const c1{};
++  static_assert(std::is_same_v<decltype(c1.begin()), double const*>);
++  static_assert(std::is_same_v<decltype(c1.end()), double const*>);
++  static_assert(std::is_same_v<decltype(c1.cbegin()), double const*>);
++  static_assert(std::is_same_v<decltype(c1.cend()), double const*>);
++  static_assert(std::is_same_v<double const*, decltype(c1)::const_pointer>);
++  static_assert(noexcept(c1.begin()));
++  static_assert(noexcept(c1.end()));
++  static_assert(noexcept(c1.cbegin()));
++  static_assert(noexcept(c1.cend()));
++
++  return true;
++}
++
++static_assert(test_begin_end_method());
++
+ constexpr bool test_array_equality_comparable() {
+   using C0 = Kokkos::Array<char, 0>;
+   using C2 = Kokkos::Array<char, 2>;
+diff --git a/core/unit_test/TestArrayOps.hpp b/core/unit_test/TestArrayOps.hpp
+index e21f73bfcd5..5f0c01ddbdc 100644
+--- a/core/unit_test/TestArrayOps.hpp
++++ b/core/unit_test/TestArrayOps.hpp
+@@ -128,6 +128,17 @@ TEST(TEST_CATEGORY, array_zero_data_nullptr) {
+   ASSERT_EQ(ce.data(), nullptr);
+ }
+ 
++TEST(TEST_CATEGORY, array_stl_compatibility) {
++  using A = Kokkos::Array<int, 3>;
++  A a{1, 2, 3};
++
++  int sum  = std::reduce(a.begin(), a.end(), int{0}, std::plus<int>{});
++  int csum = std::reduce(a.cbegin(), a.cend(), int{0}, std::plus<int>{});
++  int expected_sum = 1 + 2 + 3;
++  EXPECT_EQ(sum, expected_sum);
++  EXPECT_EQ(csum, expected_sum);
++}
++
+ #ifdef KOKKOS_ENABLE_DEPRECATED_CODE_4
+ #ifdef KOKKOS_ENABLE_DEPRECATION_WARNINGS
+ KOKKOS_IMPL_DISABLE_DEPRECATED_WARNINGS_PUSH()

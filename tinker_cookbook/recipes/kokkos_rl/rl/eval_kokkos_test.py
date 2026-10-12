@@ -28,7 +28,8 @@ def test_load_env_file_preserves_existing_values(tmp_path, monkeypatch) -> None:
 def test_eval_defaults_use_full_clean_room_dataset_and_retry_infra_errors() -> None:
     config = KokkosEvalConfig()
 
-    assert config.tasks_dir == "data/kokkos/SWE-kokkos-bench-v2"
+    assert config.tasks_dir == "data/kokkos/SWE-kokkos-bench-v2.5"
+    assert config.max_turns == 250
     assert config.sandbox_backend == "contree"
     assert config.allow_network is False
     assert config.max_infra_retries == 2

@@ -1,0 +1,23 @@
+diff --git a/core/src/View/MDSpan/Kokkos_MDSpan_Accessor.hpp b/core/src/View/MDSpan/Kokkos_MDSpan_Accessor.hpp
+index db66c0be369..7f456ab8d72 100644
+--- a/core/src/View/MDSpan/Kokkos_MDSpan_Accessor.hpp
++++ b/core/src/View/MDSpan/Kokkos_MDSpan_Accessor.hpp
+@@ -508,13 +508,15 @@ using CheckedReferenceCountedAccessor =
+ template <class ElementType, class MemorySpace,
+           class MemoryScope = desul::MemoryScopeDevice>
+ using CheckedRelaxedAtomicAccessor =
+-    SpaceAwareAccessor<MemorySpace, AtomicAccessorRelaxed<ElementType>>;
++    SpaceAwareAccessor<MemorySpace,
++                       AtomicAccessorRelaxed<ElementType, MemoryScope>>;
+ 
+ template <class ElementType, class MemorySpace,
+           class MemoryScope = desul::MemoryScopeDevice>
+ using CheckedReferenceCountedRelaxedAtomicAccessor = SpaceAwareAccessor<
+-    MemorySpace, ReferenceCountedAccessor<ElementType, MemorySpace,
+-                                          AtomicAccessorRelaxed<ElementType>>>;
++    MemorySpace,
++    ReferenceCountedAccessor<ElementType, MemorySpace,
++                             AtomicAccessorRelaxed<ElementType, MemoryScope>>>;
+ 
+ // Implements the deduction of accessors from ElementType, Space, and MemTraits
+ template <class ElementType, class Space, class MemTraits>

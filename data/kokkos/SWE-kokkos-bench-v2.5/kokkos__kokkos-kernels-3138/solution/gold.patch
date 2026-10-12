@@ -1,0 +1,340 @@
+diff --git a/batched/dense/impl/KokkosBatched_Iamax_Impl.hpp b/batched/dense/impl/KokkosBatched_Iamax_Impl.hpp
+new file mode 100644
+index 0000000000..62e01e567b
+--- /dev/null
++++ b/batched/dense/impl/KokkosBatched_Iamax_Impl.hpp
+@@ -0,0 +1,54 @@
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++// SPDX-FileCopyrightText: Copyright Contributors to the Kokkos project
++
++#ifndef KOKKOSBATCHED_IAMAX_IMPL_HPP_
++#define KOKKOSBATCHED_IAMAX_IMPL_HPP_
++
++/// \author Yuuichi Asahi (yuuichi.asahi@cea.fr)
++
++#include <KokkosBlas_util.hpp>
++#include <KokkosBatched_Util.hpp>
++#include "KokkosBatched_Iamax_Internal.hpp"
++
++namespace KokkosBatched {
++
++///
++/// Serial Impl
++/// ===========
++template <typename XViewType>
++KOKKOS_INLINE_FUNCTION typename XViewType::size_type SerialIamax::invoke(const XViewType &x) {
++  static_assert(Kokkos::is_view_v<XViewType>, "KokkosBatched::iamax: XViewType is not a Kokkos::View.");
++  using size_type = typename XViewType::size_type;
++  return Impl::SerialIamaxInternal::invoke(static_cast<size_type>(x.extent(0)), x.data(),
++                                           static_cast<size_type>(x.stride(0)));
++}
++
++///
++/// Team Impl
++/// ===========
++template <typename MemberType>
++template <typename XViewType>
++KOKKOS_INLINE_FUNCTION typename XViewType::size_type TeamIamax<MemberType>::invoke(const MemberType &member,
++                                                                                   const XViewType &x) {
++  static_assert(Kokkos::is_view_v<XViewType>, "KokkosBatched::iamax: XViewType is not a Kokkos::View.");
++  using size_type = typename XViewType::size_type;
++  return Impl::TeamIamaxInternal<MemberType>::invoke(member, static_cast<size_type>(x.extent(0)), x.data(),
++                                                     static_cast<size_type>(x.stride(0)));
++}
++
++///
++/// TeamVector Impl
++/// ===============
++template <typename MemberType>
++template <typename XViewType>
++KOKKOS_INLINE_FUNCTION typename XViewType::size_type TeamVectorIamax<MemberType>::invoke(const MemberType &member,
++                                                                                         const XViewType &x) {
++  static_assert(Kokkos::is_view_v<XViewType>, "KokkosBatched::iamax: XViewType is not a Kokkos::View.");
++  using size_type = typename XViewType::size_type;
++  return Impl::TeamVectorIamaxInternal<MemberType>::invoke(member, static_cast<size_type>(x.extent(0)), x.data(),
++                                                           static_cast<size_type>(x.stride(0)));
++}
++
++}  // namespace KokkosBatched
++
++#endif  // KOKKOSBATCHED_IAMAX_IMPL_HPP_
+diff --git a/batched/dense/impl/KokkosBatched_Iamax_Internal.hpp b/batched/dense/impl/KokkosBatched_Iamax_Internal.hpp
+new file mode 100644
+index 0000000000..bd21514d40
+--- /dev/null
++++ b/batched/dense/impl/KokkosBatched_Iamax_Internal.hpp
+@@ -0,0 +1,122 @@
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++// SPDX-FileCopyrightText: Copyright Contributors to the Kokkos project
++
++#ifndef KOKKOSBATCHED_IAMAX_INTERNAL_HPP_
++#define KOKKOSBATCHED_IAMAX_INTERNAL_HPP_
++
++/// \author Yuuichi Asahi (yuuichi.asahi@cea.fr)
++
++#include <Kokkos_Core.hpp>
++#include "KokkosBatched_Util.hpp"
++
++namespace KokkosBatched {
++namespace Impl {
++
++///
++/// Serial Internal Impl
++/// ========================
++
++struct SerialIamaxInternal {
++  template <typename IndexType, typename ValueType>
++  KOKKOS_INLINE_FUNCTION static IndexType invoke(const IndexType n, const ValueType *KOKKOS_RESTRICT x,
++                                                 const IndexType xs0);
++};
++
++template <typename IndexType, typename ValueType>
++KOKKOS_INLINE_FUNCTION IndexType SerialIamaxInternal::invoke(const IndexType n, const ValueType *KOKKOS_RESTRICT x,
++                                                             const IndexType xs0) {
++  // Quick return
++  if (n <= 1) return 0;
++
++  using ats      = typename KokkosKernels::ArithTraits<ValueType>;
++  using RealType = typename ats::mag_type;
++
++  RealType amax  = Kokkos::abs(x[0 * xs0]);
++  IndexType imax = 0;
++
++  for (IndexType i = 1; i < n; ++i) {
++    const RealType abs_x_i = Kokkos::abs(x[i * xs0]);
++    if (abs_x_i > amax) {
++      amax = abs_x_i;
++      imax = i;
++    }
++  }
++
++  return imax;
++}
++
++///
++/// Team Internal Impl
++/// ========================
++template <typename MemberType>
++struct TeamIamaxInternal {
++  template <typename IndexType, typename ValueType>
++  KOKKOS_INLINE_FUNCTION static IndexType invoke(const MemberType &member, const IndexType n,
++                                                 const ValueType *KOKKOS_RESTRICT x, const IndexType xs0);
++};
++
++template <typename MemberType>
++template <typename IndexType, typename ValueType>
++KOKKOS_INLINE_FUNCTION IndexType TeamIamaxInternal<MemberType>::invoke(const MemberType &member, const IndexType n,
++                                                                       const ValueType *KOKKOS_RESTRICT x,
++                                                                       const IndexType xs0) {
++  // Quick return
++  if (n <= 1) return 0;
++
++  using mag_type           = typename KokkosKernels::ArithTraits<ValueType>::mag_type;
++  using reducer_type       = Kokkos::MaxFirstLoc<mag_type, IndexType, typename MemberType::execution_space>;
++  using reducer_value_type = typename reducer_type::value_type;
++  reducer_value_type max_first_loc(KokkosKernels::ArithTraits<mag_type>::zero(), 0);
++  Kokkos::parallel_reduce(
++      Kokkos::TeamThreadRange(member, n),
++      [&](const IndexType i, reducer_value_type &update) {
++        const auto abs_val = KokkosKernels::ArithTraits<ValueType>::abs(x[i * xs0]);
++        if (abs_val > update.val) {
++          update.val = abs_val;
++          update.loc = i;
++        }
++      },
++      reducer_type(max_first_loc));
++  return max_first_loc.loc;
++}
++
++///
++/// TeamVector Internal Impl
++/// ========================
++template <typename MemberType>
++struct TeamVectorIamaxInternal {
++  template <typename IndexType, typename ValueType>
++  KOKKOS_INLINE_FUNCTION static IndexType invoke(const MemberType &member, const IndexType n,
++                                                 const ValueType *KOKKOS_RESTRICT x, const IndexType xs0);
++};
++
++template <typename MemberType>
++template <typename IndexType, typename ValueType>
++KOKKOS_INLINE_FUNCTION IndexType TeamVectorIamaxInternal<MemberType>::invoke(const MemberType &member,
++                                                                             const IndexType n,
++                                                                             const ValueType *KOKKOS_RESTRICT x,
++                                                                             const IndexType xs0) {
++  // Quick return
++  if (n <= 1) return 0;
++
++  using mag_type           = typename KokkosKernels::ArithTraits<ValueType>::mag_type;
++  using reducer_type       = Kokkos::MaxFirstLoc<mag_type, IndexType, typename MemberType::execution_space>;
++  using reducer_value_type = typename reducer_type::value_type;
++  reducer_value_type max_first_loc(KokkosKernels::ArithTraits<mag_type>::zero(), 0);
++  Kokkos::parallel_reduce(
++      Kokkos::TeamVectorRange(member, n),
++      [&](const IndexType i, reducer_value_type &update) {
++        const auto abs_val = KokkosKernels::ArithTraits<ValueType>::abs(x[i * xs0]);
++        if (abs_val > update.val) {
++          update.val = abs_val;
++          update.loc = i;
++        }
++      },
++      reducer_type(max_first_loc));
++  return max_first_loc.loc;
++}
++
++}  // namespace Impl
++}  // namespace KokkosBatched
++
++#endif  // KOKKOSBATCHED_IAMAX_INTERNAL_HPP_
+diff --git a/batched/dense/impl/KokkosBatched_Iamax_Serial_Impl.hpp b/batched/dense/impl/KokkosBatched_Iamax_Serial_Impl.hpp
+deleted file mode 100644
+index a3890bdbd0..0000000000
+--- a/batched/dense/impl/KokkosBatched_Iamax_Serial_Impl.hpp
++++ /dev/null
+@@ -1,24 +0,0 @@
+-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+-// SPDX-FileCopyrightText: Copyright Contributors to the Kokkos project
+-
+-#ifndef KOKKOSBATCHED_IAMAX_SERIAL_IMPL_HPP_
+-#define KOKKOSBATCHED_IAMAX_SERIAL_IMPL_HPP_
+-
+-/// \author Yuuichi Asahi (yuuichi.asahi@cea.fr)
+-
+-#include "KokkosBatched_Iamax_Serial_Internal.hpp"
+-
+-namespace KokkosBatched {
+-
+-template <typename XViewType>
+-KOKKOS_INLINE_FUNCTION typename XViewType::size_type SerialIamax::invoke(const XViewType &x) {
+-  static_assert(Kokkos::is_view_v<XViewType>, "KokkosBatched::iamax: XViewType is not a Kokkos::View.");
+-  if (x.extent(0) <= 1) return 0;
+-  using size_type  = typename XViewType::size_type;
+-  using value_type = typename XViewType::non_const_value_type;
+-  return KokkosBatched::Impl::SerialIamaxInternal::invoke<size_type, value_type>(x.extent(0), x.data(), x.stride(0));
+-}
+-
+-}  // namespace KokkosBatched
+-
+-#endif  // KOKKOSBATCHED_IAMAX_SERIAL_IMPL_HPP_
+diff --git a/batched/dense/impl/KokkosBatched_Iamax_Serial_Internal.hpp b/batched/dense/impl/KokkosBatched_Iamax_Serial_Internal.hpp
+deleted file mode 100644
+index 7da7db3c98..0000000000
+--- a/batched/dense/impl/KokkosBatched_Iamax_Serial_Internal.hpp
++++ /dev/null
+@@ -1,47 +0,0 @@
+-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+-// SPDX-FileCopyrightText: Copyright Contributors to the Kokkos project
+-
+-#ifndef KOKKOSBATCHED_IAMAX_SERIAL_INTERNAL_HPP_
+-#define KOKKOSBATCHED_IAMAX_SERIAL_INTERNAL_HPP_
+-
+-/// \author Yuuichi Asahi (yuuichi.asahi@cea.fr)
+-
+-#include <Kokkos_Core.hpp>
+-#include "KokkosBatched_Util.hpp"
+-
+-namespace KokkosBatched {
+-namespace Impl {
+-
+-///
+-/// Serial Internal Impl
+-/// ========================
+-
+-struct SerialIamaxInternal {
+-  template <typename IndexType, typename ValueType>
+-  KOKKOS_INLINE_FUNCTION static IndexType invoke(const int n, const ValueType *KOKKOS_RESTRICT x, const int xs0);
+-};
+-
+-template <typename IndexType, typename ValueType>
+-KOKKOS_INLINE_FUNCTION IndexType SerialIamaxInternal::invoke(const int n, const ValueType *KOKKOS_RESTRICT x,
+-                                                             const int xs0) {
+-  using ats      = typename KokkosKernels::ArithTraits<ValueType>;
+-  using RealType = typename ats::mag_type;
+-
+-  RealType amax  = Kokkos::abs(x[0 * xs0]);
+-  IndexType imax = 0;
+-
+-  for (IndexType i = 1; i < static_cast<IndexType>(n); ++i) {
+-    const RealType abs_x_i = Kokkos::abs(x[i * xs0]);
+-    if (abs_x_i > amax) {
+-      amax = abs_x_i;
+-      imax = i;
+-    }
+-  }
+-
+-  return imax;
+-}
+-
+-}  // namespace Impl
+-}  // namespace KokkosBatched
+-
+-#endif  // KOKKOSBATCHED_IAMAX_SERIAL_INTERNAL_HPP_
+diff --git a/batched/dense/src/KokkosBatched_Iamax.hpp b/batched/dense/src/KokkosBatched_Iamax.hpp
+index 0a3b73a035..a04d0f7c15 100644
+--- a/batched/dense/src/KokkosBatched_Iamax.hpp
++++ b/batched/dense/src/KokkosBatched_Iamax.hpp
+@@ -10,21 +10,55 @@ namespace KokkosBatched {
+ /// \brief Serial Batched Iamax:
+ /// Iamax finds the index of the first element having maximum absolute value.
+ ///
+-/// \tparam XViewType: Input view type, needs to be a 1D view
+-///
+-/// \param X [in]: Input view type
++struct SerialIamax {
++  /// \tparam XViewType: Input view type, needs to be a 1D view
++  ///
++  /// \param[in] X: Input view type
++  ///
++  /// \return The index of the first element having maximum absolute value
++  /// As well as Blas, this returns 0 for an empty vector
++  /// No nested parallel_for is used inside of the function.
++  ///
++  template <typename XViewType>
++  KOKKOS_INLINE_FUNCTION static typename XViewType::size_type invoke(const XViewType &x);
++};
++
++/// \brief Team Batched Iamax:
++/// Iamax finds the index of the first element having maximum absolute value.
+ ///
+-/// \return The index of the first element having maximum absolute value
+-/// As well as Blas, this returns 0 (0 in Fortran) for an empty vector
+-/// No nested parallel_for is used inside of the function.
++/// \tparam MemberType: Kokkos TeamPolicy member type
+ ///
++template <typename MemberType>
++struct TeamIamax {
++  /// \tparam XViewType: Input view type, needs to be a 1D view
++  /// \param[in] member : Kokkos TeamPolicy member type
++  /// \param[in] X: Input view type
++  /// \return The index of the first element having maximum absolute value
++  /// As well as Blas, this returns 0 for an empty vector
++  /// A nested parallel_for with TeamThreadRange is used.
++  template <typename XViewType>
++  KOKKOS_INLINE_FUNCTION static typename XViewType::size_type invoke(const MemberType &member, const XViewType &x);
++};
+ 
+-struct SerialIamax {
++/// \brief Team Vector Batched Iamax:
++/// Iamax finds the index of the first element having maximum absolute value.
++///
++/// \tparam MemberType: Kokkos TeamPolicy member type
++///
++template <typename MemberType>
++struct TeamVectorIamax {
++  /// \tparam XViewType: Input view type, needs to be a 1D view
++  /// \param[in] member : Kokkos TeamPolicy member type
++  /// \param[in] X: Input view type
++  /// \return The index of the first element having maximum absolute value
++  /// As well as Blas, this returns 0 for an empty vector
++  /// A nested parallel_for with TeamThreadRange is used.
+   template <typename XViewType>
+-  KOKKOS_INLINE_FUNCTION static typename XViewType::size_type invoke(const XViewType &x);
++  KOKKOS_INLINE_FUNCTION static typename XViewType::size_type invoke(const MemberType &member, const XViewType &x);
+ };
++
+ }  // namespace KokkosBatched
+ 
+-#include "KokkosBatched_Iamax_Serial_Impl.hpp"
++#include "KokkosBatched_Iamax_Impl.hpp"
+ 
+ #endif  // KOKKOSBATCHED_IAMAX_HPP_

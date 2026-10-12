@@ -227,3 +227,11 @@ def test_cached_image_does_not_skip_env_validation(tmp_path, monkeypatch) -> Non
     with pytest.raises(ValueError, match="unsupported ENV"):
         asyncio.run(factory(tmp_path, 100))
     create.assert_not_awaited()
+
+
+def test_factory_caps_sandbox_lifetime_at_contree_maximum(tmp_path, monkeypatch):
+    from tinker_cookbook.sandbox import contree_sandbox
+
+    monkeypatch.setattr(contree_sandbox, "create_contree_client", lambda timeout: object())
+    factory = contree_sandbox.ContreeDockerfileSandboxFactory(tmp_path / "cache.json", timeout=10800)
+    assert factory._timeout == contree_sandbox.CONTREE_MAX_TIMEOUT_SECONDS == 3600

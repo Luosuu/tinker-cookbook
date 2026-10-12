@@ -22,10 +22,12 @@ def prepared_kokkos_tasks(
 ) -> Iterator[list[HarborTask]]:
     """Use the fixed verifier even for historical exports with mutable HEAD guards.
 
-    Preserve instructions, hidden tests, and published evidence. Regenerate only
-    the environment and verifier from each task's metadata, in a temporary copy
-    kept alive for the entire training/evaluation run. Changed Dockerfile bytes
-    also invalidate the prepared sandbox image cache.
+    Preserve instructions, hidden tests, and published evidence. For historical exports,
+    regenerate only the environment and verifier from each task's metadata, in a temporary
+    copy kept alive for the entire training/evaluation run; changed Dockerfile bytes also
+    invalidate the prepared sandbox image cache. Payloads that already carry the guarded
+    verifier (v2.4 and later) are used as published: regenerating them would drop their
+    release repairs.
     """
     profile_text(harness_profile)  # Validate before preparing any task.
     with tempfile.TemporaryDirectory(prefix="kokkos-tasks-") as directory:
@@ -36,13 +38,19 @@ def prepared_kokkos_tasks(
             )
             destination = Path(directory) / task.task_name
             shutil.copytree(task.task_dir, destination)
-            (destination / "environment" / "Dockerfile").write_text(_dockerfile(instance))
-            (destination / "tests" / "test.sh").write_text(_test_script(instance))
+            if not is_guarded(task.task_dir):
+                (destination / "environment" / "Dockerfile").write_text(_dockerfile(instance))
+                (destination / "tests" / "test.sh").write_text(_test_script(instance))
             tasks.append(apply_profile(replace(task, task_dir=destination), harness_profile))
         yield tasks
 
 
 GUARD_MARKERS = ("Standalone runtime-test guard", "run_suite(json.loads(")
+
+
+def is_guarded(task_dir: Path) -> bool:
+    script = (task_dir / "tests" / "test.sh").read_text()
+    return all(marker in script for marker in GUARD_MARKERS)
 
 
 def require_guarded_verifier(task_dir: Path) -> None:

@@ -1,0 +1,67 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_AlgorithmsUnitTest_StdSet_A compilation"
+  ],
+  "PASS_TO_PASS": [
+    "random_access_iterator_test.traits_helpers"
+  ],
+  "base_commit": "f26de9909fdc2539e36bee54ce57638c3a1eb92a",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_AlgorithmsUnitTest_StdSet_A"
+  ],
+  "changed_files": [
+    {
+      "additions": 1,
+      "deletions": 1,
+      "filename": "algorithms/src/std_algorithms/impl/Kokkos_RandomAccessIterator.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 31,
+      "deletions": 0,
+      "filename": "algorithms/unit_tests/TestRandomAccessIterator.cpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/algorithms/src/std_algorithms/impl/Kokkos_RandomAccessIterator.hpp b/algorithms/src/std_algorithms/impl/Kokkos_RandomAccessIterator.hpp\nindex 28d3133d516..e8c638c94c7 100644\n--- a/algorithms/src/std_algorithms/impl/Kokkos_RandomAccessIterator.hpp\n+++ b/algorithms/src/std_algorithms/impl/Kokkos_RandomAccessIterator.hpp\n@@ -36,7 +36,7 @@ class RandomAccessIterator< ::Kokkos::View<DataType, Args...> > {\n   using iterator_type = RandomAccessIterator<view_type>;\n \n   using iterator_category = std::random_access_iterator_tag;\n-  using value_type        = typename view_type::value_type;\n+  using value_type        = typename view_type::non_const_value_type;\n   using difference_type   = ptrdiff_t;\n   using pointer           = typename view_type::pointer_type;\n   using reference         = typename view_type::reference_type;\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+  "created_at": "2024-10-28T19:38:58Z",
+  "era": "cpp17",
+  "f2p_commands": [
+    "cmake --build build --target Kokkos_AlgorithmsUnitTest_StdSet_A"
+  ],
+  "fail_to_pass": [
+    "Kokkos_AlgorithmsUnitTest_StdSet_A compilation"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-7485",
+  "labels": [],
+  "linked_issues": [
+    7476
+  ],
+  "merge_commit": "302a6b3f197d2fb6342e57ec880e708e158a62b1",
+  "merged_at": "2024-10-28T19:38:58Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/7485",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "ctest --test-dir build -R Kokkos_AlgorithmsUnitTest_StdSet_A --output-on-failure",
+    "build/algorithms/unit_tests/Kokkos_AlgorithmsUnitTest_StdSet_A --gtest_filter=random_access_iterator_test.*"
+  ],
+  "pass_to_pass": [
+    "random_access_iterator_test.traits_helpers"
+  ],
+  "patch": "diff --git a/algorithms/src/std_algorithms/impl/Kokkos_RandomAccessIterator.hpp b/algorithms/src/std_algorithms/impl/Kokkos_RandomAccessIterator.hpp\nindex 28d3133d516..e8c638c94c7 100644\n--- a/algorithms/src/std_algorithms/impl/Kokkos_RandomAccessIterator.hpp\n+++ b/algorithms/src/std_algorithms/impl/Kokkos_RandomAccessIterator.hpp\n@@ -36,7 +36,7 @@ class RandomAccessIterator< ::Kokkos::View<DataType, Args...> > {\n   using iterator_type = RandomAccessIterator<view_type>;\n \n   using iterator_category = std::random_access_iterator_tag;\n-  using value_type        = typename view_type::value_type;\n+  using value_type        = typename view_type::non_const_value_type;\n   using difference_type   = ptrdiff_t;\n   using pointer           = typename view_type::pointer_type;\n   using reference         = typename view_type::reference_type;\ndiff --git a/algorithms/unit_tests/TestRandomAccessIterator.cpp b/algorithms/unit_tests/TestRandomAccessIterator.cpp\nindex ad11a711f40..5ab348cb193 100644\n--- a/algorithms/unit_tests/TestRandomAccessIterator.cpp\n+++ b/algorithms/unit_tests/TestRandomAccessIterator.cpp\n@@ -264,6 +264,37 @@ TEST_F(random_access_iterator_test, traits_helpers) {\n   static_assert(KE::Impl::are_iterators_v<T1_t, T2_t, T3_t>);\n   static_assert(KE::Impl::are_random_access_iterators_v<T1_t, T2_t, T3_t>);\n   static_assert(!KE::Impl::are_iterators_v<int, T2_t, T3_t>);\n+\n+  static_assert(std::is_same_v<decltype(KE::begin(m_static_view))::value_type,\n+                               value_type>);\n+  static_assert(std::is_same_v<decltype(KE::begin(m_dynamic_view))::value_type,\n+                               value_type>);\n+  static_assert(std::is_same_v<decltype(KE::begin(m_strided_view))::value_type,\n+                               value_type>);\n+\n+  static_assert(\n+      std::is_same_v<decltype(KE::end(m_static_view))::value_type, value_type>);\n+  static_assert(std::is_same_v<decltype(KE::end(m_dynamic_view))::value_type,\n+                               value_type>);\n+  static_assert(std::is_same_v<decltype(KE::end(m_strided_view))::value_type,\n+                               value_type>);\n+\n+  static_assert(\n+      std::is_same_v<decltype(KE::begin(m_static_view))::value_type,\n+                     decltype(KE::cbegin(m_static_view))::value_type>);\n+  static_assert(\n+      std::is_same_v<decltype(KE::begin(m_dynamic_view))::value_type,\n+                     decltype(KE::cbegin(m_dynamic_view))::value_type>);\n+  static_assert(\n+      std::is_same_v<decltype(KE::begin(m_strided_view))::value_type,\n+                     decltype(KE::cbegin(m_strided_view))::value_type>);\n+\n+  static_assert(std::is_same_v<decltype(KE::end(m_static_view))::value_type,\n+                               decltype(KE::cend(m_static_view))::value_type>);\n+  static_assert(std::is_same_v<decltype(KE::end(m_dynamic_view))::value_type,\n+                               decltype(KE::cend(m_dynamic_view))::value_type>);\n+  static_assert(std::is_same_v<decltype(KE::end(m_strided_view))::value_type,\n+                               decltype(KE::cend(m_strided_view))::value_type>);\n }\n \n }  // namespace stdalgos\n",
+  "pr_number": 7485,
+  "problem_statement": "Ensure `Kokkos::RandomAccessIterator::value_type` is non-const for both const and non-const iterators, aligning with C++ standard `iterator_traits`. Currently, const iterators produced by `cbegin()`/`cend()` expose a const `value_type`, but standard library `const_iterator` types (e.g., `std::vector::const_iterator`) define `value_type` without const and apply constness only through `reference`. The iterator trait must reflect the underlying view\u2019s non-const value type regardless of iterator constness, preserving compatibility with algorithms and libraries (e.g., Thrust) that rely on this standard behavior.",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/algorithms/unit_tests/TestRandomAccessIterator.cpp b/algorithms/unit_tests/TestRandomAccessIterator.cpp\nindex ad11a711f40..5ab348cb193 100644\n--- a/algorithms/unit_tests/TestRandomAccessIterator.cpp\n+++ b/algorithms/unit_tests/TestRandomAccessIterator.cpp\n@@ -264,6 +264,37 @@ TEST_F(random_access_iterator_test, traits_helpers) {\n   static_assert(KE::Impl::are_iterators_v<T1_t, T2_t, T3_t>);\n   static_assert(KE::Impl::are_random_access_iterators_v<T1_t, T2_t, T3_t>);\n   static_assert(!KE::Impl::are_iterators_v<int, T2_t, T3_t>);\n+\n+  static_assert(std::is_same_v<decltype(KE::begin(m_static_view))::value_type,\n+                               value_type>);\n+  static_assert(std::is_same_v<decltype(KE::begin(m_dynamic_view))::value_type,\n+                               value_type>);\n+  static_assert(std::is_same_v<decltype(KE::begin(m_strided_view))::value_type,\n+                               value_type>);\n+\n+  static_assert(\n+      std::is_same_v<decltype(KE::end(m_static_view))::value_type, value_type>);\n+  static_assert(std::is_same_v<decltype(KE::end(m_dynamic_view))::value_type,\n+                               value_type>);\n+  static_assert(std::is_same_v<decltype(KE::end(m_strided_view))::value_type,\n+                               value_type>);\n+\n+  static_assert(\n+      std::is_same_v<decltype(KE::begin(m_static_view))::value_type,\n+                     decltype(KE::cbegin(m_static_view))::value_type>);\n+  static_assert(\n+      std::is_same_v<decltype(KE::begin(m_dynamic_view))::value_type,\n+                     decltype(KE::cbegin(m_dynamic_view))::value_type>);\n+  static_assert(\n+      std::is_same_v<decltype(KE::begin(m_strided_view))::value_type,\n+                     decltype(KE::cbegin(m_strided_view))::value_type>);\n+\n+  static_assert(std::is_same_v<decltype(KE::end(m_static_view))::value_type,\n+                               decltype(KE::cend(m_static_view))::value_type>);\n+  static_assert(std::is_same_v<decltype(KE::end(m_dynamic_view))::value_type,\n+                               decltype(KE::cend(m_dynamic_view))::value_type>);\n+  static_assert(std::is_same_v<decltype(KE::end(m_strided_view))::value_type,\n+                               decltype(KE::cend(m_strided_view))::value_type>);\n }\n \n }  // namespace stdalgos\n",
+  "title": "Make value_type for RandomAccessIterator non-const",
+  "version": "cpp17"
+}

@@ -1,0 +1,309 @@
+diff --git a/core/unit_test/TestCommonPolicyInterface.hpp b/core/unit_test/TestCommonPolicyInterface.hpp
+index 33ae960d7e6..4fc57e8cec4 100644
+--- a/core/unit_test/TestCommonPolicyInterface.hpp
++++ b/core/unit_test/TestCommonPolicyInterface.hpp
+@@ -55,8 +55,8 @@ constexpr bool test_compile_time_parameters() {
+ 
+   using TestExecSpace    = TEST_EXECSPACE;
+   using DefaultExecSpace = Kokkos::DefaultExecutionSpace;
+-  using TestIndex        = TestExecSpace::size_type;
+-  using DefaultIndex     = DefaultExecSpace::size_type;
++  using TestIndex        = TestExecSpace::index_type;
++  using DefaultIndex     = DefaultExecSpace::index_type;
+   using LongIndex        = Kokkos::IndexType<long>;
+   using StaticSchedule   = Kokkos::Schedule<Kokkos::Static>;
+   using DynamicSchedule  = Kokkos::Schedule<Kokkos::Dynamic>;
+diff --git a/core/unit_test/TestMDRangePolicyCTAD.cpp b/core/unit_test/TestMDRangePolicyCTAD.cpp
+index b2fa1aec85e..f5e1f8b21f3 100644
+--- a/core/unit_test/TestMDRangePolicyCTAD.cpp
++++ b/core/unit_test/TestMDRangePolicyCTAD.cpp
+@@ -20,7 +20,7 @@ struct TestMDRangePolicyCTAD {
+ 
+   struct SomeExecutionSpace {
+     using execution_space = SomeExecutionSpace;
+-    using size_type       = size_t;
++    using index_type      = int;
+   };
+   static_assert(Kokkos::is_execution_space_v<SomeExecutionSpace>);
+ 
+diff --git a/core/unit_test/TestRange.hpp b/core/unit_test/TestRange.hpp
+index cc6447eddf7..43f65bb98cb 100644
+--- a/core/unit_test/TestRange.hpp
++++ b/core/unit_test/TestRange.hpp
+@@ -26,8 +26,10 @@ struct TestRange {
+   struct VerifyInitTag {};
+   struct ResetTag {};
+   struct VerifyResetTag {};
+-  struct OffsetTag {};
+-  struct VerifyOffsetTag {};
++  struct PosOffsetTag {};
++  struct NegOffsetTag {};
++  struct VerifyNegOffsetTag {};
++  struct VerifyPosOffsetTag {};
+ 
+   int N;
+   static const int offset = 13;
+@@ -71,13 +73,14 @@ struct TestRange {
+     }
+     ASSERT_EQ(error_count, int(0));
+ 
++    // Test positive offset
+     Kokkos::parallel_for(
+-        Kokkos::RangePolicy<ExecSpace, ScheduleType, OffsetTag>(offset,
+-                                                                N + offset),
++        Kokkos::RangePolicy<ExecSpace, ScheduleType, PosOffsetTag>(offset,
++                                                                   N + offset),
+         *this);
+     Kokkos::parallel_for(
+         std::string("TestKernelFor"),
+-        Kokkos::RangePolicy<ExecSpace, ScheduleType, VerifyOffsetTag>(0, N),
++        Kokkos::RangePolicy<ExecSpace, ScheduleType, VerifyPosOffsetTag>(0, N),
+         *this);
+ 
+     Kokkos::deep_copy(host_flags, m_flags);
+@@ -87,6 +90,25 @@ struct TestRange {
+       if (i + offset != host_flags(i)) ++error_count;
+     }
+     ASSERT_EQ(error_count, int(0));
++
++    // Test negative offset
++    Kokkos::parallel_for(
++        Kokkos::RangePolicy<ExecSpace, ScheduleType, NegOffsetTag>(-offset,
++                                                                   N - offset),
++        *this);
++    Kokkos::parallel_for(
++        std::string("TestKernelFor"),
++        Kokkos::RangePolicy<ExecSpace, ScheduleType, VerifyNegOffsetTag>(0, N),
++        *this);
++
++    Kokkos::deep_copy(host_flags, m_flags);
++
++    // host_flag is at initial values again
++    error_count = 0;
++    for (int i = 0; i < N; ++i) {
++      if (i - offset != host_flags(i)) ++error_count;
++    }
++    ASSERT_EQ(error_count, int(0));
+   }
+ 
+   KOKKOS_INLINE_FUNCTION
+@@ -112,18 +134,31 @@ struct TestRange {
+   }
+ 
+   KOKKOS_INLINE_FUNCTION
+-  void operator()(const OffsetTag &, const int i) const {
++  void operator()(const PosOffsetTag &, const int i) const {
+     m_flags(i - offset) = i;
+   }
+ 
+   KOKKOS_INLINE_FUNCTION
+-  void operator()(const VerifyOffsetTag &, const int i) const {
++  void operator()(const NegOffsetTag &, const int i) const {
++    m_flags(i + offset) = i;
++  }
++
++  KOKKOS_INLINE_FUNCTION
++  void operator()(const VerifyPosOffsetTag &, const int i) const {
+     if (i + offset != m_flags(i)) {
+       Kokkos::printf("TestRange::test_for_error at %d != %d\n", i + offset,
+                      m_flags(i));
+     }
+   }
+ 
++  KOKKOS_INLINE_FUNCTION
++  void operator()(const VerifyNegOffsetTag &, const int i) const {
++    if (i - offset != m_flags(i)) {
++      Kokkos::printf("TestRange::test_for_error at %d != %d\n", i - offset,
++                     m_flags(i));
++    }
++  }
++
+   //----------------------------------------
+ 
+   void test_reduce() {
+@@ -145,8 +180,15 @@ struct TestRange {
+     ASSERT_EQ(size_t((N - 1) * (N) / 2), size_t(total));
+ 
+     Kokkos::parallel_reduce(
+-        Kokkos::RangePolicy<ExecSpace, ScheduleType, OffsetTag>(offset,
+-                                                                N + offset),
++        Kokkos::RangePolicy<ExecSpace, ScheduleType, PosOffsetTag>(offset,
++                                                                   N + offset),
++        *this, total);
++    // sum( 1 .. N )
++    ASSERT_EQ(size_t((N) * (N + 1) / 2), size_t(total));
++
++    Kokkos::parallel_reduce(
++        Kokkos::RangePolicy<ExecSpace, ScheduleType, NegOffsetTag>(-offset,
++                                                                   N - offset),
+         *this, total);
+     // sum( 1 .. N )
+     ASSERT_EQ(size_t((N) * (N + 1) / 2), size_t(total));
+@@ -158,10 +200,15 @@ struct TestRange {
+   }
+ 
+   KOKKOS_INLINE_FUNCTION
+-  void operator()(const OffsetTag &, const int i, value_type &update) const {
++  void operator()(const PosOffsetTag &, const int i, value_type &update) const {
+     update += 1 + m_flags(i - offset);
+   }
+ 
++  KOKKOS_INLINE_FUNCTION
++  void operator()(const NegOffsetTag &, const int i, value_type &update) const {
++    update += 1 + m_flags(i + offset);
++  }
++
+   void test_dynamic_policy() {
+     auto const N_no_implicit_capture = N;
+     using policy_t =
+diff --git a/core/unit_test/TestRangePolicyCTAD.cpp b/core/unit_test/TestRangePolicyCTAD.cpp
+index 255b1d0f337..b6b886a0505 100644
+--- a/core/unit_test/TestRangePolicyCTAD.cpp
++++ b/core/unit_test/TestRangePolicyCTAD.cpp
+@@ -14,7 +14,7 @@ namespace {
+ struct TestRangePolicyCTAD {
+   struct SomeExecutionSpace {
+     using execution_space = SomeExecutionSpace;
+-    using size_type       = size_t;
++    using index_type      = int;
+ 
+     [[maybe_unused]] static int concurrency() { return 0; }
+   };
+diff --git a/core/unit_test/TestRangePolicyConstructors.hpp b/core/unit_test/TestRangePolicyConstructors.hpp
+index 29da34771ab..0e222b75b0b 100644
+--- a/core/unit_test/TestRangePolicyConstructors.hpp
++++ b/core/unit_test/TestRangePolicyConstructors.hpp
+@@ -18,9 +18,10 @@ import kokkos.core_impl;
+ namespace {
+ 
+ TEST(TEST_CATEGORY, range_policy_runtime_parameters) {
+-  using Policy     = Kokkos::RangePolicy<>;
+-  using Index      = Policy::index_type;
+-  Index work_begin = 5;
++  using Policy = Kokkos::RangePolicy<>;
++  using Index  = Policy::index_type;
++
++  Index work_begin = -5;
+   Index work_end   = 15;
+   Index chunk_size = 10;
+   {
+@@ -83,12 +84,37 @@ TEST(TEST_CATEGORY_DEATH, range_policy_invalid_bounds) {
+   ASSERT_DEATH({ (void)Policy(TEST_EXECSPACE(), 100, 90, ChunkSize(10)); },
+                msg);
+ }
++TEST(TEST_CATEGORY_DEATH, range_policy_check_exceeding_max) {
++  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
++  // Trigger due to exceeding a policy's range maximum
++  using IntPolicy = Kokkos::RangePolicy<int>;
++
++  long long const n_large = 9223372036854774771;
++  [[maybe_unused]] std::string msg =
++      "Kokkos::RangePolicy bound type error: an unsafe implicit conversion is "
++      "performed";
++  ASSERT_DEATH((void)IntPolicy(-4, n_large), msg);
++}
++
++TEST(TEST_CATEGORY_DEATH, range_policy_check_exceeding_min) {
++  ::testing::FLAGS_gtest_death_test_style = "threadsafe";
++  // Trigger due to exceeding a policy's range minimum
++  using IntPolicy = Kokkos::RangePolicy<int>;
++
++  long long const n_small = -9223372036854774771;
++  [[maybe_unused]] std::string msg =
++      "Kokkos::RangePolicy bound type error: an unsafe implicit conversion is "
++      "performed";
++  ASSERT_DEATH((void)IntPolicy(n_small, 4), msg);
++}
+ 
+ struct W {  // round-trip conversion check for narrowing should "fire"
++  W() : val_(1) {}
+   W(int const* ptr) : val_(*ptr) {}
+-  W(int) : val_(0) {}
++  // Deliberately discards the int value so W -> member_type -> W loses
++  // information for val_ != 1 (exercises the round-trip check).
++  W(int const) : val_(1) {}
+   operator int() const { return val_; }
+-
+   int val_;
+ };
+ 
+@@ -100,7 +126,7 @@ TEST(TEST_CATEGORY_DEATH, range_policy_round_trip_conversion_fires) {
+   static_assert(std::is_convertible_v<W, Policy::index_type>);
+   static_assert(std::is_convertible_v<Policy::index_type, W>);
+ 
+-  int const n = 1;
++  int const n = 5;
+   [[maybe_unused]] std::string msg =
+       "Kokkos::RangePolicy bound type error: an unsafe implicit conversion is "
+       "performed";
+@@ -147,10 +173,11 @@ TEST(TEST_CATEGORY_DEATH, range_policy_check_sign_changes) {
+ }
+ 
+ TEST(TEST_CATEGORY_DEATH, range_policy_implicitly_converted_bounds) {
+-  using UIntIndexType = Kokkos::IndexType<unsigned>;
+-  using IntIndexType  = Kokkos::IndexType<int>;
+-  using UIntPolicy    = Kokkos::RangePolicy<TEST_EXECSPACE, UIntIndexType>;
+-  using IntPolicy     = Kokkos::RangePolicy<TEST_EXECSPACE, IntIndexType>;
++  using UIntIndexType     = Kokkos::IndexType<unsigned>;
++  using IntIndexType      = Kokkos::IndexType<int>;
++  using UIntPolicy        = Kokkos::RangePolicy<TEST_EXECSPACE, UIntIndexType>;
++  using IntPolicy         = Kokkos::RangePolicy<TEST_EXECSPACE, IntIndexType>;
++  using DefaultExecPolicy = Kokkos::RangePolicy<Kokkos::DefaultExecutionSpace>;
+ 
+   std::string msg =
+       "Kokkos::RangePolicy bound type error: an unsafe implicit conversion is "
+@@ -169,12 +196,16 @@ TEST(TEST_CATEGORY_DEATH, range_policy_implicitly_converted_bounds) {
+   }
+   {
+     unsigned test_val = std::numeric_limits<unsigned>::max();
+-    ASSERT_DEATH({ (void)IntPolicy(0u, test_val); },
++    ASSERT_DEATH({ (void)IntPolicy(0, test_val); },
+                  get_error_msg(expected, test_val));
+   }
+   {
+-    long long test_val = std::numeric_limits<long long>::max();
+-    ASSERT_DEATH({ (void)IntPolicy(0LL, test_val); },
++    unsigned long long test_val =
++        std::numeric_limits<unsigned long long>::max();
++    ASSERT_DEATH({ (void)IntPolicy(0, test_val); },
++                 get_error_msg(expected, test_val));
++
++    ASSERT_DEATH({ (void)DefaultExecPolicy(0, test_val); },
+                  get_error_msg(expected, test_val));
+   }
+   {
+diff --git a/core/unit_test/TestSharedAlloc.hpp b/core/unit_test/TestSharedAlloc.hpp
+index dd8392065df..ed2cce634f6 100644
+--- a/core/unit_test/TestSharedAlloc.hpp
++++ b/core/unit_test/TestSharedAlloc.hpp
+@@ -82,7 +82,7 @@ void test_shared_alloc() {
+     // by RecordBase::decrement) fences all execution space instances. If this
+     // is a parallel_for, the test can hang with the parallel_for blocking
+     // waiting for itself to complete.
+-    for (size_t i = range.begin(); i < range.end(); ++i) {
++    for (auto i = range.begin(); i < range.end(); ++i) {
+       while (nullptr !=
+              (r[i] = static_cast<RecordMemS*>(RecordBase::decrement(r[i])))) {
+ #ifdef KOKKOS_ENABLE_DEBUG
+@@ -127,7 +127,7 @@ void test_shared_alloc() {
+     // by RecordBase::decrement) fences all execution space instances. If this
+     // is a parallel_for, the test can hang with the parallel_for blocking
+     // waiting for itself to complete.
+-    for (size_t i = range.begin(); i < range.end(); ++i) {
++    for (auto i = range.begin(); i < range.end(); ++i) {
+       while (nullptr !=
+              (r[i] = static_cast<RecordMemS*>(RecordBase::decrement(r[i])))) {
+ #ifdef KOKKOS_ENABLE_DEBUG
+diff --git a/core/unit_test/TestTeamPolicyCTAD.cpp b/core/unit_test/TestTeamPolicyCTAD.cpp
+index bd547ab8187..2c9b5c72f21 100644
+--- a/core/unit_test/TestTeamPolicyCTAD.cpp
++++ b/core/unit_test/TestTeamPolicyCTAD.cpp
+@@ -18,7 +18,7 @@ struct TestTeamPolicyCTAD {
+ 
+   struct SomeExecutionSpace {
+     using execution_space = SomeExecutionSpace;
+-    using size_type       = size_t;
++    using index_type      = int;
+   };
+   static_assert(Kokkos::is_execution_space_v<SomeExecutionSpace>);
+ 

@@ -1,0 +1,18 @@
+diff --git a/core/src/Kokkos_ExecPolicy.hpp b/core/src/Kokkos_ExecPolicy.hpp
+index a66ce58e580..b11e510976d 100644
+--- a/core/src/Kokkos_ExecPolicy.hpp
++++ b/core/src/Kokkos_ExecPolicy.hpp
+@@ -1388,10 +1388,9 @@ concept ExecutionTypeConcept = ExecutionSpace<ExecType> || TeamHandle<ExecType>;
+ // Deduction guide
+ 
+ // Instances for the execution space specialization
+-RangePolicy() -> RangePolicy<DefaultExecutionSpace>;
+-RangePolicy(int64_t, int64_t) -> RangePolicy<DefaultExecutionSpace>;
+-RangePolicy(int64_t, int64_t, ChunkSize const&)
+-    -> RangePolicy<DefaultExecutionSpace>;
++RangePolicy() -> RangePolicy<>;
++RangePolicy(int64_t, int64_t) -> RangePolicy<>;
++RangePolicy(int64_t, int64_t, ChunkSize const&) -> RangePolicy<>;
+ RangePolicy(const DefaultExecutionSpace&, int64_t, int64_t, ChunkSize const&)
+     -> RangePolicy<DefaultExecutionSpace>;
+ template <Impl::ExecutionTypeConcept Exec>

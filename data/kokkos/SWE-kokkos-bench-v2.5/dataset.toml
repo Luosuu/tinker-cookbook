@@ -1,0 +1,422 @@
+[dataset]
+name = "luosuu/SWE-kokkos-bench"
+version = "2.5.0"
+description = "100 Kokkos ecosystem regression repair tasks (250-request budget)"
+keywords = []
+[[dataset.authors]]
+name = "SWE-kokkos-bench contributors"
+
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-6289"
+digest = "sha256:6d03a802d87c0fa2d2890ec979432a7155cef044c7bcda34c6d9ff77ec70fe96"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-6375"
+digest = "sha256:76f63f9ce810622118ceced70a94577a3f16c19d4154aca080b695c1cbd06391"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-6943"
+digest = "sha256:cde7c4a01599ba7496053f77f857c10b7b5c8b165db6a169e002c4407fefcb1b"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7030"
+digest = "sha256:a07c0710d8a45a6cb084a9f2e54eceb4eaff79f9f75d62549e39948ceec20646"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7040"
+digest = "sha256:433c3ad7e3ad2208bb0764b162efd354f3fa8f12b3898fffe13b9bfec06d851f"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7043"
+digest = "sha256:a20c0780675e014ddd24e5a6186d1ca7c42a185e26c24eda5c69f4ed5736f4a9"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7074"
+digest = "sha256:71316e84a3cf945685a5a70d5e64a27b4a4819b1ef743771ec48ec417dab5442"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7088"
+digest = "sha256:d68fba00e4508d0cae2771860a4e683de39d8185425dbf570b89a7bc9f429d72"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7089"
+digest = "sha256:146b9ad771a4be72622ecdfbeb3de827068c5cd9bb4e5353deea7a43ec01e5be"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7148"
+digest = "sha256:5a4c5ffb6e6b30b475121ce0dc4ca478d5ea764f014a1625b549d14eed1a4d99"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7151"
+digest = "sha256:44f6542528301e5b5ffe42aaa8bc9cce685e7f6fae43c4e8d1175655100d0acf"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7172"
+digest = "sha256:cf74ac81130d54159610d3bb0b320f7b1d6cfce188605fa5a71f3786286f8594"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7242"
+digest = "sha256:c5821674e2f82a6340ea1a99f29efa7e85e50ffdd87bf98fa0b1b2f5d9179266"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7244"
+digest = "sha256:a959266fa83d8b28285e65214e3d23039729b4860c93f6e48dcff8b38d11a8a8"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7247"
+digest = "sha256:7172df48a50de73a52f210bf64fe2d83fa38fd8efc6b44e51d088cdd4ef698f4"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7248"
+digest = "sha256:934ada12bca79414483972a3b664ede67f72f1e3df6eb0e58649fa1cf7d996d5"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7250"
+digest = "sha256:991888a64fc00ff3d1844a3e15b0c2ee3d8ca425bbac30e3ee36ae90e378100e"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7293"
+digest = "sha256:f99ac348d7e8f16e48cffccab5718706c28c7ba3d32fc0e4bf24a97c90871d6e"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7308"
+digest = "sha256:c357be7c0ec4c73bcc59fb4be27edc72f536e723da24c6bfa28da37f629d4518"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7327"
+digest = "sha256:fe6f9b52560177fd62f0f6c78305d33dd4e6aa9763ac62abe01e75df7d088ad4"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7334"
+digest = "sha256:4d14ab6774227d68f81397050c53f953d90831053b6cdbf5f48dd08e7cf09ffa"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7374"
+digest = "sha256:b03f6a201a1b1e999aa88dc037387853fb88397d353483fc75a8fc1fa14bbb5c"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7428"
+digest = "sha256:3dbd42a13f00c7eb659548908ed5ea065aa4a0c24ce44ddffef34d622adc7d40"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7441"
+digest = "sha256:39115e3fc812ac7021b79bb6bcfa109205d13223db815356a5f441c0eb76a239"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7458"
+digest = "sha256:c217044bda1fca1ab3041b9bad4ddc4fcb33bda97dd456f0dbba6a7204f79827"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7467"
+digest = "sha256:a9a73c77cdfb26f14abb717fdb2f55f154fcaa001b1d4d7e8031445cac4f8247"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7485"
+digest = "sha256:05f9e790607400393196fa34e02fb8844039c2b7ef8d1380e0a81dadbab2ade5"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7517"
+digest = "sha256:9fb6b6c70bea65bd8347366d1a0eeb84f3b8d3b13bad70625013e6daeb11e9fd"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7601"
+digest = "sha256:4ae332df0acc684352f5c13faeb457004ae8e56f130c59373c4a8ce7fd806d3b"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7605"
+digest = "sha256:d6570a28e48cc4ceef37b27365d293aae93b6dc88c31ddcef450cc2e8a1d3a44"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7629"
+digest = "sha256:ed9834cbc1118816f49f1a808e6c8fb70c97a398542e032975fbeb93e00704ef"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7653"
+digest = "sha256:f32cc42259bb5031fab115b1a6392a9068a53c21a12cdc6b54703dc089531a3d"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7675"
+digest = "sha256:621d983ae0f566d2ee4ca5ebbed694688f30bcfd9426e286b8afac545247552c"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7676"
+digest = "sha256:b929db2bf118bcb34c1bba43a39ab22efea5f1e26f3a8053041b1dabdbf87e6e"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7769"
+digest = "sha256:44218de5569512518dc583251016c6cf1eadc9417acdabfdfa6161c26eabceb6"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-7984"
+digest = "sha256:6701cb2e6334b0caf6105570544b453397fd8ca09d705e016558ba435771d8a2"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8039"
+digest = "sha256:69a9f4ae8694816c54eaf49c84cd6a89adf91570bfd74cbffbe585c7cd96cbb0"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8098"
+digest = "sha256:7a451b45a5cedeae37930213a719cbeece55bad879f06744849e22fd03739e4c"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8131"
+digest = "sha256:a9d44f260b46319e2906c544f876b3f381c244a83a6e89f282e34fe4de4f71e0"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8164"
+digest = "sha256:bcc80bee67f8aef8f8cf80afff0184faa5f4831b2477cc7a1816771757734e45"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8182"
+digest = "sha256:670265e3cc6d99d7986dd14eff52254713b8e8283d5c9919025cf9de9bfaba94"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8190"
+digest = "sha256:e7560ccc94f8815991830a8cf9ec459284c077318ea3673926daa8860c7623e6"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8202"
+digest = "sha256:ec02475fe5d14240fa95c5f6a88895ab004c2aa5a29e2d6be8bdabfaa992558c"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8221"
+digest = "sha256:42a578f6992cc451f2dce10823e0b820003bf94008c19c17e9650a52fa981a23"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8289"
+digest = "sha256:47105692c95979ff65adb9f701db3b29dce26a7d48cc6bc5f4cc2239b0f64bbe"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8358"
+digest = "sha256:b3d2b9fe16dc74280f3301a957edb8c1b3111e1fcacace78969d4421da71d725"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8364"
+digest = "sha256:b4a8eafbad0f271025eaab513ed27a39446205552316186b97f8675f8ef46999"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8370"
+digest = "sha256:60fe833cafa12101f774702fcb4ee66495b8f25e94cc16bb0be653bfa7ab6fbf"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8399"
+digest = "sha256:ce6fbaa4e5bc09fd221342746bb33096b188b307fc7763091180993c21b3d462"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8481"
+digest = "sha256:ae4ca6ec5e572002f1cff2b269e3bf02703a9ec77a4445fb2a8b0ca50b33d12e"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8486"
+digest = "sha256:d2e90135bfa1953aa98da01f6088d067b17ba24624cbfa9e90060283048bbb8b"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8494"
+digest = "sha256:08802ffa9fbbc9c28b325f0da21d9aa5041bf3e486723c07a4f6d11b1e1b33fb"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8509"
+digest = "sha256:12450d60ae18dc9341beea05a0e289e7587c0647c97cd99f221bcbd90b73d6ce"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8559"
+digest = "sha256:01b874576f9448a30457d889f7aa400024d9fc67a800a948eae666de6d995afc"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8577"
+digest = "sha256:0883f412296033e84afa9bae557de89372ad7e397e9cc88259ee59dd37806e08"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8582"
+digest = "sha256:ea254bebfdb3675001eeb2fadf43ea69116a9da351a858fb492880bb06b9fb76"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8594"
+digest = "sha256:e722214b953f71d4cdc74dd616eb7f6097f39661fe87c9fcb4e4e646c3aa38fb"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8612"
+digest = "sha256:694b6ebb207a81ec08b9b0db635d9d478e05b5991371b7ba2ef4f29a5fb308c4"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8692"
+digest = "sha256:047a05c6859b3ee7080b02670e5e6e8e11220bf2eb3ed2bbfd68cd856b9329a0"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8712"
+digest = "sha256:d599ba2846a9f34751d0b4b864e009e15b843bbc9cef96b8ca4aabbcbd59352c"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8715"
+digest = "sha256:b4a865803f3c76cc539b5342f3419f250d7ec85bfa9e72c17e00b6faf75ff47f"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8741"
+digest = "sha256:8b8efc28248ac4c53266e4e2c2309b9eec9846583cdce92e77bd6982d768c272"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8761"
+digest = "sha256:c1f8e70fd2daa6e73c63ba2782eee5d3f864405cbc37d982f5861c078b3fc25e"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8789"
+digest = "sha256:f7ccd03cfc124a2fbc1847c6e96ab8a190fba4ffede25d9502a0e8e260e040ed"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8792"
+digest = "sha256:e24c57c73b85d6103e7f9297410c963c01d51167b84b3a3159aa02eea3222efc"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8819"
+digest = "sha256:28b8b48e404930c3644d9910f124c282187cebfbc582067bda29840f9d2fd321"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8827"
+digest = "sha256:9345925d6451bc34f84b0b1e35e47ef5e78240d1320f7325943ae653719da4c6"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8838"
+digest = "sha256:a1eaf54526d12916d427f242902d0f7dddf0f6613127ff6d77939173a83199ca"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8891"
+digest = "sha256:3860859e738f769c0765bfb3368629dc4153719f567d3593d69ed511a09c83b3"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8904"
+digest = "sha256:58fc5bef9ca9a7dc11ee39ff9ee444a8528580d651bd402826115cd0d0f66841"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8927"
+digest = "sha256:6ffaa1c8f59c8b30bbb9d7e64010c560ff8e6b69a204155573563ba0d59ce986"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8928"
+digest = "sha256:989e3ab233ffa90b87602aa2d09aaa30b3d58ace1b3ea310e5879d2be1f96a4d"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8967"
+digest = "sha256:21baa2af6f9452794afcd4a452793d2a12c6b76739817fa9ea3766a8deda4b3e"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-8989"
+digest = "sha256:fb342dd8b0834e720bd24e44f5b9d4384e771694002c6f5af03fb444a3bc5683"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9027"
+digest = "sha256:0e4d3e56bff60ee9716b77053ce130691dd083ff425d6af209272cd6f4abaf6c"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9050"
+digest = "sha256:3bb6bfcf622e772e535ed339952f6ea5f2e44ca6e574062c7a4649bdb4eb7693"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9055"
+digest = "sha256:d19dcc26143dc380b34888ef17ffe8dd1fb7ea7ab27ac82952a2c5e7d56efbfa"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9128"
+digest = "sha256:52ccdf86277bbbe18d3eb1745dffedbbfa8d8f89586df59fa9ab34c47b1197fc"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9147"
+digest = "sha256:cba42bea28e316705200be9ef1fdb0a40e8c084fe940077e2aae3121d5309a30"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9159"
+digest = "sha256:dbe707574d5018df17281be22a4dcb95b1acec6cc8eeced449484ce79bc55a76"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9185"
+digest = "sha256:4c32b652cd194ca553f7ef00bf49ea2582e7dc5b74a22713cac590694621c1b8"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9239"
+digest = "sha256:980a11f58cdad751d8ad7478e52d097494e28c0bc51374f384e1dcca0b97e51f"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9260"
+digest = "sha256:97c5fd9c4fdd64b862006059d90076d9ef5183f6f5097e21dc0b9a051dc3cd96"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9276"
+digest = "sha256:f6806483cde7eacae4cfaebcd3aaa6b97ce3565d87c3892fa5ceb11a57e826af"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9303"
+digest = "sha256:2ef738a2b417501ebfa276102e67a72c8a64d7c9b3692e64ccf2745e2da07961"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9309"
+digest = "sha256:4a6e4a894fbc0f2b2fec8ab590f95cfb9a4f8bd453197c54b7231d81ed7ca29c"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9328"
+digest = "sha256:105e7f2c06639a04cc193036573e168c549a18aceffb2e1077d132efbf7cc9a4"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9344"
+digest = "sha256:73562fc05b5deb610046f5e3252c127be8c942d65a055779437d1371ac86bf7e"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9408"
+digest = "sha256:5c56c5a5e2f338192cab2df63e35f954e19c2dac7746a5c61d9cb279c26aab22"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-9414"
+digest = "sha256:f2fa24a05d2fe4658598c6b5065db97358c563132d90aea46020f529f6d303d4"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-kernels-2864"
+digest = "sha256:fa9a7d2826fab955c9a02c783497236273e37ba5e6a5f23bc287920604b5c254"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-kernels-2935"
+digest = "sha256:5e9a0ab9905ca4fe178642416390e9665b900a89d2aafd4662b2d87cd2e63958"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-kernels-3049"
+digest = "sha256:6b91e7d7ba1cc67f731af93b59a5c67c71cc73f55dd40a6fa4537d18e499c4c5"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-kernels-3088"
+digest = "sha256:feca67d2605436135fa54875c470cf0c7eb47712d6c2d63d85e3ac912d0e6fde"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-kernels-3089"
+digest = "sha256:429a03b6da3a839a411dd433d0858c444f1d019335ea9f8f6a46a79f7791d729"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-kernels-3130"
+digest = "sha256:94686dfa4d518e7fdfe6fc7286640c8cbaa45cbb9b1a8710ff3ba13a989704d0"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-kernels-3138"
+digest = "sha256:8d46a9f4feb9fdc975be47485cf0de3936ae28ff8734f1a977b3a74a40719b1e"
+
+[[tasks]]
+name = "luosuu/kokkos__kokkos-kernels-3217"
+digest = "sha256:aac26d41c58f315729a4d8e936bffbb1d95709c70607e5ddd20262fba7d9af00"
+
+[[tasks]]
+name = "luosuu/kokkos__pykokkos-422"
+digest = "sha256:aa9f04d9026048b5ca4c0118fc3ca07675bcd89611300e8ed2713c137480a4bc"
+
+[[tasks]]
+name = "luosuu/kokkos__pykokkos-424"
+digest = "sha256:207d1a2237ec2cce8c1df8e01245085130f5de79b75e06b54e9e999bd271b4c4"
+
+
+[[files]]
+path = "instances.jsonl"
+digest = "sha256:13537b47ac8c3e7ccaf9e4473853bda6a65378cb580c5ff953532ede2d2f3a20"
+
+[[files]]
+path = "budget.json"
+digest = "sha256:eaa2f986c57c6c3f4348d711e27aefed955bffd4b5669dfcc51b1609eca68cd9"
+
+[[files]]
+path = "validation-manifest.json"
+digest = "sha256:99fd04c1e393737070b38fa53c5551c2d688d9e15a4a5492e3681f38574fcb2d"
+

@@ -1,0 +1,138 @@
+diff --git a/core/unit_test/TestReduce.hpp b/core/unit_test/TestReduce.hpp
+index b667656ddd7..86b3835e87d 100644
+--- a/core/unit_test/TestReduce.hpp
++++ b/core/unit_test/TestReduce.hpp
+@@ -14,6 +14,7 @@ import kokkos.core;
+ #include <Kokkos_TypeInfo.hpp>
+ 
+ #include <cmath>
++#include <random>
+ 
+ namespace Test {
+ 
+@@ -737,4 +738,44 @@ TEST(TEST_CATEGORY, reduction_identity_min_max_floating_point_types) {
+ }
+ KOKKOS_IMPL_DISABLE_UNREACHABLE_WARNINGS_POP()
+ 
++template <typename ScalarType>
++class TestReductionIdentityBitwiseAndOr {
++ public:
++  TestReductionIdentityBitwiseAndOr() { runTest(); }
++
++  void runTest() {
++    const int N = 100;
++
++    std::random_device r;
++
++    std::default_random_engine e(r());
++    std::uniform_int_distribution<ScalarType> uniform_dist(
++        std::numeric_limits<ScalarType>::min(),
++        std::numeric_limits<ScalarType>::max());
++
++    ScalarType bor_identity = Kokkos::reduction_identity<ScalarType>::bor();
++    for (int i = 0; i < N; ++i) {
++      ScalarType value = uniform_dist(e);
++      EXPECT_EQ(value | bor_identity, value);
++    }
++
++    ScalarType band_identity = Kokkos::reduction_identity<ScalarType>::band();
++    for (int i = 0; i < N; ++i) {
++      ScalarType value = uniform_dist(e);
++      EXPECT_EQ(value & band_identity, value);
++    }
++  }
++};
++
++TEST(TEST_CATEGORY, reduction_identity_bitwise_and_or_integral_types) {
++  TestReductionIdentityBitwiseAndOr<short>();
++  TestReductionIdentityBitwiseAndOr<unsigned short>();
++  TestReductionIdentityBitwiseAndOr<int>();
++  TestReductionIdentityBitwiseAndOr<unsigned int>();
++  TestReductionIdentityBitwiseAndOr<long>();
++  TestReductionIdentityBitwiseAndOr<unsigned long>();
++  TestReductionIdentityBitwiseAndOr<long long>();
++  TestReductionIdentityBitwiseAndOr<unsigned long long>();
++}
++
+ }  // namespace Test
+diff --git a/core/unit_test/TestReducers.hpp b/core/unit_test/TestReducers.hpp
+index d450c16bfe6..16a110e74fb 100644
+--- a/core/unit_test/TestReducers.hpp
++++ b/core/unit_test/TestReducers.hpp
+@@ -1436,6 +1436,15 @@ struct TestReducers {
+       ASSERT_EQ(band_scalar_view, reference_band);
+     }
+ 
++    {
++      Scalar band_scalar = 1;
++      Kokkos::BAnd<Scalar> reducer_scalar(band_scalar);
++
++      Kokkos::parallel_reduce(Kokkos::RangePolicy<ExecSpace>(0, 0), f,
++                              reducer_scalar);
++      ASSERT_EQ(band_scalar, ~Scalar{});
++    }
++
+     {
+       Kokkos::View<Scalar, Kokkos::HostSpace> band_view("View");
+       band_view() = init;
+@@ -1486,6 +1495,15 @@ struct TestReducers {
+       ASSERT_EQ(bor_scalar_view, reference_bor);
+     }
+ 
++    {
++      Scalar bor_scalar = 1;
++      Kokkos::BOr<Scalar> reducer_scalar(bor_scalar);
++
++      Kokkos::parallel_reduce(Kokkos::RangePolicy<ExecSpace>(0, 0), f,
++                              reducer_scalar);
++      ASSERT_EQ(bor_scalar, Scalar{});
++    }
++
+     {
+       Kokkos::View<Scalar, Kokkos::HostSpace> bor_view("View");
+       bor_view() = init;
+@@ -1536,6 +1554,15 @@ struct TestReducers {
+       ASSERT_EQ(land_scalar_view, reference_land);
+     }
+ 
++    {
++      Scalar land_scalar = 0;
++      Kokkos::LAnd<Scalar> reducer_scalar(land_scalar);
++
++      Kokkos::parallel_reduce(Kokkos::RangePolicy<ExecSpace>(0, 0), f,
++                              reducer_scalar);
++      ASSERT_TRUE(land_scalar);
++    }
++
+     {
+       Kokkos::View<Scalar, Kokkos::HostSpace> land_view("View");
+       land_view() = init;
+@@ -1586,6 +1613,15 @@ struct TestReducers {
+       ASSERT_EQ(lor_scalar_view, reference_lor);
+     }
+ 
++    {
++      Scalar lor_scalar = 1;
++      Kokkos::LOr<Scalar> reducer_scalar(lor_scalar);
++
++      Kokkos::parallel_reduce(Kokkos::RangePolicy<ExecSpace>(0, 0), f,
++                              reducer_scalar);
++      ASSERT_FALSE(lor_scalar);
++    }
++
+     {
+       Kokkos::View<Scalar, Kokkos::HostSpace> lor_view("View");
+       lor_view() = init;
+diff --git a/core/unit_test/TestReducers_a.hpp b/core/unit_test/TestReducers_a.hpp
+index 91786534b99..a788022ba3a 100644
+--- a/core/unit_test/TestReducers_a.hpp
++++ b/core/unit_test/TestReducers_a.hpp
+@@ -12,4 +12,8 @@ TEST(TEST_CATEGORY, reducers_int) {
+   TestReducers<int, TEST_EXECSPACE>::execute_integer();
+ }
+ 
++TEST(TEST_CATEGORY, reducers_unsigned_int) {
++  TestReducers<unsigned int, TEST_EXECSPACE>::execute_integer();
++}
++
+ }  // namespace Test

@@ -1,0 +1,298 @@
+diff --git a/batched/KokkosBatched_Util.hpp b/batched/KokkosBatched_Util.hpp
+index b65e6ac223..7af5bdd651 100644
+--- a/batched/KokkosBatched_Util.hpp
++++ b/batched/KokkosBatched_Util.hpp
+@@ -242,10 +242,11 @@ struct Diag {
+ 
+ struct Norm {
+   struct L1 {};
++  struct GenuineL1 {};
+   struct L2 {};
+-  struct LInf {};
+   struct ScaledL2 {};
+-  struct GenuineL1 {};
++  struct LInf {};
++  struct GenuineLInf {};
+ };
+ 
+ template <class T>
+@@ -255,16 +256,19 @@ template <>
+ struct is_norm<Norm::L1> : std::true_type {};
+ 
+ template <>
+-struct is_norm<Norm::L2> : std::true_type {};
++struct is_norm<Norm::GenuineL1> : std::true_type {};
+ 
+ template <>
+-struct is_norm<Norm::LInf> : std::true_type {};
++struct is_norm<Norm::L2> : std::true_type {};
+ 
+ template <>
+ struct is_norm<Norm::ScaledL2> : std::true_type {};
+ 
+ template <>
+-struct is_norm<Norm::GenuineL1> : std::true_type {};
++struct is_norm<Norm::LInf> : std::true_type {};
++
++template <>
++struct is_norm<Norm::GenuineLInf> : std::true_type {};
+ 
+ template <class T>
+ constexpr bool is_norm_v = is_norm<T>::value;
+diff --git a/batched/dense/impl/KokkosBatched_Nrm_Internal.hpp b/batched/dense/impl/KokkosBatched_Nrm_Internal.hpp
+index 048cd946fd..8e746a650d 100644
+--- a/batched/dense/impl/KokkosBatched_Nrm_Internal.hpp
++++ b/batched/dense/impl/KokkosBatched_Nrm_Internal.hpp
+@@ -138,16 +138,15 @@ KOKKOS_INLINE_FUNCTION void SerialNrmInternal<NrmType>::invoke(const int n, cons
+     for (int i = 0; i < n; ++i) {
+       nrm += asum<NrmValueType>(x[i * xs0]);
+     }
++  } else if constexpr (std::is_same_v<NrmType, Norm::GenuineL1>) {
++    for (int i = 0; i < n; ++i) {
++      nrm += KokkosKernels::ArithTraits<ValueType>::abs(x[i * xs0]);
++    }
+   } else if constexpr (std::is_same_v<NrmType, Norm::L2>) {
+     for (int i = 0; i < n; ++i) {
+       nrm += square<NrmValueType>(x[i * xs0]);
+     }
+     nrm = KokkosKernels::ArithTraits<NrmValueType>::sqrt(nrm);
+-  } else if constexpr (std::is_same_v<NrmType, Norm::LInf>) {
+-    for (int i = 0; i < n; ++i) {
+-      const NrmValueType abs_val = KokkosKernels::ArithTraits<ValueType>::abs(x[i * xs0]);
+-      if (abs_val > nrm) nrm = abs_val;
+-    }
+   } else if constexpr (std::is_same_v<NrmType, Norm::ScaledL2>) {
+     if (n == 1) {
+       nrm = KokkosKernels::ArithTraits<ValueType>::abs(x[0]);
+@@ -159,9 +158,15 @@ KOKKOS_INLINE_FUNCTION void SerialNrmInternal<NrmType>::invoke(const int n, cons
+       }
+       nrm = scale * KokkosKernels::ArithTraits<NrmValueType>::sqrt(sumsq);
+     }
+-  } else if constexpr (std::is_same_v<NrmType, Norm::GenuineL1>) {
++  } else if constexpr (std::is_same_v<NrmType, Norm::LInf>) {
+     for (int i = 0; i < n; ++i) {
+-      nrm += KokkosKernels::ArithTraits<ValueType>::abs(x[i * xs0]);
++      const NrmValueType abs_val = asum<NrmValueType>(x[i * xs0]);
++      if (abs_val > nrm) nrm = abs_val;
++    }
++  } else if constexpr (std::is_same_v<NrmType, Norm::GenuineLInf>) {
++    for (int i = 0; i < n; ++i) {
++      const NrmValueType abs_val = KokkosKernels::ArithTraits<ValueType>::abs(x[i * xs0]);
++      if (abs_val > nrm) nrm = abs_val;
+     }
+   }
+ 
+@@ -190,20 +195,18 @@ KOKKOS_INLINE_FUNCTION void TeamNrmInternal<MemberType, NrmType>::invoke(const M
+     Kokkos::parallel_reduce(
+         Kokkos::TeamThreadRange(member, n),
+         [&](const int i, NrmValueType &thread_nrm) { thread_nrm += asum<NrmValueType>(x[i * xs0]); }, nrm);
++  } else if constexpr (std::is_same_v<NrmType, Norm::GenuineL1>) {
++    Kokkos::parallel_reduce(
++        Kokkos::TeamThreadRange(member, n),
++        [&](const int i, NrmValueType &thread_nrm) {
++          thread_nrm += KokkosKernels::ArithTraits<ValueType>::abs(x[i * xs0]);
++        },
++        nrm);
+   } else if constexpr (std::is_same_v<NrmType, Norm::L2>) {
+     Kokkos::parallel_reduce(
+         Kokkos::TeamThreadRange(member, n),
+         [&](const int i, NrmValueType &thread_nrm) { thread_nrm += square<NrmValueType>(x[i * xs0]); }, nrm);
+     nrm = KokkosKernels::ArithTraits<NrmValueType>::sqrt(nrm);
+-  } else if constexpr (std::is_same_v<NrmType, Norm::LInf>) {
+-    Kokkos::Max<NrmValueType, typename MemberType::execution_space> max_nrm(nrm);
+-    Kokkos::parallel_reduce(
+-        Kokkos::TeamThreadRange(member, n),
+-        [&](const int i, NrmValueType &thread_nrm) {
+-          const NrmValueType abs_val = KokkosKernels::ArithTraits<ValueType>::abs(x[i * xs0]);
+-          if (abs_val > thread_nrm) thread_nrm = abs_val;
+-        },
+-        max_nrm);
+   } else if constexpr (std::is_same_v<NrmType, Norm::ScaledL2>) {
+     if (n == 1) {
+       nrm = KokkosKernels::ArithTraits<ValueType>::abs(x[0]);
+@@ -221,13 +224,24 @@ KOKKOS_INLINE_FUNCTION void TeamNrmInternal<MemberType, NrmType>::invoke(const M
+       const auto [scale, sumsq] = accumulator.reference();
+       nrm                       = scale * KokkosKernels::ArithTraits<NrmValueType>::sqrt(sumsq);
+     }
+-  } else if constexpr (std::is_same_v<NrmType, Norm::GenuineL1>) {
++  } else if constexpr (std::is_same_v<NrmType, Norm::LInf>) {
++    Kokkos::Max<NrmValueType, typename MemberType::execution_space> max_nrm(nrm);
+     Kokkos::parallel_reduce(
+         Kokkos::TeamThreadRange(member, n),
+         [&](const int i, NrmValueType &thread_nrm) {
+-          thread_nrm += KokkosKernels::ArithTraits<ValueType>::abs(x[i * xs0]);
++          const NrmValueType abs_val = asum<NrmValueType>(x[i * xs0]);
++          if (abs_val > thread_nrm) thread_nrm = abs_val;
+         },
+-        nrm);
++        max_nrm);
++  } else if constexpr (std::is_same_v<NrmType, Norm::GenuineLInf>) {
++    Kokkos::Max<NrmValueType, typename MemberType::execution_space> max_nrm(nrm);
++    Kokkos::parallel_reduce(
++        Kokkos::TeamThreadRange(member, n),
++        [&](const int i, NrmValueType &thread_nrm) {
++          const NrmValueType abs_val = KokkosKernels::ArithTraits<ValueType>::abs(x[i * xs0]);
++          if (abs_val > thread_nrm) thread_nrm = abs_val;
++        },
++        max_nrm);
+   }
+ 
+   *norm = nrm;
+@@ -255,20 +269,18 @@ KOKKOS_INLINE_FUNCTION void TeamVectorNrmInternal<MemberType, NrmType>::invoke(c
+     Kokkos::parallel_reduce(
+         Kokkos::TeamVectorRange(member, n),
+         [&](const int i, NrmValueType &thread_nrm) { thread_nrm += asum<NrmValueType>(x[i * xs0]); }, nrm);
++  } else if constexpr (std::is_same_v<NrmType, Norm::GenuineL1>) {
++    Kokkos::parallel_reduce(
++        Kokkos::TeamVectorRange(member, n),
++        [&](const int i, NrmValueType &thread_nrm) {
++          thread_nrm += KokkosKernels::ArithTraits<ValueType>::abs(x[i * xs0]);
++        },
++        nrm);
+   } else if constexpr (std::is_same_v<NrmType, Norm::L2>) {
+     Kokkos::parallel_reduce(
+         Kokkos::TeamVectorRange(member, n),
+         [&](const int i, NrmValueType &thread_nrm) { thread_nrm += square<NrmValueType>(x[i * xs0]); }, nrm);
+     nrm = KokkosKernels::ArithTraits<NrmValueType>::sqrt(nrm);
+-  } else if constexpr (std::is_same_v<NrmType, Norm::LInf>) {
+-    Kokkos::Max<NrmValueType, typename MemberType::execution_space> max_nrm(nrm);
+-    Kokkos::parallel_reduce(
+-        Kokkos::TeamVectorRange(member, n),
+-        [&](const int i, NrmValueType &thread_nrm) {
+-          const NrmValueType abs_val = KokkosKernels::ArithTraits<ValueType>::abs(x[i * xs0]);
+-          if (abs_val > thread_nrm) thread_nrm = abs_val;
+-        },
+-        max_nrm);
+   } else if constexpr (std::is_same_v<NrmType, Norm::ScaledL2>) {
+     if (n == 1) {
+       nrm = KokkosKernels::ArithTraits<ValueType>::abs(x[0]);
+@@ -286,13 +298,24 @@ KOKKOS_INLINE_FUNCTION void TeamVectorNrmInternal<MemberType, NrmType>::invoke(c
+       const auto [scale, sumsq] = accumulator.reference();
+       nrm                       = scale * KokkosKernels::ArithTraits<NrmValueType>::sqrt(sumsq);
+     }
+-  } else if constexpr (std::is_same_v<NrmType, Norm::GenuineL1>) {
++  } else if constexpr (std::is_same_v<NrmType, Norm::LInf>) {
++    Kokkos::Max<NrmValueType, typename MemberType::execution_space> max_nrm(nrm);
+     Kokkos::parallel_reduce(
+         Kokkos::TeamVectorRange(member, n),
+         [&](const int i, NrmValueType &thread_nrm) {
+-          thread_nrm += KokkosKernels::ArithTraits<ValueType>::abs(x[i * xs0]);
++          const NrmValueType abs_val = asum<NrmValueType>(x[i * xs0]);
++          if (abs_val > thread_nrm) thread_nrm = abs_val;
+         },
+-        nrm);
++        max_nrm);
++  } else if constexpr (std::is_same_v<NrmType, Norm::GenuineLInf>) {
++    Kokkos::Max<NrmValueType, typename MemberType::execution_space> max_nrm(nrm);
++    Kokkos::parallel_reduce(
++        Kokkos::TeamVectorRange(member, n),
++        [&](const int i, NrmValueType &thread_nrm) {
++          const NrmValueType abs_val = KokkosKernels::ArithTraits<ValueType>::abs(x[i * xs0]);
++          if (abs_val > thread_nrm) thread_nrm = abs_val;
++        },
++        max_nrm);
+   }
+   *norm = nrm;
+ }
+diff --git a/batched/dense/src/KokkosBatched_Nrm.hpp b/batched/dense/src/KokkosBatched_Nrm.hpp
+index 800b8f4c89..3ccca42f2a 100644
+--- a/batched/dense/src/KokkosBatched_Nrm.hpp
++++ b/batched/dense/src/KokkosBatched_Nrm.hpp
+@@ -14,8 +14,9 @@ namespace KokkosBatched {
+ /// If NrmType == Norm::LInf, compute Linf norm of each vector in the batch
+ /// If NrmType == Norm::ScaledL2, compute ScaledL2 norm of each vector in the batch
+ /// If NrmType == Norm::GenuineL1, compute GenuineL1 norm of each vector in the batch
++/// If NrmType == Norm::GenuineLInf, compute GenuineLInf norm of each vector in the batch
+ /// No nested parallel_for is used inside of the function.
+-/// \tparam NrmType: one of Norm::L1, Norm::L2, Norm::LInf, Norm::ScaledL2, Norm::GenuineL1
++/// \tparam NrmType: one of Norm::L1, Norm::L2, Norm::LInf, Norm::ScaledL2, Norm::GenuineL1, Norm::GenuineLInf
+ /// \note With L1 and GenuineL1, we compute the norm by sum (|Re(x_i)| + |Im(x_i)|) and sum (|x_i|), respectively.
+ /// Though L2 is more efficient, it may overflow for large vectors. For large vectors, use ScaledL2, which computes the
+ /// norm by scaling the vector to avoid overflow.
+@@ -23,7 +24,7 @@ template <typename NrmType>
+ struct SerialNrm {
+   static_assert(is_norm_v<NrmType>,
+                 "KokkosBatched::SerialNrm: NrmType must be one of Norm::L1, Norm::L2, Norm::LInf, Norm::ScaledL2, "
+-                "Norm::GenuineL1");
++                "Norm::GenuineL1, Norm::GenuineLInf");
+   /// \tparam XViewType: Type for input X, needs to be a 1D view
+   /// \tparam NormViewType: Type for output norm, needs to be a 0D view
+   ///
+@@ -39,17 +40,18 @@ struct SerialNrm {
+ /// If NrmType == Norm::LInf, compute Linf norm of each vector in the batch
+ /// If NrmType == Norm::ScaledL2, compute ScaledL2 norm of each vector in the batch
+ /// If NrmType == Norm::GenuineL1, compute GenuineL1 norm of each vector in the batch
++/// If NrmType == Norm::GenuineLInf, compute GenuineLInf norm of each vector in the batch
+ /// A nested parallel_for with TeamThreadRange is used.
+ /// \tparam MemberType: Kokkos TeamPolicy member type
+-/// \tparam NrmType: one of Norm::L1, Norm::L2, Norm::LInf, Norm::ScaledL2, Norm::GenuineL1
++/// \tparam NrmType: one of Norm::L1, Norm::L2, Norm::LInf, Norm::ScaledL2, Norm::GenuineL1, Norm::GenuineLInf
+ /// \note With L1 and GenuineL1, we compute the norm by sum (|Re(x_i)| + |Im(x_i)|) and sum (|x_i|), respectively.
+ /// Though L2 is more efficient, it may overflow for large vectors. For large vectors, use ScaledL2, which computes the
+ /// norm by scaling the vector to avoid overflow.
+ template <typename MemberType, typename NrmType>
+ struct TeamNrm {
+-  static_assert(
+-      is_norm_v<NrmType>,
+-      "KokkosBatched::TeamNrm: NrmType must be one of Norm::L1, Norm::L2, Norm::LInf, Norm::ScaledL2, Norm::GenuineL1");
++  static_assert(is_norm_v<NrmType>,
++                "KokkosBatched::TeamNrm: NrmType must be one of Norm::L1, Norm::L2, Norm::LInf, Norm::ScaledL2, "
++                "Norm::GenuineL1, Norm::GenuineLInf");
+   /// \tparam XViewType: Type for input X, needs to be a 1D view
+   /// \tparam NormViewType: Type for output norm, needs to be a 0D view
+   ///
+@@ -66,10 +68,10 @@ struct TeamNrm {
+ /// If NrmType == Norm::LInf, compute Linf norm of each vector in the batch
+ /// If NrmType == Norm::ScaledL2, compute ScaledL2 norm of each vector in the batch
+ /// If NrmType == Norm::GenuineL1, compute GenuineL1 norm of each vector in the batch
+-///
++/// If NrmType == Norm::GenuineLInf, compute GenuineLInf norm of each vector in the batch
+ /// A nested parallel_for with TeamVectorRange is used.
+ /// \tparam MemberType: Kokkos TeamPolicy member type
+-/// \tparam NrmType: one of Norm::L1, Norm::L2, Norm::LInf, Norm::ScaledL2, Norm::GenuineL1
++/// \tparam NrmType: one of Norm::L1, Norm::L2, Norm::LInf, Norm::ScaledL2, Norm::GenuineL1, Norm::GenuineLInf
+ /// \note With L1 and GenuineL1, we compute the norm by sum (|Re(x_i)| + |Im(x_i)|) and sum (|x_i|), respectively.
+ /// Though L2 is more efficient, it may overflow for large vectors. For large vectors, use ScaledL2, which computes the
+ /// norm by scaling the vector to avoid overflow.
+@@ -77,7 +79,7 @@ template <typename MemberType, typename NrmType>
+ struct TeamVectorNrm {
+   static_assert(is_norm_v<NrmType>,
+                 "KokkosBatched::TeamVectorNrm: NrmType must be one of Norm::L1, Norm::L2, Norm::LInf, Norm::ScaledL2, "
+-                "Norm::GenuineL1");
++                "Norm::GenuineL1, Norm::GenuineLInf");
+   /// \tparam XViewType: Type for input X, needs to be a 1D view
+   /// \tparam NormViewType: Type for output norm, needs to be a 0D view
+   ///
+diff --git a/docs/source/API/batched/dense/batched_nrm.rst b/docs/source/API/batched/dense/batched_nrm.rst
+index 4329668491..ad1a1e8e67 100644
+--- a/docs/source/API/batched/dense/batched_nrm.rst
++++ b/docs/source/API/batched/dense/batched_nrm.rst
+@@ -31,13 +31,16 @@ Computes the :math:`L1`, :math:`L2` or :math:`L_\infty` norm of a vector :math:`
+    \|x\|_1 &= \sum_{i=1}^n \left( |\operatorname{Re}(x_i)| + |\operatorname{Im}(x_i)| \right) \: \text{if NrmType == KokkosBatched::Norm::L1} \\
+    \|x\| &= \sum_{i=1}^n \sqrt{|\operatorname{Re}(x_i)|^2 + |\operatorname{Im}(x_i)|^2} \: \text{if NrmType == KokkosBatched::Norm::GenuineL1} \\
+    \|x\|_2 &= \sqrt{\sum_{i=1}^n \left(|\operatorname{Re}(x_i)|^2 + |\operatorname{Im}(x_i)|^2\right)} \: \text{if NrmType == KokkosBatched::Norm::L2 or NrmType == KokkosBatched::Norm::ScaledL2} \\
+-   \|x\|_\infty &= \max_i \sqrt{|\operatorname{Re}(x_i)|^2 + |\operatorname{Im}(x_i)|^2} \: \text{if NrmType == KokkosBatched::Norm::LInf}
++   \|x\|_\infty &= \max_i \left( |\operatorname{Re}(x_i)| + |\operatorname{Im}(x_i)| \right) \: \text{if NrmType == KokkosBatched::Norm::LInf} \\
++   \|x\|_\infty &= \max_i \sqrt{|\operatorname{Re}(x_i)|^2 + |\operatorname{Im}(x_i)|^2} \: \text{if NrmType == KokkosBatched::Norm::GenuineLInf}
+    \end{aligned}
+ 
+ - If ``NrmType == KokkosBatched::Norm::L1``, this operation is equivalent to the BLAS routine `SASUM <https://www.netlib.org/blas/sasum.f>`_ (`SCASUM <https://www.netlib.org/blas/scasum.f>`_) or `DASUM <https://www.netlib.org/blas/dasum.f>`_ (`DZASUM <https://www.netlib.org/blas/dzasum.f>`_) for single or double precision for real (complex) vectors.
+ - If ``NrmType == KokkosBatched::Norm::GenuineL1``, this operation is equivalent to the BLAS routine `SASUM <https://www.netlib.org/blas/sasum.f>`_ (`SCSUM1 <https://www.netlib.org/lapack/lapack_routine/scsum1.f>`_) or `DASUM <https://www.netlib.org/blas/dasum.f>`_ (`DZSUM1 <https://www.netlib.org/lapack/lapack_routine/dzsum1.f>`_) for single or double precision for real (complex) vectors.
+ - If ``NrmType == KokkosBatched::Norm::L2`` or ``NrmType == KokkosBatched::Norm::ScaledL2``, this operation is equivalent to the BLAS routine `SNRM2 <https://www.netlib.org/lapack/lapack-3.1.1/html/snrm2.f.html>`_ (`SCNRM2 <https://www.netlib.org/lapack/lapack-3.1.1/html/scnrm2.f.html>`_) or `DNRM2 <https://www.netlib.org/lapack/lapack-3.1.1/html/dnrm2.f.html>`_ (`DZNRM2 <https://www.netlib.org/lapack/lapack-3.1.1/html/dznrm2.f.html>`_) for single or double precision for real (complex) vectors.
+-- If ``NrmType == KokkosBatched::Norm::LInf``, this operation is related to the BLAS routine `ISAMAX <https://www.netlib.org/blas/isamax.f>`_ (`ICAMAX <https://www.netlib.org/blas/icamax.f>`_) or `IDAMAX <https://www.netlib.org/blas/idamax.f>`_ (`IZAMAX <https://www.netlib.org/blas/izamax.f>`_) for single or double precision for real (complex) vectors, where the index of the maximum absolute value is returned in the output :math:`norm`. This routine returns the maximum absolute value instead.
++- If ``NrmType == KokkosBatched::Norm::LInf``, this operation is related to the BLAS routine `ISAMAX <https://www.netlib.org/blas/isamax.f>`_ (`ICAMAX <https://www.netlib.org/blas/icamax.f>`_) or `IDAMAX <https://www.netlib.org/blas/idamax.f>`_ (`IZAMAX <https://www.netlib.org/blas/izamax.f>`_) for single or double precision for real (complex) vectors, where the index of the maximum absolute value is returned in the output :math:`norm`. This routine returns the maximum absolute value (sum of absolute values of real and imaginary parts) instead.
++- If ``NrmType == KokkosBatched::Norm::GenuineLInf``, this operation is related to the BLAS routine `ISAMAX <https://www.netlib.org/blas/isamax.f>`_ (`ICMAX1 <https://www.netlib.org/lapack/lapack-3.1.1/html/icmax1.f.html>`_) or `IDAMAX <https://www.netlib.org/blas/idamax.f>`_ (`IZMAX1 <https://www.netlib.org/lapack/lapack-3.1.1/html/izmax1.f.html>`_) for single or double precision for real (complex) vectors, where the index of the maximum absolute value is returned in the output :math:`norm`. This routine returns the maximum absolute value instead.
++
+ 
+ .. note::
+   
+@@ -58,7 +61,8 @@ Type Requirements
+    - ``KokkosBatched::Norm::L1`` for :math:`L1` norm that sums the absolute values of real and imaginary parts of complex vectors
+    - ``KokkosBatched::Norm::GenuineL1`` for :math:`L1` norm that sums the absolute values of complex vectors
+    - ``KokkosBatched::Norm::L2`` or ``KokkosBatched::Norm::ScaledL2`` for :math:`L2` norm
+-   - ``KokkosBatched::Norm::LInf`` for :math:`L_\infty` norm
++   - ``KokkosBatched::Norm::LInf`` for :math:`L_\infty` norm where the maximum absolute values of real and imaginary parts of complex vectors
++   - ``KokkosBatched::Norm::GenuineLInf`` for :math:`L_\infty` norm where the maximum absolute value of complex vectors is computed
+ 
+ - ``XViewType`` must be a Kokkos `View <https://kokkos.org/kokkos-core-wiki/API/core/view/view.html>`_ of rank 1 containing a vector or matrix :math:`X`
+ - ``NormViewType`` must be a Kokkos `View <https://kokkos.org/kokkos-core-wiki/API/core/view/view.html>`_ of rank 0 containing the output :math:`norm`. The norm is accumulated in the type of the elements of ``NormViewType``

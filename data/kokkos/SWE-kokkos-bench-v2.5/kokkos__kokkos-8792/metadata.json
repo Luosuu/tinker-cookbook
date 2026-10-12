@@ -1,0 +1,67 @@
+{
+  "FAIL_TO_PASS": [
+    "Kokkos_CoreUnitTest_Serial2 compile"
+  ],
+  "PASS_TO_PASS": [
+    "Kokkos_CoreUnitTest_Serial2"
+  ],
+  "base_commit": "efd014d918e4f80e62e34d126367ba25a0ecdaaf",
+  "build_command": "",
+  "build_targets": [
+    "Kokkos_CoreUnitTest_Serial2"
+  ],
+  "changed_files": [
+    {
+      "additions": 1,
+      "deletions": 1,
+      "filename": "core/src/impl/Kokkos_SharedAlloc.hpp",
+      "status": "modified"
+    },
+    {
+      "additions": 17,
+      "deletions": 0,
+      "filename": "core/unit_test/TestViewMove.hpp",
+      "status": "modified"
+    }
+  ],
+  "code_patch": "diff --git a/core/src/impl/Kokkos_SharedAlloc.hpp b/core/src/impl/Kokkos_SharedAlloc.hpp\nindex 391a2e5373c..2a90eff4a76 100644\n--- a/core/src/impl/Kokkos_SharedAlloc.hpp\n+++ b/core/src/impl/Kokkos_SharedAlloc.hpp\n@@ -611,7 +611,7 @@ union SharedAllocationTracker {\n   // Move:\n \n   KOKKOS_FORCEINLINE_FUNCTION\n-  SharedAllocationTracker(SharedAllocationTracker&& rhs)\n+  SharedAllocationTracker(SharedAllocationTracker&& rhs) noexcept\n       : m_record_bits(rhs.m_record_bits) {\n     rhs.m_record_bits = DO_NOT_DEREF_FLAG;\n   }\n",
+  "configure_command": "cmake -S . -B build -G Ninja -DKokkos_ENABLE_SERIAL=ON -DKokkos_ENABLE_OPENMP=ON -DKokkos_ENABLE_TESTS=ON -DKokkos_ENABLE_DEPRECATED_CODE_4=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER_LAUNCHER=ccache",
+  "created_at": "2026-03-06T20:04:12Z",
+  "era": "cpp20",
+  "f2p_commands": [
+    "cmake --build build --target Kokkos_CoreUnitTest_Serial2"
+  ],
+  "fail_to_pass": [
+    "Kokkos_CoreUnitTest_Serial2 compile"
+  ],
+  "hints_text": "",
+  "instance_id": "kokkos__kokkos-8792",
+  "labels": [
+    "SNL-CI-APPROVAL"
+  ],
+  "linked_issues": [],
+  "merge_commit": "5b90300df8271630d172a7e0a05d1a1cbcbf08b7",
+  "merged_at": "2026-03-06T20:04:12Z",
+  "metadata": {
+    "accelerator": "cpu",
+    "build_system": "cmake",
+    "f2p_stage": "build",
+    "html_url": "https://github.com/kokkos/kokkos/pull/8792",
+    "requires_gpu": false,
+    "toolchain": "cpu"
+  },
+  "p2p_commands": [
+    "cmake --build build --target Kokkos_CoreUnitTest_Serial2",
+    "ctest --test-dir build -R CoreUnitTest_Serial2 --output-on-failure"
+  ],
+  "pass_to_pass": [
+    "Kokkos_CoreUnitTest_Serial2"
+  ],
+  "patch": "diff --git a/core/src/impl/Kokkos_SharedAlloc.hpp b/core/src/impl/Kokkos_SharedAlloc.hpp\nindex 391a2e5373c..2a90eff4a76 100644\n--- a/core/src/impl/Kokkos_SharedAlloc.hpp\n+++ b/core/src/impl/Kokkos_SharedAlloc.hpp\n@@ -611,7 +611,7 @@ union SharedAllocationTracker {\n   // Move:\n \n   KOKKOS_FORCEINLINE_FUNCTION\n-  SharedAllocationTracker(SharedAllocationTracker&& rhs)\n+  SharedAllocationTracker(SharedAllocationTracker&& rhs) noexcept\n       : m_record_bits(rhs.m_record_bits) {\n     rhs.m_record_bits = DO_NOT_DEREF_FLAG;\n   }\ndiff --git a/core/unit_test/TestViewMove.hpp b/core/unit_test/TestViewMove.hpp\nindex 224e8a78016..48e296357ad 100644\n--- a/core/unit_test/TestViewMove.hpp\n+++ b/core/unit_test/TestViewMove.hpp\n@@ -162,4 +162,21 @@ TEST(TEST_CATEGORY, view_moved_from) {\n       v2.data(), v2.extent(0), v2.extent(1)));\n }\n \n+#if !(defined(KOKKOS_COMPILER_NVCC) || defined(KOKKOS_COMPILER_NVHPC) || \\\n+      (defined(KOKKOS_COMPILER_CLANG) && defined(KOKKOS_ENABLE_CUDA)))\n+constexpr bool test_view_is_nothrow_move_constructible() {\n+  static_assert(\n+      std::is_nothrow_move_constructible_v<Kokkos::View<int*, TEST_EXECSPACE>>);\n+  static_assert(\n+      std::is_nothrow_move_constructible_v<Kokkos::View<\n+          int*, TEST_EXECSPACE, Kokkos::MemoryTraits<Kokkos::Unmanaged>>>);\n+  static_assert(\n+      std::is_nothrow_move_constructible_v<Kokkos::View<\n+          int*, TEST_EXECSPACE, Kokkos::MemoryTraits<Kokkos::Atomic>>>);\n+\n+  return true;\n+}\n+static_assert(test_view_is_nothrow_move_constructible());\n+#endif\n+\n }  // namespace\n",
+  "pr_number": 8792,
+  "problem_statement": "This PR adds `noexcept` specifiers so that `Kokkos::View` satisfies `std::is_nothrow_move_constructible`.\r\n\r\nThe main motivation is that the `std::execution` sender/receiver framework (P2300) mandates receivers must be nothrow-movable.",
+  "repo": "kokkos/kokkos",
+  "test_patch": "diff --git a/core/unit_test/TestViewMove.hpp b/core/unit_test/TestViewMove.hpp\nindex 224e8a78016..48e296357ad 100644\n--- a/core/unit_test/TestViewMove.hpp\n+++ b/core/unit_test/TestViewMove.hpp\n@@ -162,4 +162,21 @@ TEST(TEST_CATEGORY, view_moved_from) {\n       v2.data(), v2.extent(0), v2.extent(1)));\n }\n \n+#if !(defined(KOKKOS_COMPILER_NVCC) || defined(KOKKOS_COMPILER_NVHPC) || \\\n+      (defined(KOKKOS_COMPILER_CLANG) && defined(KOKKOS_ENABLE_CUDA)))\n+constexpr bool test_view_is_nothrow_move_constructible() {\n+  static_assert(\n+      std::is_nothrow_move_constructible_v<Kokkos::View<int*, TEST_EXECSPACE>>);\n+  static_assert(\n+      std::is_nothrow_move_constructible_v<Kokkos::View<\n+          int*, TEST_EXECSPACE, Kokkos::MemoryTraits<Kokkos::Unmanaged>>>);\n+  static_assert(\n+      std::is_nothrow_move_constructible_v<Kokkos::View<\n+          int*, TEST_EXECSPACE, Kokkos::MemoryTraits<Kokkos::Atomic>>>);\n+\n+  return true;\n+}\n+static_assert(test_view_is_nothrow_move_constructible());\n+#endif\n+\n }  // namespace\n",
+  "title": "core(view): `noexcept` move constructor",
+  "version": "cpp20"
+}
