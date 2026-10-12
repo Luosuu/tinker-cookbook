@@ -13,7 +13,9 @@ import json
 import shlex
 from pathlib import Path
 
-GUARD_MARKERS = ("Standalone runtime-test guard", "run_suite(json.loads(")
+from tinker_cookbook.recipes.kokkos_rl.rl.tasks import GUARD_MARKERS, require_guarded_verifier
+
+__all__ = ["GUARD_MARKERS", "require_guarded_verifier"]
 
 # Matches the v2.4 leaderboard worker: four threads on the four allocated CPUs.
 COMMAND_ENV = {
@@ -22,16 +24,6 @@ COMMAND_ENV = {
     "CMAKE_BUILD_PARALLEL_LEVEL": "4",
     "OMP_PROC_BIND": "false",
 }
-
-
-def require_guarded_verifier(task_dir: Path) -> None:
-    script = (task_dir / "tests" / "test.sh").read_text()
-    missing = [marker for marker in GUARD_MARKERS if marker not in script]
-    if missing:
-        raise ValueError(
-            f"{task_dir.name}: test.sh lacks the guarded v2.4 verifier ({', '.join(missing)}); "
-            "refusing to grade with a verifier that can pass on zero selected tests"
-        )
 
 
 def load_guarded_task(tasks_root: Path, task: str):

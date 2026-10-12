@@ -13,6 +13,7 @@ import tinker
 from tinker_cookbook.completers import StopCondition, TokenCompleter, TokensWithLogprobs
 from tinker_cookbook.recipes.harbor_rl.harbor_env import HarborTask
 from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborReward
+from tinker_cookbook.recipes.kokkos_rl.budget import LONG_250
 from tinker_cookbook.recipes.kokkos_rl.rl.candidate_artifact import capture_candidate
 from tinker_cookbook.renderers.base import Message, message_to_jsonable
 from tinker_cookbook.rl.data_processing import trajectory_to_data
@@ -203,7 +204,7 @@ class RolloutRecorder:
         (self.directory / "trajectory.json").write_text(json.dumps(payload))
 
 
-def eligible(row: RecordedRollout, max_turns: int = 40) -> bool:
+def eligible(row: RecordedRollout, max_turns: int = LONG_250.max_turns) -> bool:
     """Only naturally completed, unflagged successes are demonstration candidates.
 
     A passing cap-terminated episode still counts in evaluation, but does not

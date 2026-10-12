@@ -40,3 +40,29 @@ def prepared_kokkos_tasks(
             (destination / "tests" / "test.sh").write_text(_test_script(instance))
             tasks.append(apply_profile(replace(task, task_dir=destination), harness_profile))
         yield tasks
+
+
+GUARD_MARKERS = ("Standalone runtime-test guard", "run_suite(json.loads(")
+
+
+def require_guarded_verifier(task_dir: Path) -> None:
+    """Refuse a payload whose verifier could pass on zero selected tests.
+
+    Payloads from v2.4 on embed the runtime-test guard and command-level collector and are
+    graded as published; older published test.sh files must go through
+    ``prepared_kokkos_tasks`` instead.
+    """
+    script = (task_dir / "tests" / "test.sh").read_text()
+    missing = [marker for marker in GUARD_MARKERS if marker not in script]
+    if missing:
+        raise ValueError(
+            f"{task_dir.name}: test.sh lacks the guarded verifier ({', '.join(missing)}); "
+            "refusing to grade with a verifier that can pass on zero selected tests"
+        )
+
+
+def guarded_payload_tasks(tasks_dir: Path) -> list[HarborTask]:
+    tasks = load_harbor_tasks_from_dir(tasks_dir)
+    for task in tasks:
+        require_guarded_verifier(task.task_dir)
+    return tasks

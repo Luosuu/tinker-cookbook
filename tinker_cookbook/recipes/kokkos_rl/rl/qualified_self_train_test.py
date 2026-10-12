@@ -192,6 +192,7 @@ async def test_pilot_counts_toward_baseline_and_interrupted_slots_never_resample
 
     monkeypatch.setattr(self_train, "run_eval", evaluate)
     config = self_train.Config(
+        budget="v2.4",
         output_dir=str(tmp_path / "run"),
         tasks_dir=str(tmp_path / "tasks"),
         qualified_bundle_dir=str(bundle),

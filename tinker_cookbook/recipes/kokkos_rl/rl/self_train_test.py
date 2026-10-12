@@ -156,7 +156,7 @@ def test_selection_has_identical_task_support_and_shortest_success():
     "changes",
     [
         {"reward": 0},
-        {"turns": 41},
+        {"turns": 251},
         {"stop_reason": "max_turns"},
         {"audit_flags": ["answer_lookup"]},
         {"datums": []},
@@ -166,6 +166,13 @@ def test_ineligible_donors_are_rejected(changes):
     row = donor()
     row.update(changes)
     assert not eligible(row)
+
+
+def test_eligibility_follows_the_rollout_budget():
+    row = donor()
+    row.update(turns=41)
+    assert eligible(row)
+    assert not eligible(row, max_turns=40)
 
 
 def test_masks_shift_and_heldout_exclusion(tmp_path):
@@ -321,3 +328,13 @@ async def test_recorder_leaves_untracked_build_outputs_out_of_verifier_diff(tmp_
     assert "new production source" in recorder.patch and "+fixed" in recorder.patch
     assert "build/unit_test" not in recorder.patch
     assert json.loads((recorder.directory / "candidate.json").read_text())["complete"]
+
+
+def test_long_budget_refuses_contree_sandboxes(tmp_path):
+    import asyncio
+
+    from tinker_cookbook.recipes.kokkos_rl.rl import self_train
+
+    with pytest.raises(ValueError, match="ConTree sandboxes live at most 3600 s"):
+        asyncio.run(self_train.main(self_train.Config(output_dir=str(tmp_path))))
+    assert self_train.Config(output_dir="x").budget == "long-250"

@@ -25,6 +25,7 @@ from tinker_cookbook.recipes.harbor_rl.harbor_env import (
     SandboxFactory,
 )
 from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborReward
+from tinker_cookbook.recipes.kokkos_rl.budget import LONG_250
 from tinker_cookbook.recipes.kokkos_rl.chat_inference import TINKER_CHAT_BASE_URL
 from tinker_cookbook.recipes.kokkos_rl.rl.candidate_artifact import capture_candidate
 from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos import load_env_file, select_tasks
@@ -63,27 +64,28 @@ class CLIConfig:
     guidance: str = "none"
     file_tools: str = "none"
     build_check: str = "none"
-    build_check_max_runs: int = 8
-    build_check_max_seconds: int = 1200
+    build_check_max_runs: int = LONG_250.build_check_max_runs
+    build_check_max_seconds: int = LONG_250.build_check_max_seconds
     symbol_brief: str = "none"
     pi_agent_dir: str | None = None
     thinking_effort: float = 0.9
     temperature: float = 1.0
     context_window: int = 262144
     max_protocol_repairs: int = 0
-    max_wall_seconds: int = 3600
-    max_turns: int = 40
-    max_tool_calls: int = 80
+    # Budget defaults are the long-250 profile (kokkos_rl/budget.py).
+    max_wall_seconds: int = LONG_250.wall_seconds
+    max_turns: int = LONG_250.max_turns
+    max_tool_calls: int = LONG_250.max_tool_calls
     max_tokens: int = 16384
-    max_sampled_tokens: int = 65536
-    max_input_tokens: int = 5_000_000
-    max_context_tokens: int | None = None
+    max_sampled_tokens: int = LONG_250.max_sampled_tokens
+    max_input_tokens: int = LONG_250.max_input_tokens
+    max_context_tokens: int | None = LONG_250.max_context_tokens
     max_tool_output_chars: int = 16384
     num_samples: int = 1
     max_concurrency: int = 2
-    sandbox_timeout: int = 3600
+    sandbox_timeout: int = LONG_250.sandbox_seconds
     command_timeout: int = 900
-    grader_timeout: int = 900
+    grader_timeout: int = LONG_250.grader_seconds
     contree_cache_path: str = "/tmp/tinker-examples/kokkos_rl/contree_images.json"
     sandbox_build_parallelism: int = 1
     node: str = "node"

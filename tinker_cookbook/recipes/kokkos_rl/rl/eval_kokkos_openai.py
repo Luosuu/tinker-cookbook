@@ -22,6 +22,7 @@ from tinker_cookbook.recipes.harbor_rl.harbor_env import (
     SandboxFactory,
 )
 from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborBashTool, HarborReward
+from tinker_cookbook.recipes.kokkos_rl.budget import LONG_250
 from tinker_cookbook.recipes.kokkos_rl.chat_inference import (
     ChatSession,
     ChatTurn,
@@ -66,25 +67,27 @@ class CLIConfig:
     sandbox_build_parallelism: int | None = None
     sandbox_resource_policy: str | None = None
     reasoning_effort: str = "medium"
-    max_turns: int = 24
-    max_tokens: int = 8192
-    max_sampled_tokens: int = 32 * 1024
-    max_input_tokens: int = 750_000
+    # Budget defaults are the long-250 profile (kokkos_rl/budget.py); the dollar cap below
+    # is a separate guard and can stop an episode first.
+    max_turns: int = LONG_250.max_turns
+    max_tokens: int = LONG_250.max_tokens
+    max_sampled_tokens: int = LONG_250.max_sampled_tokens
+    max_input_tokens: int = LONG_250.max_input_tokens
     # Stop admitting requests whose prompt could exceed the model context; the candidate is
     # still graded. None disables the check.
-    max_context_tokens: int | None = None
-    max_tool_calls: int = 48
-    max_tool_output_chars: int = 12_000
+    max_context_tokens: int | None = LONG_250.max_context_tokens
+    max_tool_calls: int = LONG_250.max_tool_calls
+    max_tool_output_chars: int = LONG_250.max_tool_output_chars
     max_cost_usd_per_task: float | None = 0.75
     input_price_per_million: float = 2.0
     cached_input_price_per_million: float = 0.2
     cache_write_price_per_million: float = 2.5
     output_price_per_million: float = 12.0
-    sandbox_timeout: int = 3600
+    sandbox_timeout: int = LONG_250.sandbox_seconds
     # Kokkos' serial unit-test targets take about 400 seconds on ConTree even
     # without competing rollouts. Leave headroom for backend load variance.
-    command_timeout: int = 900
-    grader_timeout: int = 180
+    command_timeout: int = LONG_250.command_seconds
+    grader_timeout: int = LONG_250.grader_seconds
     max_concurrency: int = 2
     max_infra_retries: int = 2
     task_names: str | None = None

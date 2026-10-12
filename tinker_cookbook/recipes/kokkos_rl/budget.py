@@ -26,6 +26,8 @@ class KokkosBudget:
     max_sampled_tokens: int  # cumulative over the episode
     max_input_tokens: int  # cumulative over the episode
     max_context_tokens: int | None  # per request; None disables the check
+    # Native-sampling (RFT) rollouts end when prompt plus generation would exceed this.
+    max_trajectory_tokens: int
     max_tool_output_chars: int
     wall_seconds: int
     command_seconds: int
@@ -37,6 +39,34 @@ class KokkosBudget:
     def as_dict(self) -> dict:
         return asdict(self)
 
+    def harbor_eval_fields(self) -> dict:
+        """Budget fields of ``harbor_rl.eval.EvalConfig`` (native-sampling rollouts)."""
+        return {
+            "max_turns": self.max_turns,
+            "max_tokens": self.max_tokens,
+            "max_trajectory_tokens": self.max_trajectory_tokens,
+            "max_sampled_tokens": self.max_sampled_tokens,
+            "max_tool_calls": self.max_tool_calls,
+            "command_timeout": self.command_seconds,
+            "grader_timeout": self.grader_seconds,
+            "sandbox_timeout": self.sandbox_seconds,
+        }
+
+    def chat_eval_fields(self) -> dict:
+        """Budget fields shared by the Chat Completions evaluators (native loop and Pi)."""
+        return {
+            "max_turns": self.max_turns,
+            "max_tokens": self.max_tokens,
+            "max_sampled_tokens": self.max_sampled_tokens,
+            "max_input_tokens": self.max_input_tokens,
+            "max_context_tokens": self.max_context_tokens,
+            "max_tool_calls": self.max_tool_calls,
+            "max_tool_output_chars": self.max_tool_output_chars,
+            "command_timeout": self.command_seconds,
+            "grader_timeout": self.grader_seconds,
+            "sandbox_timeout": self.sandbox_seconds,
+        }
+
 
 V24 = KokkosBudget(
     name="v2.4",
@@ -46,6 +76,7 @@ V24 = KokkosBudget(
     max_sampled_tokens=65_536,
     max_input_tokens=5_000_000,
     max_context_tokens=None,
+    max_trajectory_tokens=114_688,
     max_tool_output_chars=16_384,
     wall_seconds=3_600,
     command_seconds=900,
@@ -67,6 +98,7 @@ LONG_250 = KokkosBudget(
     # The context guard bounds every prompt by the window, so this cannot bind first.
     max_input_tokens=_LONG_TURNS * CONTEXT_WINDOW,
     max_context_tokens=CONTEXT_WINDOW,
+    max_trajectory_tokens=CONTEXT_WINDOW,
     max_tool_output_chars=16_384,
     # Measured maximum 1,787 s, with eight build checks.
     wall_seconds=7_200,

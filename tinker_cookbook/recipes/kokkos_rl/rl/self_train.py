@@ -32,12 +32,23 @@ from tinker_cookbook.recipes.harbor_rl.harbor_env import (
     load_harbor_tasks_from_dir,
 )
 from tinker_cookbook.recipes.harbor_rl.harbor_tools import HarborReward
+from tinker_cookbook.recipes.kokkos_rl.budget import V24
+from tinker_cookbook.recipes.kokkos_rl.budget import budget as named_budget
 from tinker_cookbook.recipes.kokkos_rl.harness.profile import apply_profile, profile_text
 from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos import load_env_file
 from tinker_cookbook.recipes.kokkos_rl.rl.rollout_data import RecordedRollout, eligible
-from tinker_cookbook.recipes.kokkos_rl.rl.tasks import prepared_kokkos_tasks
+from tinker_cookbook.recipes.kokkos_rl.rl.tasks import guarded_payload_tasks, prepared_kokkos_tasks
 from tinker_cookbook.supervised import train
 from tinker_cookbook.supervised.types import SupervisedDataset, SupervisedDatasetBuilder
+
+CONTREE_MAX_SECONDS = 3600
+# Four threads on the four CPUs of a Rivanna episode allocation, as in the release controls.
+APPTAINER_THREADS = {
+    "OMP_NUM_THREADS": "4",
+    "OPENBLAS_NUM_THREADS": "4",
+    "CMAKE_BUILD_PARALLEL_LEVEL": "4",
+    "OMP_PROC_BIND": "false",
+}
 
 
 @chz.chz
@@ -46,6 +57,8 @@ class Config:
     harness_profile: str = "baseline"
     tasks_dir: str = "data/kokkos/SWE-kokkos-bench-v2"
     model_name: str = "thinkingmachines/Inkling-Small:peft:262144"
+    # contree, modal, or apptainer (Rivanna; tasks_dir must be a guarded v2.4+ payload
+    # whose environments name their SIF in sif.path).
     sandbox_backend: str = "contree"
     cache_path: str = "notes/experiments/SWE-kokkos-bench/v2-pass-at-k/contree_images.json"
     concurrency: int = 4
@@ -54,7 +67,8 @@ class Config:
     eval_samples: int = 4
     eval_size: int = 20
     split_seed: int = 7
-    max_turns: int = 40
+    # Named budget from kokkos_rl/budget.py; v2.4 reproduces the 40-request rounds.
+    budget: str = "long-250"
     learning_rate: float = 1e-5
     minimum_donor_tasks: int = 16
     validation_only: bool = False
@@ -254,15 +268,20 @@ def delivery_metrics(results: list[TaskResult], directory: Path) -> dict[str, ob
         if passed
         else None,
         "observed_success_ending_by_turn": {
-            str(cap): sum(r.turns_used <= cap for r in passed) / total for cap in [20, 30, 40]
+            str(cap): sum(r.turns_used <= cap for r in passed) / total
+            for cap in [20, 30, 40, 100, 250]
         },
     }
 
 
 async def main(config: Config) -> None:
     load_env_file(Path(".env"))
-    if config.max_turns != 40:
-        raise ValueError("This experiment fixes the rollout budget at 40 turns")
+    budget = named_budget(config.budget)
+    if config.sandbox_backend == "contree" and budget.max_turns > V24.max_turns:
+        raise ValueError(
+            f"ConTree sandboxes live at most {CONTREE_MAX_SECONDS} s, too short for {budget.name} "
+            "episodes plus grading; use sandbox_backend=apptainer or modal"
+        )
     root = Path(config.output_dir).resolve()
     root.mkdir(parents=True, exist_ok=True)
     state_path = root / "status.json"
@@ -287,6 +306,7 @@ async def main(config: Config) -> None:
         if config.qualified_bundle_dir:
             if (
                 config.sandbox_backend != "contree"
+                or config.budget != "v2.4"
                 or config.sandbox_build_parallelism != 1
                 or config.train_samples != 4
                 or config.eval_samples != 4
@@ -317,6 +337,10 @@ async def main(config: Config) -> None:
             if config.qualified_bundle_dir:
                 staging.mkdir()
                 for task in load_harbor_tasks_from_dir(Path(config.tasks_dir)):
+                    shutil.copytree(task.task_dir, staging / task.task_name)
+            elif config.sandbox_backend == "apptainer":
+                staging.mkdir()
+                for task in guarded_payload_tasks(Path(config.tasks_dir)):
                     shutil.copytree(task.task_dir, staging / task.task_name)
             else:
                 with prepared_kokkos_tasks(Path(config.tasks_dir)) as prepared:
@@ -379,7 +403,7 @@ async def main(config: Config) -> None:
 
             factory: SandboxFactory = ContreeDockerfileSandboxFactory(
                 Path(config.cache_path),
-                timeout=3600,
+                timeout=min(budget.sandbox_seconds, CONTREE_MAX_SECONDS),
                 runtime_build_parallelism=config.sandbox_build_parallelism,
                 allow_network=False,
             )
@@ -392,6 +416,12 @@ async def main(config: Config) -> None:
                 )
         elif config.sandbox_backend == "modal":
             factory = functools.partial(default_sandbox_factory, allow_network=False)
+        elif config.sandbox_backend == "apptainer":
+            from tinker_cookbook.sandbox.apptainer_sandbox import apptainer_sandbox_factory
+
+            factory = functools.partial(
+                apptainer_sandbox_factory, allow_network=False, command_env=APPTAINER_THREADS
+            )
         else:
             raise ValueError("Unknown backend")
         semaphore = asyncio.Semaphore(config.concurrency)
@@ -476,15 +506,9 @@ async def main(config: Config) -> None:
                 model_name=config.model_name,
                 output_path=str(directory),
                 resume_dir=str(directory),
-                max_turns=40,
-                max_tokens=16384,
+                **budget.harbor_eval_fields(),
                 temperature=1.0,
                 thinking_effort=0.9,
-                command_timeout=900,
-                grader_timeout=900,
-                max_tool_calls=80,
-                max_trajectory_tokens=114688,
-                max_sampled_tokens=65536,
                 max_concurrency=config.concurrency,
                 num_samples=samples,
                 pass_at_k="1",
@@ -537,7 +561,7 @@ async def main(config: Config) -> None:
 
         async def qualify(path: Path) -> None:
             row = cast(RecordedRollout, json.loads(path.read_text()))
-            if not eligible(row) or row["task_name"] not in by_name:
+            if not eligible(row, budget.max_turns) or row["task_name"] not in by_name:
                 return
             patch = path.with_name("patch.diff").read_text()
             evidence = path.with_name("regrade.json")
@@ -582,7 +606,14 @@ async def main(config: Config) -> None:
             # Validate every token mask and sequence before opening a training client.
             for i in range(len(dataset)):
                 dataset.get_batch(i)
-            state("training", arm=arm, donor_tasks=n, steps=len(dataset), max_turns=40)
+            state(
+                "training",
+                arm=arm,
+                donor_tasks=n,
+                steps=len(dataset),
+                budget=budget.name,
+                max_turns=budget.max_turns,
+            )
             log_path = root / arm
             await train.main(
                 train.Config(

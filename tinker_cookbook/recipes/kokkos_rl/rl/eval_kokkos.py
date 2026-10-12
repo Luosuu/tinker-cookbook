@@ -13,6 +13,7 @@ from tinker_cookbook.recipes.harbor_rl.eval import EvalConfig, TaskResult, run_e
 from tinker_cookbook.recipes.harbor_rl.harbor_env import (
     default_sandbox_factory,
 )
+from tinker_cookbook.recipes.kokkos_rl.budget import LONG_250
 from tinker_cookbook.recipes.kokkos_rl.rl.tasks import prepared_kokkos_tasks
 
 DEFAULT_CONTREE_CACHE_PATH = "/tmp/tinker-examples/kokkos_rl/contree_images.json"
@@ -20,7 +21,7 @@ DEFAULT_CONTREE_CACHE_PATH = "/tmp/tinker-examples/kokkos_rl/contree_images.json
 
 @chz.chz
 class CLIConfig:
-    model_name: str = "openai/gpt-oss-120b:peft:131072"
+    model_name: str = "thinkingmachines/Inkling-Small:peft:262144"
     harness_profile: str = "baseline"
     tasks_dir: str = "data/kokkos/SWE-kokkos-bench-v2"
     output_path: str = "notes/experiments/kokkos_rl/evals"
@@ -28,21 +29,22 @@ class CLIConfig:
     checkpoint_url: str | None = None
     env_file: str = ".env"
 
-    max_turns: int = 20
-    max_tokens: int = 16384
+    # Budget defaults are the long-250 profile (kokkos_rl/budget.py).
+    max_turns: int = LONG_250.max_turns
+    max_tokens: int = LONG_250.max_tokens
     temperature: float = 1.0
-    sandbox_timeout: int = 3600
+    sandbox_timeout: int = LONG_250.sandbox_seconds
     # Kokkos' serial unit-test targets take about 400 seconds on ConTree even
     # without competing rollouts. Leave headroom for backend load variance.
-    command_timeout: int = 900
-    grader_timeout: int = 180
+    command_timeout: int = LONG_250.command_seconds
+    grader_timeout: int = LONG_250.grader_seconds
     sandbox_build_parallelism: int | None = None
     max_tasks: int | None = None
     max_concurrency: int = 2
     task_names: str | None = None
-    max_trajectory_tokens: int = 112 * 1024
-    max_sampled_tokens: int = 64 * 1024
-    max_tool_calls: int = 40
+    max_trajectory_tokens: int = LONG_250.max_trajectory_tokens
+    max_sampled_tokens: int = LONG_250.max_sampled_tokens
+    max_tool_calls: int = LONG_250.max_tool_calls
 
     base_url: str | None = None
     renderer_name: str | None = None
