@@ -265,3 +265,15 @@ def test_export_fetches_only_base_instead_of_relying_on_git_gc():
     assert "git init /workspace/repo" in definition
     assert "git -C /workspace/repo fetch --depth=1 origin " + instance.base_commit in definition
     assert "git clone https://github.com/" + instance.repo not in definition
+
+
+def test_task_timeouts_follow_the_requested_budget():
+    from tinker_cookbook.recipes.kokkos_rl.dataset import export_harbor
+
+    instance = _instance()
+    default = tomllib.loads(export_harbor._task_toml(instance, "org"))
+    assert (default["agent"]["timeout_sec"], default["verifier"]["timeout_sec"]) == (3600.0, 1200.0)
+    long = tomllib.loads(
+        export_harbor._task_toml(instance, "org", agent_timeout_sec=7200, verifier_timeout_sec=2400)
+    )
+    assert (long["agent"]["timeout_sec"], long["verifier"]["timeout_sec"]) == (7200.0, 2400.0)

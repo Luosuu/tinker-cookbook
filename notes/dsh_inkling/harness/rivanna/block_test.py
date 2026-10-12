@@ -223,5 +223,34 @@ def test_arms_can_carry_their_own_budget() -> None:
     assert pi["options"] == {"build_check": "after-edit"}
     with pytest.raises(ValueError, match="only budget keys"):
         parse_arm("native=native build_check=after-edit")
-    with pytest.raises(ValueError, match="frozen"):
+    with pytest.raises(ValueError, match="unknown budget"):
         parse_arm("native=native budget=long")
+
+
+def test_named_profiles_feed_blocks_and_v24_matches_the_old_constants() -> None:
+    from notes.dsh_inkling.harness.rivanna.block import arm_budget
+    from notes.dsh_inkling.harness.rivanna.budget import EPISODE_BUDGET, resolve_budget
+
+    old = {
+        "max_model_requests": 40,
+        "max_tool_calls": 80,
+        "max_sampled_tokens": 65536,
+        "max_input_tokens": 5_000_000,
+        "max_context_tokens": None,
+        "wall_seconds": 3600,
+        "command_timeout": 900,
+        "grader_timeout": 2400,
+        "sandbox_timeout": 7200,
+        "native_max_infra_retries": 4,
+    }
+    assert {k: EPISODE_BUDGET[k] for k in old} == old
+    long = resolve_budget(profile="long-250")
+    assert (long["profile"], long["max_model_requests"], long["max_context_tokens"]) == (
+        "long-250",
+        250,
+        262144,
+    )
+    _, arm = parse_arm("native40=native budget=v2.4")
+    assert arm_budget(long, arm)["max_model_requests"] == 40
+    _, arm = parse_arm("pi_long=pi budget=long-250 build_check=after-edit")
+    assert arm_budget(EPISODE_BUDGET, arm)["max_tool_calls"] == 500

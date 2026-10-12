@@ -63,6 +63,8 @@ class CLIConfig:
     guidance: str = "none"
     file_tools: str = "none"
     build_check: str = "none"
+    build_check_max_runs: int = 8
+    build_check_max_seconds: int = 1200
     symbol_brief: str = "none"
     pi_agent_dir: str | None = None
     thinking_effort: float = 0.9

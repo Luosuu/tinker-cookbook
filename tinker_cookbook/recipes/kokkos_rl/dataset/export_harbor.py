@@ -254,7 +254,13 @@ def _agent_allowed_code_patch(instance: KokkosInstance) -> str:
     )
 
 
-def _task_toml(instance: KokkosInstance, org: str) -> str:
+def _task_toml(
+    instance: KokkosInstance,
+    org: str,
+    *,
+    agent_timeout_sec: float = 3600.0,
+    verifier_timeout_sec: float = 1200.0,
+) -> str:
     requires_gpu = bool(instance.metadata.get("requires_gpu", False))
     gpu_lines = 'gpus = 1\ngpu_types = ["L4"]\n' if requires_gpu else ""
     description = f"Repair {instance.repo} PR-derived regression {instance.pr_number}"
@@ -274,11 +280,11 @@ repository = {json.dumps(instance.repo)}
 pr_number = {instance.pr_number}
 
 [verifier]
-timeout_sec = 1200.0
+timeout_sec = {float(verifier_timeout_sec)}
 network_mode = "no-network"
 
 [agent]
-timeout_sec = 3600.0
+timeout_sec = {float(agent_timeout_sec)}
 network_mode = "allowlist"
 allowed_hosts = ["api.openai.com"]
 
@@ -307,7 +313,14 @@ verification.
 """
 
 
-def export_instance(instance: KokkosInstance, output_dir: Path, *, org: str = "swe-kokkos") -> Path:
+def export_instance(
+    instance: KokkosInstance,
+    output_dir: Path,
+    *,
+    org: str = "swe-kokkos",
+    agent_timeout_sec: float = 3600.0,
+    verifier_timeout_sec: float = 1200.0,
+) -> Path:
     instance = apply_reviewed_test_overrides(instance)
     if not instance.is_validation_ready:
         raise ValueError(f"{instance.instance_id} has not been annotated for validation")
@@ -327,7 +340,14 @@ def export_instance(instance: KokkosInstance, output_dir: Path, *, org: str = "s
     (task_dir / "metadata.json").write_text(
         json.dumps(instance.to_dict(), indent=2, sort_keys=True) + "\n"
     )
-    (task_dir / "task.toml").write_text(_task_toml(instance, org))
+    (task_dir / "task.toml").write_text(
+        _task_toml(
+            instance,
+            org,
+            agent_timeout_sec=agent_timeout_sec,
+            verifier_timeout_sec=verifier_timeout_sec,
+        )
+    )
     return task_dir
 
 

@@ -32,7 +32,13 @@ import time
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from notes.dsh_inkling.harness.rivanna.budget import DSH_FIXED, EPISODE_BUDGET, resolve_budget
+from notes.dsh_inkling.harness.rivanna.budget import (
+    DSH_FIXED,
+    EPISODE_BUDGET,
+    from_profile,
+    resolve_budget,
+)
+from tinker_cookbook.recipes.kokkos_rl.budget import budget as named_budget
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 HARNESS = REPO_ROOT / "notes/dsh_inkling/harness"
@@ -43,8 +49,8 @@ def parse_arm(spec: str) -> tuple[str, dict]:
     """``name=native [budget]``, ``name=pi [key=value ...]``, or ``name=<DSH flags>``.
 
     Native and Pi arms accept budget keys (``max_model_requests=40``) that override the block
-    budget for that arm, or ``budget=frozen`` for the frozen benchmark budget, so one block
-    can compare budgets in the same period.
+    budget for that arm, or ``budget=<profile>`` (``frozen`` means ``v2.4``) to run that arm
+    under a named budget, so one block can compare budgets in the same period.
     """
     name, _, flags = spec.partition("=")
     if not name or not name.replace("_", "").isalnum():
@@ -58,9 +64,8 @@ def parse_arm(spec: str) -> tuple[str, dict]:
             if not sep:
                 raise ValueError(f"arm options are key=value, got {token!r}")
             if key == "budget":
-                if value != "frozen":
-                    raise ValueError("budget= accepts only 'frozen'")
-                budget = {k: "none" if v is None else str(v) for k, v in EPISODE_BUDGET.items()}
+                profile = from_profile(named_budget("v2.4" if value == "frozen" else value))
+                budget = {k: "none" if v is None else str(v) for k, v in profile.items()}
             elif key in EPISODE_BUDGET:
                 budget[key] = value
             elif tokens[0] == "pi":
@@ -156,7 +161,7 @@ def plan(args: argparse.Namespace) -> None:
     arms = dict(parse_arm(spec) for spec in args.arm)
     if len(arms) != len(args.arm):
         raise SystemExit("duplicate arm names")
-    budget = resolve_budget(args.budget)
+    budget = resolve_budget(args.budget, profile=args.budget_profile)
     if any(arm["kind"] == "dsh" for arm in arms.values()) and any(
         budget[key] != EPISODE_BUDGET[key] for key in DSH_FIXED
     ):
@@ -414,6 +419,7 @@ def main() -> None:
     p.add_argument("--env-file", type=Path, required=True)
     p.add_argument("--dsh-runtime", type=Path, required=True)
     p.add_argument("--pi-agent-dir", type=Path)
+    p.add_argument("--budget-profile", default="v2.4", help="named budget to start from")
     p.add_argument("--budget", action="append", default=[], help="key=value budget override")
     p.add_argument("--allow-dirty", action="store_true")
     p.set_defaults(func=plan)

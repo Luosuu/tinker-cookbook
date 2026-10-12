@@ -56,6 +56,8 @@ def pi_config(*, pi_agent_dir: Path, budget: dict, options: dict):
         sandbox_timeout=budget["sandbox_timeout"],
         command_timeout=budget["command_timeout"],
         grader_timeout=budget["grader_timeout"],
+        build_check_max_runs=budget["build_check_max_runs"],
+        build_check_max_seconds=budget["build_check_max_seconds"],
         **options,
     )
 
