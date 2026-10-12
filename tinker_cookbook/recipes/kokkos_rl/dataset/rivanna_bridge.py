@@ -14,8 +14,36 @@ from .expansion import atomic_json, digest
 from .models import KokkosInstance
 from .validate import CommandResult, ValidationReport
 
+# Parallel coordinators share one SSH connection; the login node drops bursts of new ones.
+SSH_OPTIONS = (
+    "-o",
+    "ControlMaster=auto",
+    "-o",
+    "ControlPath=~/.ssh/cm-%C",
+    "-o",
+    "ControlPersist=600",
+)
+# Refusals during the handshake, before any remote command runs, so a retry cannot repeat one.
+HANDSHAKE_REFUSAL = re.compile(
+    r"kex_exchange_identification|Connection (?:closed|reset) by \S+ port 22"
+    r"|Connection timed out during banner exchange"
+)
+
 
 async def _command(*args: str, timeout: int = 60) -> str:
+    if args[0] in {"ssh", "scp"}:
+        args = (args[0], *SSH_OPTIONS, *args[1:])
+    for attempt in range(6):
+        try:
+            return await _command_once(*args, timeout=timeout)
+        except RuntimeError as error:
+            if attempt == 5 or not HANDSHAKE_REFUSAL.search(str(error)):
+                raise
+            await asyncio.sleep(10 * 2**attempt)
+    raise AssertionError("unreachable")
+
+
+async def _command_once(*args: str, timeout: int) -> str:
     process = await asyncio.create_subprocess_exec(
         *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
     )

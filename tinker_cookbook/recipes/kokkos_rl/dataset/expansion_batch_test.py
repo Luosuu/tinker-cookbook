@@ -163,3 +163,29 @@ def test_negative_trials_require_causal_failure_and_integrity_evidence():
     log["stdout"] = "failed to inject hidden tests"
     with pytest.raises(ValueError):
         validate_trial_checks(instance, "tampered-nop", log)
+
+
+@pytest.mark.asyncio
+async def test_bridge_retries_only_handshake_refusals(monkeypatch):
+    from . import rivanna_bridge
+
+    calls = []
+    failures = ["ssh failed: kex_exchange_identification: read: Connection reset by peer"]
+
+    async def once(*args, timeout):
+        calls.append(args)
+        if failures:
+            raise RuntimeError(failures.pop())
+        return "ok"
+
+    async def no_sleep(_):
+        pass
+
+    monkeypatch.setattr(rivanna_bridge, "_command_once", once)
+    monkeypatch.setattr(rivanna_bridge.asyncio, "sleep", no_sleep)
+    assert await rivanna_bridge._command("ssh", "host", "true") == "ok"
+    assert len(calls) == 2 and "ControlMaster=auto" in calls[0]
+    failures.append("ssh failed: sbatch: error: invalid partition")
+    with pytest.raises(RuntimeError, match="invalid partition"):
+        await rivanna_bridge._command("ssh", "host", "sbatch run.sbatch")
+    assert len(calls) == 3
