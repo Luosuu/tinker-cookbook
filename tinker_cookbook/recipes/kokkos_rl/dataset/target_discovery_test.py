@@ -34,3 +34,30 @@ def test_actual_preprocessor_follows_transitive_and_conditional_includes(tmp_pat
     assert found['observations'][0]['translation_unit']=='test.cpp'
     assert discover(tmp_path,['inactive.hpp'])['target'] is None
     assert not list(tmp_path.rglob('*.o'))
+
+
+def test_host_targets_only_for_files_no_serial_target_owns(tmp_path):
+    compiler = shutil.which('c++')
+    if not compiler: pytest.skip('C++ compiler required on execution host')
+    targets = {
+        'KokkosCore_UnitTest_Serial1': ('serial.cpp', 'shared.hpp'),
+        'KokkosCore_UnitTest_OpenMP': ('omp.cpp', 'shared.hpp'),
+        'KokkosCore_IncrementalTest_SERIAL': ('inc_s.cpp', 'inc.hpp'),
+        'KokkosCore_IncrementalTest_OPENMP': ('inc_o.cpp', 'inc.hpp'),
+        'KokkosCore_PerformanceTest_Atomic': ('perf.cpp', 'alg.hpp'),
+        'KokkosAlgorithms_UnitTest': ('alg.cpp', 'alg.hpp'),
+    }
+    reply = tmp_path/'build/.cmake/api/v1/reply'; reply.mkdir(parents=True)
+    commands = []
+    for name, (source, header) in targets.items():
+        (tmp_path/header).write_text('// header\n')
+        (tmp_path/source).write_text(f'#include "{header}"\n')
+        (reply/f'target-{name}.json').write_text(json.dumps({'name': name, 'type': 'EXECUTABLE', 'sources': [{'path': source}]}))
+        commands.append({'directory': str(tmp_path), 'file': source, 'arguments': [compiler, '-I.', '-c', source, '-o', f'build/CMakeFiles/{name}.dir/{source}.o']})
+    (tmp_path/'build/compile_commands.json').write_text(json.dumps(commands))
+    shared = discover(tmp_path, ['shared.hpp'])
+    assert shared['target'] == 'KokkosCore_UnitTest_Serial1'
+    assert {row['target'] for row in shared['observations']} == {'KokkosCore_UnitTest_Serial1'}
+    assert discover(tmp_path, ['inc.hpp'])['target'] == 'KokkosCore_IncrementalTest_SERIAL'
+    assert discover(tmp_path, ['alg.hpp'])['target'] == 'KokkosAlgorithms_UnitTest'
+    assert discover(tmp_path, ['shared.hpp', 'alg.hpp'])['target'] is None

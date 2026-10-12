@@ -771,6 +771,27 @@ def _normalize_toolchain_annotation(
                 for command in commands
             ]
 
+    inventory = instance.metadata.get("runtime_test_inventory")
+    discovered = inventory.get("target") if isinstance(inventory, dict) else None
+    if (
+        discovered
+        and metadata.get("toolchain", "cpu") == "cpu"
+        and not profile.full_build_for_validation
+    ):
+        previous = annotation.get("build_targets")
+        for old in previous if isinstance(previous, list) else []:
+            if not isinstance(old, str) or old == discovered:
+                continue
+            pattern = re.compile(r"(?<![\w])" + re.escape(old) + r"(?![\w])")
+            for key in ("f2p_commands", "p2p_commands"):
+                commands = annotation.get(key)
+                if isinstance(commands, list):
+                    annotation[key] = [
+                        pattern.sub(discovered, c) if isinstance(c, str) else c for c in commands
+                    ]
+        annotation["build_targets"] = [discovered]
+        annotation["build_command"] = ""
+
     if instance.metadata.get("toolchain_compat") == "include-cstdint":
         configure = annotation.get("configure_command")
         if isinstance(configure, str) and "-include cstdint" not in configure:

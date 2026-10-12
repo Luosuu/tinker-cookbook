@@ -92,10 +92,14 @@ async def inventory(instance: KokkosInstance, *, discovery_only: bool = False) -
             return {"passed": False, "stage": "inventory", "records": records}
         targets = re.findall(r"(?m)^([^\s:]+):", target_result.stdout)
         ctest = json.loads(ctest_result.stdout)
+        from .target_discovery import NOT_HOST_TEST
+
         codemodel_result = await run(
             "python3 -c "
             + shlex.quote(
-                "import glob,json; ts=[json.load(open(p)) for p in glob.glob('build/.cmake/api/v1/reply/target-*.json')]; print(json.dumps([{'name':t['name'],'type':t['type'],'artifacts':t.get('artifacts',[]),'sources':[{'path':s['path']} for s in t.get('sources',[])]} for t in ts if t.get('type')=='EXECUTABLE' and 'Serial' in t['name']]))"
+                "import glob,json,re; ts=[json.load(open(p)) for p in glob.glob('build/.cmake/api/v1/reply/target-*.json')]; print(json.dumps([{'name':t['name'],'type':t['type'],'artifacts':t.get('artifacts',[]),'sources':[{'path':s['path']} for s in t.get('sources',[])]} for t in ts if t.get('type')=='EXECUTABLE' and not re.search("
+                + repr(NOT_HOST_TEST.pattern)
+                + ", t['name'])]))"
             )
         )
         codemodel = json.loads(codemodel_result.stdout) if codemodel_result.exit_code == 0 else []

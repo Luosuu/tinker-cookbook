@@ -406,3 +406,24 @@ def test_historical_kernels_names_follow_public_cmake_without_changing_selectors
     assert result["build_command"].endswith("--target KokkosKernels_sparse_serial")
     assert "-name KokkosKernels_sparse_serial" in result["f2p_commands"][0]
     assert result["f2p_commands"][0].endswith(" --gtest_filter='*spgemm*:*SPGEMM*'")
+
+
+def test_preflight_target_binds_build_and_test_commands() -> None:
+    instance = replace(
+        _instance(),
+        metadata={
+            "runtime_test_inventory": {"target": "KokkosCore_UnitTest_Serial1", "binary": "b", "test_names": ["serial.a"]}
+        },
+    )
+    finder = '"$(find build -type f -name {} -perm -111 -print -quit)" --gtest_filter=serial.a'
+    annotation = {
+        "build_command": "",
+        "build_targets": ["Kokkos_UnitTest_Serial"],
+        "f2p_commands": [finder.format("Kokkos_UnitTest_Serial")],
+        "p2p_commands": [finder.format("Kokkos_UnitTest_Serial")],
+        "metadata": {"toolchain": "cpu"},
+    }
+    normalized = _normalize_toolchain_annotation(annotation, instance)
+    assert normalized["build_targets"] == ["KokkosCore_UnitTest_Serial1"]
+    assert normalized["f2p_commands"] == [finder.format("KokkosCore_UnitTest_Serial1")]
+    assert normalized["p2p_commands"] == [finder.format("KokkosCore_UnitTest_Serial1")]
