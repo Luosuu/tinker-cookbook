@@ -29,6 +29,15 @@ datasets. Combine only within-block deltas from Rivanna blocks.
 | `.../v24-release-20261002/images/` | the task SIFs (about 106 GB); do not rebuild |
 | `.../dsh-blocks/<block>/` | one block: `code/`, `design.json`, slot lists, `runs/`, `logs/` |
 
+## Budgets
+
+Blocks start from a named budget in `tinker_cookbook/recipes/kokkos_rl/budget.py`. New blocks
+default to `long-250` (250 requests; see `notes/pi_harness/BUDGET.md`); pass
+`--budget-profile v2.4` to reproduce the frozen 40-request benchmark. Single keys can be
+overridden with `--budget key=value`, and an arm can run under another budget with
+`budget=<profile>`, e.g. `--arm native40="native budget=v2.4"`. Long budgets need a longer
+Slurm limit: `DSH_TIME=04:00:00 bash .../launch_block.sh ...`.
+
 ## Run a block
 
 ```bash

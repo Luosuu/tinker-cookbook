@@ -419,7 +419,7 @@ def main() -> None:
     p.add_argument("--env-file", type=Path, required=True)
     p.add_argument("--dsh-runtime", type=Path, required=True)
     p.add_argument("--pi-agent-dir", type=Path)
-    p.add_argument("--budget-profile", default="v2.4", help="named budget to start from")
+    p.add_argument("--budget-profile", default="long-250", help="named budget to start from")
     p.add_argument("--budget", action="append", default=[], help="key=value budget override")
     p.add_argument("--allow-dirty", action="store_true")
     p.set_defaults(func=plan)

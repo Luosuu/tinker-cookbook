@@ -33,3 +33,12 @@ def test_unknown_profile_is_refused():
     assert budget("long-250") is LONG_250
     with pytest.raises(ValueError, match="unknown budget"):
         budget("long-200")
+
+
+def test_long_budget_stays_above_measured_use():
+    """block-t01 maxima: 102 requests, 25,191 output tokens, 1,787 s, 8 build checks (capped)."""
+    assert LONG_250.max_turns >= 2 * 102
+    assert LONG_250.max_sampled_tokens >= 4 * 25_191
+    assert LONG_250.wall_seconds >= 3 * 1_787
+    assert LONG_250.build_check_max_runs > 8
+    assert LONG_250.build_check_max_seconds > 1_200

@@ -181,3 +181,9 @@ needs `build_check_command`, which the cookbook evaluator derives from the task 
 - Sandbox read/edit tools: adopted for a minority of reads and edits, little more text per
   read.
 - Symbol brief on top of the build check: shifts failures, not the score.
+
+## At a 250-request budget
+
+`notes/pi_harness/BUDGET.md`: in one block, native at 250 requests beat native at 40 by
++12.1 points (p = 0.001), and Pi with the build check at 250 was only +1.6 over native at 250
+(p = 0.55). The build check's gain is specific to the frozen 40-request budget.
