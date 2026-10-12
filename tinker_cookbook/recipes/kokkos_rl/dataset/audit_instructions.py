@@ -95,10 +95,10 @@ class AuditResult:
         expected_instance_id: str,
         termination: ParseTermination | Literal["api_stop"],
     ) -> AuditResult:
-        match = re.search(r"\{.*\}", text, flags=re.DOTALL)
-        if match is None:
+        start = text.find("{")
+        if start < 0:
             raise ValueError("model response did not contain a JSON object")
-        value = json.loads(match.group(0))
+        value, _ = json.JSONDecoder().raw_decode(text, start)
         instance_id = str(value["instance_id"])
         if instance_id != expected_instance_id:
             raise ValueError(f"expected instance_id {expected_instance_id}, got {instance_id}")

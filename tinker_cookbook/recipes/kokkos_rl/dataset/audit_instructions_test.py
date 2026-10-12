@@ -19,7 +19,7 @@ def test_audit_result_parses_json_wrapped_in_renderer_text() -> None:
         "confidence": 0.95,
     }
     result = AuditResult.from_model_text(
-        f"result:\n{json.dumps(value)}",
+        f"result:\n{json.dumps(value)}\nalso {{}}",
         expected_instance_id="kokkos__kokkos-1",
         termination=ParseTermination.STOP_SEQUENCE,
     )
