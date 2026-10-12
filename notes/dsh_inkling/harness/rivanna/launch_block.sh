@@ -10,6 +10,9 @@ export PATH=/opt/slurm/25.05.6_mam/bin:$PATH
 BLOCK=$(cd "$1" && pwd)
 CPU_CONC=${2:-36}
 GPU_CONC=${3:-2}
+# Longer budgets need a longer Slurm limit than block.sbatch's default.
+TIME_ARGS=()
+[ -n "${DSH_TIME:-}" ] && TIME_ARGS=(--time="$DSH_TIME")
 HERE="$BLOCK/code/notes/dsh_inkling/harness/rivanna"
 mkdir -p "$BLOCK/logs"
 count() { python3 -c "import json,sys;print(len(json.load(open(sys.argv[1]))))" "$1"; }
@@ -22,13 +25,13 @@ freeze=$(sbatch --parsable --partition=standard --account=lia-lab-members \
   --wrap="cd $BLOCK/code && /scratch/fad3ew/openhands-smoke/.venv/bin/python -m notes.dsh_inkling.harness.rivanna.block freeze $BLOCK")
 jobs="{\"freeze\": \"$freeze\""
 if [ "$NCPU" -gt 0 ]; then
-  cpu=$(sbatch --parsable --dependency=afterok:$freeze --partition=bii-largemem \
+  cpu=$(sbatch --parsable --dependency=afterok:$freeze --partition=bii-largemem "${TIME_ARGS[@]}" \
     --array=0-$((NCPU - 1))%$CPU_CONC --output="$BLOCK/logs/cpu-%A_%a.log" \
     --export=ALL,DSH_BLOCK=$BLOCK,DSH_POOL=cpu "$HERE/block.sbatch")
   jobs="$jobs, \"cpu\": \"$cpu\""
 fi
 if [ "$NGPU" -gt 0 ]; then
-  gpu=$(sbatch --parsable --dependency=afterok:$freeze --partition=gpu-mig \
+  gpu=$(sbatch --parsable --dependency=afterok:$freeze --partition=gpu-mig "${TIME_ARGS[@]}" \
     --gres=gpu:1g.24gb:1 --array=0-$((NGPU - 1))%$GPU_CONC \
     --output="$BLOCK/logs/gpu-%A_%a.log" \
     --export=ALL,DSH_BLOCK=$BLOCK,DSH_POOL=gpu "$HERE/block.sbatch")

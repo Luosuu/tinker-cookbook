@@ -103,9 +103,10 @@ def test_pi_agent_is_frozen_into_the_block(tmp_path: Path) -> None:
 
 def test_pi_arm_keeps_the_native_budget(tmp_path: Path) -> None:
     """A Pi arm may choose its integration, never its budget or inference settings."""
+    from notes.dsh_inkling.harness.rivanna.budget import resolve_budget
     from notes.dsh_inkling.harness.rivanna.run_pi_episode import pi_config
 
-    config = pi_config(pi_agent_dir=tmp_path, grader_timeout=2400, sandbox_timeout=7200, options={})
+    config = pi_config(pi_agent_dir=tmp_path, budget=resolve_budget(), options={})
     assert (config.max_turns, config.max_tool_calls, config.max_tool_output_chars) == (
         40,
         80,
@@ -117,9 +118,7 @@ def test_pi_arm_keeps_the_native_budget(tmp_path: Path) -> None:
         0,
     )
     with pytest.raises(ValueError, match="unsupported"):
-        pi_config(
-            pi_agent_dir=tmp_path, grader_timeout=1, sandbox_timeout=1, options={"max_turns": "80"}
-        )
+        pi_config(pi_agent_dir=tmp_path, budget=resolve_budget(), options={"max_turns": "80"})
 
 
 def test_unguarded_payload_is_refused(tmp_path: Path) -> None:
@@ -169,3 +168,34 @@ def test_slurm_never_pins_cpus_inside_the_allocation() -> None:
     """taskset -c 0,1 inside a Slurm cgroup can name CPUs the job does not own."""
     source = (Path(__file__).parent / "block.py").read_text()
     assert '"--cpu-affinity",\n        "none",' in source
+
+
+def test_budget_overrides_reach_both_loops_and_keep_old_designs_valid(tmp_path: Path) -> None:
+    from notes.dsh_inkling.harness.rivanna.budget import EPISODE_BUDGET, resolve_budget
+    from notes.dsh_inkling.harness.rivanna.run_native_episode import native_config
+    from notes.dsh_inkling.harness.rivanna.run_pi_episode import pi_config
+
+    assert resolve_budget() == EPISODE_BUDGET
+    assert native_config(resolve_budget()).max_turns == 40
+    assert native_config(resolve_budget()).max_context_tokens is None
+    long = resolve_budget(
+        [
+            "max_model_requests=250",
+            "max_tool_calls=500",
+            "max_context_tokens=262144",
+            "wall_seconds=7200",
+            "sandbox_timeout=10800",
+        ]
+    )
+    native, pi = native_config(long), pi_config(pi_agent_dir=tmp_path, budget=long, options={})
+    for config in (native, pi):
+        assert (config.max_turns, config.max_tool_calls, config.max_context_tokens) == (
+            250,
+            500,
+            262144,
+        )
+    assert pi.max_wall_seconds == 7200
+    with pytest.raises(ValueError, match="unknown"):
+        resolve_budget(["max_turns=250"])
+    with pytest.raises(ValueError, match="sandbox_timeout"):
+        resolve_budget(["wall_seconds=7200"])

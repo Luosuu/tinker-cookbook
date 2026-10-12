@@ -19,7 +19,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[4]
 
 
-def native_config(*, grader_timeout: int, sandbox_timeout: int):
+def native_config(budget: dict):
     from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos_openai import CLIConfig
 
     return CLIConfig(
@@ -31,17 +31,18 @@ def native_config(*, grader_timeout: int, sandbox_timeout: int):
         thinking_effort=0.9,
         reasoning_effort="high",
         temperature=1.0,
-        max_turns=40,
+        max_turns=budget["max_model_requests"],
         max_tokens=16384,
-        max_sampled_tokens=65536,
-        max_input_tokens=5_000_000,
-        max_tool_calls=80,
+        max_sampled_tokens=budget["max_sampled_tokens"],
+        max_input_tokens=budget["max_input_tokens"],
+        max_context_tokens=budget["max_context_tokens"],
+        max_tool_calls=budget["max_tool_calls"],
         max_tool_output_chars=16384,
         max_cost_usd_per_task=None,
         estimate_cost=False,
-        sandbox_timeout=sandbox_timeout,
-        command_timeout=900,
-        grader_timeout=grader_timeout,
+        sandbox_timeout=budget["sandbox_timeout"],
+        command_timeout=budget["command_timeout"],
+        grader_timeout=budget["grader_timeout"],
         max_concurrency=1,
         allow_network=False,
     )
@@ -54,9 +55,7 @@ async def run(
     tasks_root: Path,
     code_root: Path,
     env_file: Path,
-    grader_timeout: int,
-    sandbox_timeout: int,
-    max_infra_retries: int,
+    budget: dict,
 ) -> dict:
     sys.path.insert(0, str(code_root.resolve()))
     from notes.dsh_inkling.harness.rivanna.apptainer import load_guarded_task, open_sandbox
@@ -68,7 +67,8 @@ async def run(
 
     load_env_file(env_file)
     harbor_task = load_guarded_task(tasks_root, task)
-    config = native_config(grader_timeout=grader_timeout, sandbox_timeout=sandbox_timeout)
+    config = native_config(budget)
+    max_infra_retries = budget["native_max_infra_retries"]
     output.mkdir(parents=True, exist_ok=True)
     (output / "config.json").write_text(
         json.dumps(
@@ -134,10 +134,13 @@ def main() -> None:
     parser.add_argument("--tasks-root", type=Path, required=True)
     parser.add_argument("--code-root", type=Path, default=REPO_ROOT)
     parser.add_argument("--env-file", type=Path, required=True)
-    parser.add_argument("--grader-timeout", type=int, default=2400)
-    parser.add_argument("--sandbox-timeout", type=int, default=7200)
-    parser.add_argument("--max-infra-retries", type=int, default=4)
+    parser.add_argument(
+        "--budget", action="append", default=[], help="key=value override of EPISODE_BUDGET"
+    )
     args = parser.parse_args()
+    from notes.dsh_inkling.harness.rivanna.budget import resolve_budget
+
+    args.budget = resolve_budget(args.budget)
     print(json.dumps(asyncio.run(run(**vars(args))), indent=2, default=str))
 
 

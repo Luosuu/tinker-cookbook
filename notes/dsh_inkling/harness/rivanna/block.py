@@ -32,20 +32,11 @@ import time
 from collections import Counter, defaultdict
 from pathlib import Path
 
+from notes.dsh_inkling.harness.rivanna.budget import DSH_FIXED, EPISODE_BUDGET, resolve_budget
+
 REPO_ROOT = Path(__file__).resolve().parents[4]
 HARNESS = REPO_ROOT / "notes/dsh_inkling/harness"
 UPSTREAM = "https://tinker.thinkingmachines.dev/services/tinker-prod/oai/api/v1"
-
-# The sandbox must outlive a full 3600 s episode plus a 2400 s verifier build.
-EPISODE_BUDGET = {
-    "max_model_requests": 40,
-    "max_tool_calls": 80,
-    "wall_seconds": 3600,
-    "command_timeout": 900,
-    "grader_timeout": 2400,
-    "sandbox_timeout": 7200,
-    "native_max_infra_retries": 4,
-}
 
 
 def parse_arm(spec: str) -> tuple[str, dict]:
@@ -143,6 +134,11 @@ def plan(args: argparse.Namespace) -> None:
     arms = dict(parse_arm(spec) for spec in args.arm)
     if len(arms) != len(args.arm):
         raise SystemExit("duplicate arm names")
+    budget = resolve_budget(args.budget)
+    if any(arm["kind"] == "dsh" for arm in arms.values()) and any(
+        budget[key] != EPISODE_BUDGET[key] for key in DSH_FIXED
+    ):
+        raise SystemExit(f"DSH arms enforce only the default {', '.join(DSH_FIXED)}")
     pi = None
     if any(arm["kind"] == "pi" for arm in arms.values()):
         if args.pi_agent_dir is None:
@@ -157,9 +153,7 @@ def plan(args: argparse.Namespace) -> None:
 
         for arm in arms.values():
             if arm["kind"] == "pi":
-                pi_config(
-                    pi_agent_dir=source, grader_timeout=1, sandbox_timeout=1, options=arm["options"]
-                )
+                pi_config(pi_agent_dir=source, budget=budget, options=arm["options"])
         pi = {"source": str(source), **pi_identity}
     tasks_root = args.tasks_root.resolve()
     names = (
@@ -198,7 +192,7 @@ def plan(args: argparse.Namespace) -> None:
         "arms": arms,
         "draws": args.draws,
         "seed": args.seed,
-        "budget": EPISODE_BUDGET,
+        "budget": budget,
         "env_file": str(args.env_file.resolve()),
         "dsh_version": dsh_version,
         "bridge_sha256": sha256_file(bridge),
@@ -254,7 +248,7 @@ def run_slot(args: argparse.Namespace) -> None:
     (output / "slot.json").write_text(
         json.dumps({**slot, "slurm_job": os.environ.get("SLURM_JOB_ID")}, indent=2)
     )
-    budget = design["budget"]
+    budget = {**EPISODE_BUDGET, **design["budget"]}
     env_file = Path(design["env_file"])
     if arm["kind"] == "pi":
         import asyncio
@@ -272,9 +266,7 @@ def run_slot(args: argparse.Namespace) -> None:
                 code_root=REPO_ROOT,
                 env_file=env_file,
                 pi_agent_dir=pi_dir,
-                grader_timeout=budget["grader_timeout"],
-                sandbox_timeout=budget["sandbox_timeout"],
-                max_infra_retries=budget["native_max_infra_retries"],
+                budget=budget,
                 options=arm["options"],
             )
         )
@@ -291,9 +283,7 @@ def run_slot(args: argparse.Namespace) -> None:
                 tasks_root=tasks_root,
                 code_root=REPO_ROOT,
                 env_file=env_file,
-                grader_timeout=budget["grader_timeout"],
-                sandbox_timeout=budget["sandbox_timeout"],
-                max_infra_retries=budget["native_max_infra_retries"],
+                budget=budget,
             )
         )
         return
@@ -398,6 +388,7 @@ def main() -> None:
     p.add_argument("--env-file", type=Path, required=True)
     p.add_argument("--dsh-runtime", type=Path, required=True)
     p.add_argument("--pi-agent-dir", type=Path)
+    p.add_argument("--budget", action="append", default=[], help="key=value budget override")
     p.add_argument("--allow-dirty", action="store_true")
     p.set_defaults(func=plan)
     p = sub.add_parser("freeze")

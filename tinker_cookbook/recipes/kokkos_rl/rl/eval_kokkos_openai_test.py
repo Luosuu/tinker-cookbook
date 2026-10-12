@@ -149,3 +149,23 @@ async def test_openai_resume_filters_old_tasks_and_checks_identity(tmp_path, mon
     assert json.loads((out / "result.json").read_text())["estimated_cost_usd"] == 0.2
     with pytest.raises(ValueError, match="configuration differs"):
         await evaluation.run_eval(CLIConfig(resume_dir=str(out), model_name="other"), tasks, Mock())
+
+
+def test_context_guard_bounds_the_next_prompt():
+    from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos_openai import (
+        CLIConfig,
+        context_would_overflow,
+    )
+
+    config = CLIConfig(max_tokens=100, max_tool_output_chars=16384, max_context_tokens=None)
+    assert not context_would_overflow(10**9, 10**9, 1, config)
+    limit = 20 + 5 + 8192 + 100
+    assert not context_would_overflow(
+        20, 5, 1, CLIConfig(max_tokens=100, max_tool_output_chars=16384, max_context_tokens=limit)
+    )
+    assert context_would_overflow(
+        20,
+        5,
+        1,
+        CLIConfig(max_tokens=100, max_tool_output_chars=16384, max_context_tokens=limit - 1),
+    )

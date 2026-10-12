@@ -70,6 +70,9 @@ class CLIConfig:
     max_tokens: int = 8192
     max_sampled_tokens: int = 32 * 1024
     max_input_tokens: int = 750_000
+    # Stop admitting requests whose prompt could exceed the model context; the candidate is
+    # still graded. None disables the check.
+    max_context_tokens: int | None = None
     max_tool_calls: int = 48
     max_tool_output_chars: int = 12_000
     max_cost_usd_per_task: float | None = 0.75
@@ -128,6 +131,21 @@ def select_tasks(tasks: list[HarborTask], task_names: str | None) -> list[Harbor
     if missing:
         raise ValueError(f"unknown task names: {missing}")
     return [by_name[name] for name in ordered_names]
+
+
+def context_would_overflow(
+    prompt_tokens: int, output_tokens: int, tool_results: int, config: CLIConfig
+) -> bool:
+    """Whether the next request could exceed max_context_tokens.
+
+    Its prompt is the last prompt plus the last response plus the new tool results, each
+    bounded by max_tool_output_chars (at least two characters per token), and it must leave
+    room for max_tokens of output.
+    """
+    if config.max_context_tokens is None:
+        return False
+    tool_bound = tool_results * (config.max_tool_output_chars // 2)
+    return prompt_tokens + output_tokens + tool_bound + config.max_tokens > config.max_context_tokens
 
 
 def _usage(response: Any) -> tuple[int, int, int | None, int, int]:
@@ -364,6 +382,11 @@ async def evaluate_task(
             (results_dir / f"{task.task_name}.json").write_text(json.dumps(transcript, indent=2))
             if tool_calls >= config.max_tool_calls:
                 stop_reason = "max_tool_calls"
+                break
+            if context_would_overflow(
+                latest_input, latest_output, len(calls), config
+            ):
+                stop_reason = "max_context"
                 break
         else:
             if output_tokens >= config.max_sampled_tokens:

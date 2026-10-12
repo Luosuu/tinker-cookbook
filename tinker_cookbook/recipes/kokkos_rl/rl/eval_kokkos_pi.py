@@ -75,6 +75,7 @@ class CLIConfig:
     max_tokens: int = 16384
     max_sampled_tokens: int = 65536
     max_input_tokens: int = 5_000_000
+    max_context_tokens: int | None = None
     max_tool_output_chars: int = 16384
     num_samples: int = 1
     max_concurrency: int = 2
