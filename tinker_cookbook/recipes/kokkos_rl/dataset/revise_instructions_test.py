@@ -45,7 +45,8 @@ async def test_author_never_sees_private_patch_and_revision_is_reaudited(tmp_pat
     audit = AuditResult(instance.instance_id, "clear", (), STATEMENT, 0.99, "api_stop")
     auditor = AsyncMock(return_value=audit)
     monkeypatch.setattr(module, "_audit_one", auditor)
-    completer = AsyncMock(return_value={"role": "assistant", "content": json.dumps(draft())})
+    wrapped = "```json\n" + json.dumps(draft()) + "\n```\nNotes: {not json}"
+    completer = AsyncMock(return_value={"role": "assistant", "content": wrapped})
     initial = replace(audit, assessment="needs_revision", issues=("missing public behavior",))
     revised, passed = await revise_and_audit(
         instance, completer=completer, api=AsyncMock(), reports_dir=tmp_path, initial_audit=initial

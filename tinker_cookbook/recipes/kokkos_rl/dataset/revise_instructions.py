@@ -230,10 +230,10 @@ async def revise_and_audit(
             raw = response["content"]
             if not isinstance(raw, str):
                 raise ValueError("Revision response must be text")
-            raw = (
-                raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
-            )
-            value = json.loads(raw)
+            start = raw.find("{")
+            if start < 0:
+                raise ValueError("Revision response did not contain a JSON object")
+            value, _ = json.JSONDecoder().raw_decode(raw, start)
             atomic_json(revision_path, value)
         try:
             statement = validate_revision(value, sources)
