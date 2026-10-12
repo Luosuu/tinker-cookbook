@@ -526,6 +526,10 @@ def _validation_feedback(validation: dict[str, object]) -> str:
     )
 
 
+# 2020-21 Kokkos relies on <cstdint> arriving transitively, which current GCC no longer does.
+CSTDINT_COMPAT_FLAG = '-DCMAKE_CXX_FLAGS="-include cstdint"'
+
+
 def _normalize_toolchain_annotation(
     annotation: dict[str, object],
     instance: KokkosInstance,
@@ -766,6 +770,11 @@ def _normalize_toolchain_annotation(
                 else command
                 for command in commands
             ]
+
+    if instance.metadata.get("toolchain_compat") == "include-cstdint":
+        configure = annotation.get("configure_command")
+        if isinstance(configure, str) and "-include cstdint" not in configure:
+            annotation["configure_command"] = configure + " " + CSTDINT_COMPAT_FLAG
 
     if not isinstance(metadata, dict) or metadata.get("toolchain") != "cuda":
         return annotation

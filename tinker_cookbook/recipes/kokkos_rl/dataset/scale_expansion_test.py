@@ -49,6 +49,24 @@ def test_profile_gate():
     assert profile_reason(KokkosInstance.from_dict(kernels)) is None
 
 
+def test_cstdint_compatibility_only_for_that_build_error():
+    from .auto_annotate import _normalize_toolchain_annotation
+    from .scale_expansion import needs_cstdint, with_cstdint
+
+    def preflight(stage, text):
+        return {"preflight": {"stage": stage, "records": [{"stdout": text, "stderr": ""}]}}
+
+    error = "Kokkos_MemoryPool.cpp:112:48: error: ‘uint32_t’ has not been declared"
+    assert needs_cstdint(preflight("build", error))
+    assert not needs_cstdint(preflight("build", "error: other"))
+    assert not needs_cstdint(preflight("target_resolution", error))
+    instance = with_cstdint(KokkosInstance.from_dict(candidate(1)))
+    assert instance.configure_command.endswith('-DCMAKE_CXX_FLAGS="-include cstdint"')
+    annotation = {"configure_command": "cmake -S . -B build", "metadata": {"toolchain": "cpu"}}
+    normalized = _normalize_toolchain_annotation(annotation, instance)
+    assert normalized["configure_command"].count("-include cstdint") == 1
+
+
 class FakeCompleter:
     def __init__(self, **_):
         create = None

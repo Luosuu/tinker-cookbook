@@ -25,12 +25,14 @@ import asyncio
 import hashlib
 import json
 import os
+import re
 import time
 from collections import Counter
 from dataclasses import replace
 from pathlib import Path
 
 from ..spend import BudgetStop, SpendLedger, capped_chat_client
+from .auto_annotate import CSTDINT_COMPAT_FLAG
 from .expansion import atomic_json, digest, exclusion, rows, write_rows
 from .expansion_batch import (
     check_acceptance,
@@ -79,6 +81,24 @@ def profile_reason(instance: KokkosInstance) -> str | None:
     return None
 
 
+def needs_cstdint(result: dict) -> bool:
+    found = result.get("preflight") or {}
+    if found.get("stage") != "build" or not found.get("records"):
+        return False
+    last = found["records"][-1]
+    return bool(
+        re.search(r"[‘']uint32_t[’'] has not been declared", last["stdout"] + last["stderr"])
+    )
+
+
+def with_cstdint(instance: KokkosInstance) -> KokkosInstance:
+    return replace(
+        instance,
+        configure_command=instance.configure_command + " " + CSTDINT_COMPAT_FLAG,
+        metadata={**instance.metadata, "toolchain_compat": "include-cstdint"},
+    )
+
+
 async def process(instance: KokkosInstance, *, directory: Path, bridge, completer, args) -> dict:
     from .auto_annotate import AutoAnnotationResult, annotate_and_validate_instance
     from .export_harbor import export_instance
@@ -96,6 +116,15 @@ async def process(instance: KokkosInstance, *, directory: Path, bridge, complete
         else await bridge.execute(instance, "preflight")
     )
     atomic_json(preflight_path, result)
+    if needs_cstdint(result):
+        instance = with_cstdint(instance)
+        compat_path = directory / "preflight-cstdint.json"
+        result = (
+            json.loads(compat_path.read_text())
+            if compat_path.exists()
+            else await bridge.execute(instance, "preflight")
+        )
+        atomic_json(compat_path, result)
     found = result.get("preflight") or {}
     if result.get("error") or not found.get("passed") or not found.get("test_names"):
         raise ValueError(
