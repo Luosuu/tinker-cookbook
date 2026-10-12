@@ -156,3 +156,37 @@ async def test_run_records_outcomes_and_stops_on_budget(tmp_path, monkeypatch):
     assert calls == [3]
     assert json.loads((shard / "report.json").read_text())["status"] == "complete"
     assert [row["pr_number"] for row in rows(shard / "accepted_training.jsonl")] == [1, 3]
+
+
+@pytest.mark.asyncio
+async def test_rivanna_outage_retries_then_stops_without_receipt(tmp_path, monkeypatch):
+    from .. import chat_inference
+    from . import rivanna_bridge
+
+    monkeypatch.setattr(chat_inference, "ChatAnnotationCompleter", FakeCompleter)
+    monkeypatch.setattr(rivanna_bridge, "RivannaBridge", lambda *a, **k: None)
+    monkeypatch.setattr(scale_expansion, "OUTAGE_RETRY_SECONDS", 0)
+    candidates_path = tmp_path / "candidates.jsonl"
+    write_rows(candidates_path, [candidate(n) for n in (1, 2)])
+    outages = {1: 2, 2: 99}
+
+    async def flaky(instance, *, directory, **_):
+        if outages[instance.pr_number]:
+            outages[instance.pr_number] -= 1
+            atomic_json(directory / "construction.json", {"cached": "failure"})
+            raise ValueError("RuntimeError: ssh failed: ")
+        assert not (directory / "construction.json").exists()
+        atomic_json(directory / "validated.json", instance.to_dict())
+        return {"export_sha256": "e", "trials": [], "validated": instance}
+
+    monkeypatch.setattr(scale_expansion, "process", flaky)
+    args = arguments(tmp_path, candidates_path)
+    await scale_expansion.run(args)
+    shard = args.output_dir / "shard-00"
+    assert json.loads((shard / "kokkos__kokkos-1" / "receipt.json").read_text())["status"] == (
+        "accepted"
+    )
+    assert not (shard / "kokkos__kokkos-2" / "receipt.json").exists()
+    assert json.loads((shard / "report.json").read_text())["status"].startswith(
+        "infrastructure_stop"
+    )

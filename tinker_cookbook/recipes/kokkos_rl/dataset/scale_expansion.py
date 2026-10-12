@@ -48,6 +48,15 @@ from .models import KokkosInstance
 # reserve as if each were this large and uncached.
 MAX_PROMPT_TOKENS = 60_000
 
+# Login-node outages fail every SSH call in seconds; they must not quarantine candidates.
+RIVANNA_UNREACHABLE = re.compile(r"\b(?:ssh|scp) failed:")
+OUTAGE_RETRY_SECONDS = 300
+MAX_OUTAGE_RETRIES = 6
+
+
+class InfrastructureStop(Exception):
+    """Rivanna stayed unreachable; the candidate is left without a receipt for a rerun."""
+
 
 def shard_of(instance_id: str, shards: int) -> int:
     return int(hashlib.sha256(instance_id.encode()).hexdigest(), 16) % shards
@@ -288,38 +297,55 @@ async def run(args: argparse.Namespace) -> None:
                     accepted.append(json.loads((directory / "validated.json").read_text()))
                 records.append(receipt)
                 continue
-            receipt = {
-                "instance_id": instance.instance_id,
-                "input_sha256": digest(candidate),
-                "config_sha256": digest(config),
-                "status": "quarantined",
-                "stage": "exclusion",
-            }
-            began = time.monotonic()
-            try:
-                reason = exclusion(candidate, frozen, prior + accepted) or profile_reason(instance)
-                if reason:
-                    raise ValueError(reason)
-                outcome = await process(
-                    instance, directory=directory, bridge=bridge, completer=completer, args=args
-                )
-                receipt.update(
-                    status="accepted",
-                    stage="accepted",
-                    export_sha256=outcome["export_sha256"],
-                    trials=outcome["trials"],
-                )
-                accepted.append(outcome["validated"].to_dict())
-            except BudgetStop:
-                raise
-            except Exception as error:
+            outages = 0
+            while True:
+                receipt = {
+                    "instance_id": instance.instance_id,
+                    "input_sha256": digest(candidate),
+                    "config_sha256": digest(config),
+                    "status": "quarantined",
+                    "stage": "exclusion",
+                }
+                began = time.monotonic()
+                try:
+                    reason = exclusion(candidate, frozen, prior + accepted) or profile_reason(
+                        instance
+                    )
+                    if reason:
+                        raise ValueError(reason)
+                    outcome = await process(
+                        instance, directory=directory, bridge=bridge, completer=completer, args=args
+                    )
+                    receipt.update(
+                        status="accepted",
+                        stage="accepted",
+                        export_sha256=outcome["export_sha256"],
+                        trials=outcome["trials"],
+                    )
+                    accepted.append(outcome["validated"].to_dict())
+                    break
+                except BudgetStop:
+                    raise
+                except Exception as error:
+                    if not RIVANNA_UNREACHABLE.search(str(error)):
+                        failure = error
+                        break
+                    # A construction attempt that failed on the outage is cached; drop it.
+                    for stale in ("construction.json", "progress.json"):
+                        (directory / stale).unlink(missing_ok=True)
+                    outages += 1
+                    if outages >= MAX_OUTAGE_RETRIES:
+                        raise InfrastructureStop(str(error)[-300:]) from error
+                    print(instance.instance_id, "Rivanna unreachable; retrying", flush=True)
+                    await asyncio.sleep(OUTAGE_RETRY_SECONDS)
+            if receipt["status"] != "accepted":
                 progress = directory / "progress.json"
                 if progress.exists():
                     receipt["stage"] = json.loads(progress.read_text()).get(
                         "stage", receipt["stage"]
                     )
-                receipt["failure_class"] = failure_class(str(error))
-                text = str(error)[-2000:]
+                receipt["failure_class"] = failure_class(str(failure))
+                text = str(failure)[-2000:]
                 for key, secret in os.environ.items():
                     if any(word in key for word in ("KEY", "TOKEN", "SECRET")) and len(secret) > 8:
                         text = text.replace(secret, "[REDACTED]")
@@ -338,6 +364,9 @@ async def run(args: argparse.Namespace) -> None:
     except BudgetStop as stop:
         report(f"budget_stop: {stop}")
         print("Budget stop:", stop, flush=True)
+    except InfrastructureStop as stop:
+        report(f"infrastructure_stop: {stop}")
+        print("Infrastructure stop:", stop, flush=True)
     finally:
         await completer.close()
 
