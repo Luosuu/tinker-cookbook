@@ -199,3 +199,29 @@ def test_budget_overrides_reach_both_loops_and_keep_old_designs_valid(tmp_path: 
         resolve_budget(["max_turns=250"])
     with pytest.raises(ValueError, match="sandbox_timeout"):
         resolve_budget(["wall_seconds=7200"])
+
+
+def test_arms_can_carry_their_own_budget() -> None:
+    from notes.dsh_inkling.harness.rivanna.block import arm_budget
+    from notes.dsh_inkling.harness.rivanna.budget import EPISODE_BUDGET, resolve_budget
+
+    block = resolve_budget(
+        [
+            "max_model_requests=250",
+            "max_tool_calls=500",
+            "max_context_tokens=262144",
+            "wall_seconds=7200",
+            "sandbox_timeout=10800",
+        ]
+    )
+    _, frozen = parse_arm("native40=native budget=frozen")
+    _, long = parse_arm("native250=native")
+    _, pi = parse_arm("pi_check=pi build_check=after-edit max_tool_calls=300")
+    assert arm_budget(block, frozen) == EPISODE_BUDGET
+    assert arm_budget(block, long) == block
+    assert arm_budget(block, pi)["max_tool_calls"] == 300
+    assert pi["options"] == {"build_check": "after-edit"}
+    with pytest.raises(ValueError, match="only budget keys"):
+        parse_arm("native=native build_check=after-edit")
+    with pytest.raises(ValueError, match="frozen"):
+        parse_arm("native=native budget=long")

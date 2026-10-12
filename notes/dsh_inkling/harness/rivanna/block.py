@@ -40,22 +40,44 @@ UPSTREAM = "https://tinker.thinkingmachines.dev/services/tinker-prod/oai/api/v1"
 
 
 def parse_arm(spec: str) -> tuple[str, dict]:
-    """``name=native``, ``name=pi [key=value ...]``, or ``name=<DSH flags>``."""
+    """``name=native [budget]``, ``name=pi [key=value ...]``, or ``name=<DSH flags>``.
+
+    Native and Pi arms accept budget keys (``max_model_requests=40``) that override the block
+    budget for that arm, or ``budget=frozen`` for the frozen benchmark budget, so one block
+    can compare budgets in the same period.
+    """
     name, _, flags = spec.partition("=")
     if not name or not name.replace("_", "").isalnum():
         raise ValueError(f"invalid arm name in {spec!r}")
     tokens = shlex.split(flags)
-    if tokens == ["native"]:
-        return name, {"kind": "native", "flags": []}
-    if tokens[:1] == ["pi"]:
-        options = {}
+    if tokens[:1] in (["native"], ["pi"]):
+        options: dict[str, str] = {}
+        budget: dict[str, str] = {}
         for token in tokens[1:]:
             key, sep, value = token.partition("=")
             if not sep:
-                raise ValueError(f"Pi arm options are key=value, got {token!r}")
-            options[key] = value
-        return name, {"kind": "pi", "flags": [], "options": options}
+                raise ValueError(f"arm options are key=value, got {token!r}")
+            if key == "budget":
+                if value != "frozen":
+                    raise ValueError("budget= accepts only 'frozen'")
+                budget = {k: "none" if v is None else str(v) for k, v in EPISODE_BUDGET.items()}
+            elif key in EPISODE_BUDGET:
+                budget[key] = value
+            elif tokens[0] == "pi":
+                options[key] = value
+            else:
+                raise ValueError(f"native arms accept only budget keys, got {key!r}")
+        arm: dict = {"kind": tokens[0], "flags": []}
+        if tokens[0] == "pi":
+            arm["options"] = options
+        if budget:
+            arm["budget"] = budget
+        return name, arm
     return name, {"kind": "dsh", "flags": tokens}
+
+
+def arm_budget(design_budget: dict, arm: dict) -> dict:
+    return resolve_budget({**design_budget, **arm.get("budget", {})})
 
 
 def interleave(tasks: list[str], arms: list[str], draws: int, seed: int) -> list[dict]:
@@ -139,6 +161,8 @@ def plan(args: argparse.Namespace) -> None:
         budget[key] != EPISODE_BUDGET[key] for key in DSH_FIXED
     ):
         raise SystemExit(f"DSH arms enforce only the default {', '.join(DSH_FIXED)}")
+    for arm in arms.values():
+        arm_budget(budget, arm)
     pi = None
     if any(arm["kind"] == "pi" for arm in arms.values()):
         if args.pi_agent_dir is None:
@@ -153,7 +177,9 @@ def plan(args: argparse.Namespace) -> None:
 
         for arm in arms.values():
             if arm["kind"] == "pi":
-                pi_config(pi_agent_dir=source, budget=budget, options=arm["options"])
+                pi_config(
+                    pi_agent_dir=source, budget=arm_budget(budget, arm), options=arm["options"]
+                )
         pi = {"source": str(source), **pi_identity}
     tasks_root = args.tasks_root.resolve()
     names = (
@@ -248,7 +274,7 @@ def run_slot(args: argparse.Namespace) -> None:
     (output / "slot.json").write_text(
         json.dumps({**slot, "slurm_job": os.environ.get("SLURM_JOB_ID")}, indent=2)
     )
-    budget = {**EPISODE_BUDGET, **design["budget"]}
+    budget = arm_budget({**EPISODE_BUDGET, **design["budget"]}, arm)
     env_file = Path(design["env_file"])
     if arm["kind"] == "pi":
         import asyncio
