@@ -147,10 +147,12 @@ def tree_digest(directory: Path) -> str:
     )
 
 
-async def build_export(task: Path, output: Path, *, timeout: int = 900) -> Path:
+async def build_export(
+    task: Path, output: Path, *, timeout: int = 900, parallelism: int = 2
+) -> Path:
     """Translate the exported Dockerfile faithfully, adding only the sandbox server."""
-    if not 1 <= timeout <= 900:
-        raise ValueError("Image command budget exceeds 900 seconds")
+    if not 1 <= timeout <= 2400:
+        raise ValueError("Image command budget exceeds 2400 seconds")
     commands = []
     base = None
     for line in (task / "environment/Dockerfile").read_text().replace("\\\n", " ").splitlines():
@@ -172,7 +174,7 @@ async def build_export(task: Path, output: Path, *, timeout: int = 900) -> Path:
         "Bootstrap: docker\nFrom: "
         + base
         + "\n\n%post\n    set -eu\n    "
-        + "\n    ".join(commands).replace(" --parallel", " --parallel 2")
+        + "\n    ".join(commands).replace(" --parallel", f" --parallel {parallelism}")
         + "\n    apt-get update && apt-get install -y python3-venv tini tmux\n"
         "    python3 -m venv /opt/uv-bootstrap\n"
         "    /opt/uv-bootstrap/bin/python -m pip install uv==0.7.2\n"
@@ -256,8 +258,12 @@ async def exported_trials(
             sif,
             policy["sandbox_seconds"],
             default_workdir="/workspace/repo",
+            enable_gpu=instance.metadata.get("toolchain") == "cuda",
             allow_network=False,
-            command_env={"CMAKE_BUILD_PARALLEL_LEVEL": "2", "OMP_NUM_THREADS": "2"},
+            command_env={
+                "CMAKE_BUILD_PARALLEL_LEVEL": str(policy["build_parallelism"]),
+                "OMP_NUM_THREADS": "2",
+            },
         )
         try:
             # Before uploading trusted grading materials, only the base commit may be visible.

@@ -1,7 +1,8 @@
 """Rivanna-only construction backend using the existing Apptainer adapter.
 
 Run inside a bounded Slurm allocation. KOKKOS_RIVANNA_BASE_SIF must be an
-existing CPU image with the OpenHands server and required compiler tools.
+existing image with the OpenHands server and required compiler tools; CUDA tasks use a
+CUDA development image of their era and run in a GPU allocation.
 Every task receives a fresh writable container and a fresh upstream checkout.
 """
 
@@ -53,26 +54,36 @@ async def rivanna_validation_sandbox_factory(
         "shen",
     }:
         raise RuntimeError("Construction validation requires a Rivanna Slurm allocation")
-    if (
-        instance.repo not in {"kokkos/kokkos", "kokkos/kokkos-kernels"}
-        or instance.metadata.get("toolchain", "cpu") != "cpu"
+    toolchain = instance.metadata.get("toolchain", "cpu")
+    if instance.repo not in {"kokkos/kokkos", "kokkos/kokkos-kernels"} or not (
+        toolchain == "cpu" or (toolchain == "cuda" and instance.repo == "kokkos/kokkos")
     ):
-        raise ValueError("This Rivanna construction profile supports CPU core/kernels only")
+        raise ValueError(
+            "This Rivanna construction profile supports CPU core/kernels and CUDA core"
+        )
+    gpu = toolchain == "cuda"
+    if gpu and not os.environ.get("CUDA_VISIBLE_DEVICES"):
+        raise RuntimeError("CUDA construction requires a Slurm GPU allocation")
     dependency = instance.metadata.get("kokkos_dependency_commit", "")
     if instance.repo == "kokkos/kokkos-kernels" and not _COMMIT_RE.fullmatch(dependency):
         raise ValueError("Historical kernels environment requires an immutable Kokkos dependency")
     if not _REPO_RE.fullmatch(instance.repo) or not _COMMIT_RE.fullmatch(instance.base_commit):
         raise ValueError("Invalid upstream identity")
+    from .qualification import execution_policy
+
+    parallelism = str(execution_policy(instance)["build_parallelism"])
     path = Path(os.environ["KOKKOS_RIVANNA_BASE_SIF"]).resolve(strict=True)
     sandbox = await ApptainerSandbox.create(
         path,
         timeout,
         default_workdir="/workspace/repo",
-        command_env={"CMAKE_BUILD_PARALLEL_LEVEL": "2", "OMP_NUM_THREADS": "2"},
+        enable_gpu=gpu,
+        command_env={"CMAKE_BUILD_PARALLEL_LEVEL": parallelism, "OMP_NUM_THREADS": "2"},
     )
     try:
         probe = await sandbox.run_command(
-            "command -v cmake && command -v ninja && command -v ccache && command -v g++",
+            "command -v cmake && command -v ninja && command -v ccache && command -v g++"
+            + (" && command -v nvcc && nvidia-smi -L" if gpu else ""),
             workdir="/",
             timeout=30,
         )

@@ -29,20 +29,26 @@ def dependency_arguments(arguments: list[str], dependency_file: str) -> list[str
     return result + ["-M", "-MF", dependency_file, "-MT", "discovery"]
 
 
-# Executables that need a device backend or only time code cannot own a CPU task.
-NOT_HOST_TEST = re.compile(r"(?i)cuda|hip|sycl|openmptarget|openacc|hpx|threads|perf|benchmark")
+# Executables that need another device backend or only time code cannot own a task.
+NOT_TASK_TEST = {
+    "cpu": re.compile(r"(?i)cuda|hip|sycl|openmptarget|openacc|hpx|threads|perf|benchmark"),
+    "cuda": re.compile(r"(?i)hip|sycl|openmptarget|openacc|hpx|threads|perf|benchmark"),
+}
+NOT_HOST_TEST = NOT_TASK_TEST["cpu"]
+# Test executables of the backend a task exercises, e.g. KokkosCore_UnitTest_Serial1.
+PRIMARY_BACKEND = {"cpu": "Serial", "cuda": "Cuda"}
 
 
-def host_test_executable(name: str) -> bool:
-    return not NOT_HOST_TEST.search(name)
+def host_test_executable(name: str, toolchain: str = "cpu") -> bool:
+    return not NOT_TASK_TEST[toolchain].search(name)
 
 
-def resolve_ownership(changed: list[str], observations: list[dict], failures: list[dict]) -> dict:
+def resolve_ownership(changed: list[str], observations: list[dict], failures: list[dict], primary: str = "Serial") -> dict:
     owners = {}
     for path in changed:
         found = sorted({row["target"] for row in observations if path in row["changed_dependencies"]})
-        serial = [target for target in found if "serial" in target.lower()]
-        owners[path] = serial or found
+        preferred = [target for target in found if primary.lower() in target.lower()]
+        owners[path] = preferred or found
     unresolved = [path for path, targets in owners.items() if not targets]
     ambiguous = [path for path, targets in owners.items() if len(targets) != 1]
     targets = sorted({target for values in owners.values() for target in values})
@@ -51,22 +57,23 @@ def resolve_ownership(changed: list[str], observations: list[dict], failures: li
             "observations": observations, "failures": failures, "method": "compiler_preprocessor_dependencies", "objects_compiled": 0}
 
 
-def discover(root: Path, changed: list[str], max_seconds: int = 150) -> dict:
-    """Serial executables first; other host test executables only for files no Serial one owns."""
+def discover(root: Path, changed: list[str], max_seconds: int = 150, toolchain: str = "cpu") -> dict:
+    """Primary-backend executables first; other eligible ones only for files those do not own."""
+    primary = PRIMARY_BACKEND[toolchain]
     root = root.resolve()
     models = [json.loads(p.read_text()) for p in (root / "build/.cmake/api/v1/reply").glob("target-*.json")]
     executables = [m for m in models if m.get("type") == "EXECUTABLE"]
     commands = json.loads((root / "build/compile_commands.json").read_text())
     observations, failures = [], []
     start = time.monotonic()
-    first = [m for m in executables if "Serial" in m["name"]]
+    first = [m for m in executables if primary in m["name"]]
     if _observe(root, first, commands, changed, observations, failures, start, max_seconds):
-        return resolve_ownership(changed, observations, failures)
+        return resolve_ownership(changed, observations, failures, primary)
     unowned = [path for path in changed if not any(path in row["changed_dependencies"] for row in observations)]
     if unowned and not failures:
-        second = [m for m in executables if "Serial" not in m["name"] and host_test_executable(m["name"])]
+        second = [m for m in executables if primary not in m["name"] and host_test_executable(m["name"], toolchain)]
         _observe(root, second, commands, unowned, observations, failures, start, max_seconds)
-    return resolve_ownership(changed, observations, failures)
+    return resolve_ownership(changed, observations, failures, primary)
 
 
 def _observe(root, models, commands, changed, observations, failures, start, max_seconds) -> bool:
@@ -106,4 +113,5 @@ def _observe(root, models, commands, changed, observations, failures, start, max
 
 if __name__ == "__main__":
     import sys
-    print(json.dumps(discover(Path(sys.argv[1]), json.loads(sys.argv[2]))))
+    toolchain = sys.argv[3] if len(sys.argv) > 3 else "cpu"
+    print(json.dumps(discover(Path(sys.argv[1]), json.loads(sys.argv[2]), toolchain=toolchain)))

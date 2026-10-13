@@ -68,6 +68,7 @@ class RivannaBridge:
         source_sha256: str,
         base_sif: str = "",
         partition: str = "standard",
+        cuda_base_sifs: dict[str, str] | None = None,
     ):
         if not re.fullmatch(r"[A-Za-z0-9.@_-]+", host) or not re.fullmatch(
             r"/[A-Za-z0-9/_-]+", remote_root
@@ -78,18 +79,47 @@ class RivannaBridge:
             raise ValueError("Unsafe base image path")
         if partition not in {"standard", "bii-largemem"}:
             raise ValueError("Unsupported Rivanna CPU partition")
+        self.cuda_base_sifs = dict(cuda_base_sifs or {})
+        if any(not re.fullmatch(r"/[A-Za-z0-9/_.-]+", p) for p in self.cuda_base_sifs.values()):
+            raise ValueError("Unsafe base image path")
         self.source_sha256 = source_sha256
         self.base_sif, self.partition = base_sif, partition
 
+    def allocation(self, instance: KokkosInstance) -> dict:
+        """CPU jobs on the configured partition; CUDA jobs on one A6000 with an era image."""
+        if instance.metadata.get("toolchain") != "cuda":
+            return {
+                "base_sif": self.base_sif,
+                "partition": self.partition,
+                "gres": "",
+                "cpus": 4,
+                "memory": "16G",
+                "time": "00:30:00",
+                "poll_seconds": 3600,
+            }
+        base = self.cuda_base_sifs.get(instance.era, "")
+        if not base:
+            raise ValueError(f"No CUDA base image for era {instance.era}")
+        return {
+            "base_sif": base,
+            "partition": "gpu",
+            "gres": "gpu:a6000:1",
+            "cpus": 8,
+            "memory": "64G",
+            "time": "03:00:00",
+            "poll_seconds": 6 * 3600,
+        }
+
     async def execute(self, instance: KokkosInstance, action: str) -> dict:
-        if not self.base_sif:
+        resources = self.allocation(instance)
+        if not resources["base_sif"]:
             raise ValueError("An explicit prepared Rivanna base SIF is required")
         request = {
             "instance": instance.to_dict(),
             "action": action,
             "source_sha256": self.source_sha256,
-            "base_sif": self.base_sif,
-            "partition": self.partition,
+            "base_sif": resources["base_sif"],
+            "partition": resources["partition"],
         }
         identity = digest(request)
         local = self.local_root / identity
@@ -108,15 +138,16 @@ class RivannaBridge:
                 raise ValueError("Stale remote result")
             return result
         if not job_path.exists():
+            gres_line = f"#SBATCH --gres={resources['gres']}\n" if resources["gres"] else ""
             script = f"""#!/bin/bash
-#SBATCH --partition={self.partition}
+#SBATCH --partition={resources["partition"]}
 #SBATCH --account=lia-lab-members
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=16G
-#SBATCH --time=00:30:00
-#SBATCH --job-name=kokkos-expand-{action}
+#SBATCH --cpus-per-task={resources["cpus"]}
+#SBATCH --mem={resources["memory"]}
+#SBATCH --time={resources["time"]}
+{gres_line}#SBATCH --job-name=kokkos-expand-{action}
 #SBATCH --output={remote}/slurm.log
 source /etc/profile
 set -euo pipefail
@@ -127,8 +158,8 @@ export PYTHONUNBUFFERED=1
 export APPTAINER_CACHEDIR=/scratch/fad3ew/openhands-smoke/cache
 export APPTAINER_TMPDIR=$(mktemp -d /tmp/kokkos-expansion-worker.XXXXXX)
 trap 'rm -rf -- "$APPTAINER_TMPDIR"' EXIT
-export KOKKOS_RIVANNA_BASE_SIF={self.base_sif}
-export CMAKE_BUILD_PARALLEL_LEVEL=2
+export KOKKOS_RIVANNA_BASE_SIF={resources["base_sif"]}
+export CMAKE_BUILD_PARALLEL_LEVEL={resources["cpus"] if resources["gres"] else 2}
 export OMP_NUM_THREADS=2
 /scratch/fad3ew/openhands-smoke/.venv/bin/python -m tinker_cookbook.recipes.kokkos_rl.dataset.rivanna_worker --input request.json --output result.json
 """
@@ -155,7 +186,7 @@ export OMP_NUM_THREADS=2
             print("Rivanna submitted", job, instance.instance_id, action, flush=True)
         job = json.loads(job_path.read_text())["job_id"]
         started = time.monotonic()
-        while time.monotonic() - started < 3600:
+        while time.monotonic() - started < resources["poll_seconds"]:
             state = (
                 (
                     await _command(

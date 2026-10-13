@@ -27,6 +27,14 @@ ERA_IMAGES = {
     "cpp20": "ubuntu:24.04",
 }
 CUDA_IMAGE = "nvidia/cuda:12.8.1-devel-ubuntu24.04"
+# nvcc and the host compiler must both accept the Kokkos of the era (probed on Rivanna).
+CUDA_ERA_IMAGES = {
+    "cpp14": "nvidia/cuda:11.8.0-devel-ubuntu20.04",
+    "cpp17": "nvidia/cuda:12.2.2-devel-ubuntu22.04",
+    "cpp20": CUDA_IMAGE,
+}
+# GPUs a pinned Kokkos arch runs on; unpinned tasks keep the L4 they were qualified on.
+GPU_TYPES = {"AMPERE80": ["A6000", "A100", "A40"], "VOLTA70": ["A6000", "A100", "A40"]}
 HIP_IMAGE = "rocm/dev-ubuntu-22.04:6.4.3-complete"
 SYCL_IMAGE = "intel/oneapi-basekit:2025.3.2-0-devel-ubuntu24.04"
 KOKKOS_DEPENDENCY_REF = "5.2.0"
@@ -64,7 +72,7 @@ def _dockerfile(instance: KokkosInstance) -> str:
     profile = get_repository_profile(instance.repo)
     toolchain = str(instance.metadata.get("toolchain", instance.metadata.get("accelerator", "cpu")))
     image = {
-        "cuda": CUDA_IMAGE,
+        "cuda": CUDA_ERA_IMAGES[instance.era] if instance.metadata.get("gpu_arch") else CUDA_IMAGE,
         "hip": HIP_IMAGE,
         "sycl": SYCL_IMAGE,
     }.get(toolchain, ERA_IMAGES[instance.era])
@@ -262,7 +270,8 @@ def _task_toml(
     verifier_timeout_sec: float = 1200.0,
 ) -> str:
     requires_gpu = bool(instance.metadata.get("requires_gpu", False))
-    gpu_lines = 'gpus = 1\ngpu_types = ["L4"]\n' if requires_gpu else ""
+    gpu_types = GPU_TYPES.get(str(instance.metadata.get("gpu_arch")), ["L4"])
+    gpu_lines = f"gpus = 1\ngpu_types = {json.dumps(gpu_types)}\n" if requires_gpu else ""
     description = f"Repair {instance.repo} PR-derived regression {instance.pr_number}"
     return f"""schema_version = "1.4"
 artifacts = []

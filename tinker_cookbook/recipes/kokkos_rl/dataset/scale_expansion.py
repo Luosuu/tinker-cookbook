@@ -32,7 +32,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from ..spend import BudgetStop, SpendLedger, capped_chat_client
-from .auto_annotate import CSTDINT_COMPAT_FLAG
+from .auto_annotate import CSTDINT_COMPAT_FLAG, cuda_configure
 from .expansion import atomic_json, digest, exclusion, rows, write_rows
 from .expansion_batch import (
     check_acceptance,
@@ -47,6 +47,11 @@ from .models import KokkosInstance
 # Annotation and statement prompts carry the candidate patch, CMake context and evidence;
 # reserve as if each were this large and uncached.
 MAX_PROMPT_TOKENS = 60_000
+
+# Ampere binaries run on every A100/A6000/A40 on Rivanna. Kokkos before 3.1 lacks AMPERE80;
+# its VOLTA70 build carries PTX that the driver compiles for Ampere at load time.
+CUDA_ARCH = "AMPERE80"
+CUDA_FALLBACK_ARCH = "VOLTA70"
 
 # Login-node outages fail every SSH call in seconds; they must not quarantine candidates.
 RIVANNA_UNREACHABLE = re.compile(r"\b(?:ssh|scp) failed:")
@@ -81,7 +86,8 @@ def profile_reason(instance: KokkosInstance) -> str | None:
         return "Model-generated/unknown test origin requires a separate validation lane"
     if instance.repo not in {"kokkos/kokkos", "kokkos/kokkos-kernels"}:
         return "Unsupported Rivanna environment profile"
-    if instance.metadata.get("accelerator") != "cpu":
+    accelerator = instance.metadata.get("accelerator")
+    if not (accelerator == "cpu" or (accelerator == "cuda" and instance.repo == "kokkos/kokkos")):
         return "Unsupported Rivanna environment profile"
     if instance.repo == "kokkos/kokkos-kernels" and not str(
         instance.metadata.get("kokkos_dependency_commit", "")
@@ -98,6 +104,22 @@ def needs_cstdint(result: dict) -> bool:
     return bool(
         re.search(r"[‘']uint32_t[’'] has not been declared", last["stdout"] + last["stderr"])
     )
+
+
+def with_cuda(instance: KokkosInstance, arch: str) -> KokkosInstance:
+    return replace(
+        instance,
+        configure_command=cuda_configure(instance.configure_command, instance.repo, arch),
+        metadata={**instance.metadata, "toolchain": "cuda", "requires_gpu": True, "gpu_arch": arch},
+    )
+
+
+def needs_older_arch(result: dict) -> bool:
+    found = result.get("preflight") or {}
+    if found.get("stage") != "configure" or not found.get("records"):
+        return False
+    last = found["records"][-1]
+    return "to enable an NVIDIA GPU architecture" in last["stdout"] + last["stderr"]
 
 
 def with_cstdint(instance: KokkosInstance) -> KokkosInstance:
@@ -118,6 +140,9 @@ async def process(instance: KokkosInstance, *, directory: Path, bridge, complete
 
     receipt: dict = {"instance_id": instance.instance_id, "stage": "preflight"}
     atomic_json(directory / "progress.json", receipt)
+    cuda = instance.metadata.get("accelerator") == "cuda"
+    if cuda:
+        instance = with_cuda(instance, CUDA_ARCH)
     preflight_path = directory / "preflight.json"
     result = (
         json.loads(preflight_path.read_text())
@@ -125,6 +150,15 @@ async def process(instance: KokkosInstance, *, directory: Path, bridge, complete
         else await bridge.execute(instance, "preflight")
     )
     atomic_json(preflight_path, result)
+    if cuda and needs_older_arch(result):
+        instance = with_cuda(instance, CUDA_FALLBACK_ARCH)
+        older_path = directory / "preflight-volta.json"
+        result = (
+            json.loads(older_path.read_text())
+            if older_path.exists()
+            else await bridge.execute(instance, "preflight")
+        )
+        atomic_json(older_path, result)
     if needs_cstdint(result):
         instance = with_cstdint(instance)
         compat_path = directory / "preflight-cstdint.json"
@@ -234,6 +268,7 @@ async def run(args: argparse.Namespace) -> None:
         "rivanna_root": f"{args.rivanna_root}/shard-{args.shard:02d}",
         "rivanna_base_sif": args.rivanna_base_sif,
         "rivanna_partition": args.rivanna_partition,
+        "cuda_base_sifs": args.cuda_base_sif,
     }
     config_path = root / "config.json"
     if config_path.exists() and json.loads(config_path.read_text()) != config:
@@ -246,6 +281,7 @@ async def run(args: argparse.Namespace) -> None:
         source_sha256=config["source_sha256"],
         base_sif=args.rivanna_base_sif,
         partition=args.rivanna_partition,
+        cuda_base_sifs=args.cuda_base_sif,
     )
     ledger = SpendLedger(args.ledger, args.max_usd)
     completer = ChatAnnotationCompleter(
@@ -384,6 +420,14 @@ def main() -> None:
     parser.add_argument("--rivanna-base-sif", required=True)
     parser.add_argument("--rivanna-partition", default="bii-largemem")
     parser.add_argument(
+        "--cuda-base-sif",
+        type=lambda value: tuple(value.split("=", 1)),
+        action="append",
+        default=[],
+        metavar="ERA=PATH",
+        help="CUDA development base image per era, e.g. cpp17=/scratch/.../cpp17.sif",
+    )
+    parser.add_argument(
         "--base-url", default="https://tinker.thinkingmachines.dev/services/tinker-prod/oai/api/v1"
     )
     parser.add_argument("--model", default="thinkingmachines/Inkling-Small:peft:262144")
@@ -400,6 +444,7 @@ def main() -> None:
     parser.add_argument("--ledger", type=Path, required=True)
     parser.add_argument("--max-usd", type=float, required=True)
     args = parser.parse_args()
+    args.cuda_base_sif = dict(args.cuda_base_sif)
     if not 0 <= args.shard < args.shards:
         parser.error("shard must be in [0, shards)")
     asyncio.run(run(args))

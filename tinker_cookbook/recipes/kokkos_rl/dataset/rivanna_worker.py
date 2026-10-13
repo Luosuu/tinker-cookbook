@@ -34,6 +34,7 @@ async def run(input_path: Path, output: Path) -> None:
     }
     try:
         from .qualification import execution_policy
+
         policy = execution_policy(instance)
         result["execution_policy"] = policy
         if os.environ.get("KOKKOS_RIVANNA_BASE_SIF") != request["base_sif"]:
@@ -55,13 +56,20 @@ async def run(input_path: Path, output: Path) -> None:
         elif request["action"] in {"preflight", "target_discovery"}:
             from .preflight import inventory
 
-            result["preflight"] = await inventory(instance, discovery_only=request["action"] == "target_discovery")
+            result["preflight"] = await inventory(
+                instance, discovery_only=request["action"] == "target_discovery"
+            )
         elif request["action"] == "acceptance":
             from .expansion_batch import build_export, exported_trials, tree_digest
             from .export_harbor import export_instance
 
             task = export_instance(instance, output.parent / "export")
-            sif = await build_export(task, output.parent, timeout=policy["image_seconds"])
+            sif = await build_export(
+                task,
+                output.parent,
+                timeout=policy["image_seconds"],
+                parallelism=policy["build_parallelism"],
+            )
             result["export_sha256"] = tree_digest(task)
             with sif.open("rb") as handle:
                 result["sif_sha256"] = hashlib.file_digest(handle, "sha256").hexdigest()

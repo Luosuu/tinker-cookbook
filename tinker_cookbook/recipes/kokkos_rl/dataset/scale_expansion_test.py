@@ -1,5 +1,6 @@
 import argparse
 import json
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
@@ -41,8 +42,11 @@ def test_profile_gate():
     assert profile_reason(KokkosInstance.from_dict(candidate(1))) is None
     model_tests = candidate(2, test_origin="model")
     assert "test origin" in profile_reason(KokkosInstance.from_dict(model_tests))
-    gpu = candidate(3, accelerator="cuda")
-    assert "profile" in profile_reason(KokkosInstance.from_dict(gpu))
+    assert profile_reason(KokkosInstance.from_dict(candidate(3, accelerator="cuda"))) is None
+    hip = candidate(3, accelerator="hip")
+    assert "profile" in profile_reason(KokkosInstance.from_dict(hip))
+    kernels_cuda = {**candidate(5, accelerator="cuda"), "repo": "kokkos/kokkos-kernels"}
+    assert "profile" in profile_reason(KokkosInstance.from_dict(kernels_cuda))
     kernels = {**candidate(4), "repo": "kokkos/kokkos-kernels"}
     assert "dependency" in profile_reason(KokkosInstance.from_dict(kernels))
     kernels["metadata"]["kokkos_dependency_commit"] = "abc"
@@ -93,6 +97,7 @@ def arguments(tmp_path, candidates_path) -> argparse.Namespace:
         rivanna_root="/scratch/run",
         rivanna_base_sif="/scratch/base.sif",
         rivanna_partition="bii-largemem",
+        cuda_base_sif={},
         base_url="https://example.invalid",
         model="model",
         api_key_env="TINKER_API_KEY",
@@ -189,4 +194,77 @@ async def test_rivanna_outage_retries_then_stops_without_receipt(tmp_path, monke
     assert not (shard / "kokkos__kokkos-2" / "receipt.json").exists()
     assert json.loads((shard / "report.json").read_text())["status"].startswith(
         "infrastructure_stop"
+    )
+
+
+def test_cuda_lane_pins_toolchain_arch_and_resources(tmp_path):
+    from .auto_annotate import _normalize_toolchain_annotation
+    from .export_harbor import _dockerfile, _task_toml
+    from .qualification import execution_policy
+    from .rivanna_bridge import RivannaBridge
+    from .scale_expansion import needs_older_arch, with_cuda
+
+    instance = with_cuda(KokkosInstance.from_dict(candidate(1, accelerator="cuda")), "AMPERE80")
+    command = instance.configure_command
+    assert "-DKokkos_ENABLE_CUDA=ON" in command and "-DKokkos_ARCH_AMPERE80=ON" in command
+    assert "bin/nvcc_wrapper" in command and "LAUNCHER" not in command
+    assert "-DKokkos_ENABLE_OPENMP=ON" not in command
+    annotation = {
+        "configure_command": command.replace("AMPERE80", "ADA89"),
+        "metadata": {"toolchain": "cpu"},
+    }
+    normalized = _normalize_toolchain_annotation(annotation, instance)
+    assert normalized["metadata"] == {"toolchain": "cuda", "requires_gpu": True}
+    assert "ADA89" not in normalized["configure_command"]
+    assert normalized["configure_command"].count("-DKokkos_ARCH_AMPERE80=ON") == 1
+
+    policy = execution_policy(instance)
+    assert (policy["build_parallelism"], policy["build_seconds"]) == (8, 1800)
+    assert execution_policy(KokkosInstance.from_dict(candidate(2)))["build_parallelism"] == 2
+
+    bridge = RivannaBridge(
+        tmp_path,
+        host="host",
+        remote_root="/scratch/run",
+        source_sha256="x",
+        base_sif="/scratch/cpu.sif",
+        partition="bii-largemem",
+        cuda_base_sifs={"modern": "/scratch/cuda.sif"},
+    )
+    gpu = bridge.allocation(instance)
+    assert (gpu["partition"], gpu["gres"], gpu["base_sif"]) == (
+        "gpu",
+        "gpu:a6000:1",
+        "/scratch/cuda.sif",
+    )
+    cpu = bridge.allocation(KokkosInstance.from_dict(candidate(2)))
+    assert (cpu["partition"], cpu["gres"], cpu["base_sif"]) == (
+        "bii-largemem",
+        "",
+        "/scratch/cpu.sif",
+    )
+    with pytest.raises(ValueError, match="era"):
+        bridge.allocation(replace(instance, era="cpp14"))
+
+    pinned = replace(instance, era="cpp14")
+    assert _dockerfile(pinned).startswith("FROM nvidia/cuda:11.8.0-devel-ubuntu20.04")
+    assert 'gpu_types = ["A6000", "A100", "A40"]' in _task_toml(pinned, "org")
+    unpinned = replace(pinned, metadata={**pinned.metadata, "gpu_arch": None})
+    assert _dockerfile(unpinned).startswith("FROM nvidia/cuda:12.8.1-devel-ubuntu24.04")
+    assert 'gpu_types = ["L4"]' in _task_toml(unpinned, "org")
+
+    failed = {
+        "preflight": {
+            "stage": "configure",
+            "records": [
+                {
+                    "stdout": "",
+                    "stderr": "Use one -DKokkos_ARCH_{..}=ON' to enable an NVIDIA GPU architecture.",
+                }
+            ],
+        }
+    }
+    assert needs_older_arch(failed)
+    assert not needs_older_arch(
+        {"preflight": {"stage": "build", "records": failed["preflight"]["records"]}}
     )

@@ -122,17 +122,29 @@ def audit_evidence_errors(audit, contracts: list[dict], sources: list[dict], sta
     return errors
 
 
+CPU_POLICY = {"command_seconds": 300, "build_seconds": 300, "image_seconds": 900,
+              "grader_seconds": 600, "sandbox_seconds": 1500, "build_parallelism": 2}
+# One A6000 with 8 CPUs per Slurm job; nvcc is several times slower than the host compiler.
+# The basis is the per-era core CUDA target build timing in notes/kokkos_gpu_lane/TIMING.md.
+GPU_POLICY = {"command_seconds": 600, "build_seconds": 1800, "image_seconds": 2400,
+              "grader_seconds": 2400, "sandbox_seconds": 3600, "build_parallelism": 8,
+              "basis_sha256": "notes/kokkos_gpu_lane/TIMING.md"}
+
+
 def execution_policy(instance) -> dict:
     policy = instance.metadata.get("execution_policy", {})
-    result = {"command_seconds": 300, "build_seconds": 300, "image_seconds": 900,
-              "grader_seconds": 600, "sandbox_seconds": 1500, **policy}
+    gpu = instance.metadata.get("toolchain") == "cuda"
+    result = {**(GPU_POLICY if gpu else CPU_POLICY), **policy}
+    command_cap, sandbox_range = (2400, (900, 3600)) if gpu else (900, (900, 1500))
     for key in ("command_seconds", "build_seconds", "image_seconds", "grader_seconds"):
-        if type(result[key]) is not int or not 1 <= result[key] <= 900:
-            raise ValueError("Command budget must be frozen within 1..900 seconds")
-    if not 900 <= result["sandbox_seconds"] <= 1500:
+        if type(result[key]) is not int or not 1 <= result[key] <= command_cap:
+            raise ValueError(f"Command budget must be frozen within 1..{command_cap} seconds")
+    if not sandbox_range[0] <= result["sandbox_seconds"] <= sandbox_range[1]:
         raise ValueError("Sandbox budget exceeds fixed allocation")
     if result["build_seconds"] > 300 and not result.get("basis_sha256"):
         raise ValueError("Larger build tier needs preflight/timing evidence")
+    if result["build_parallelism"] not in {2, 8}:
+        raise ValueError("Build parallelism must match the Slurm CPU allocation")
     return result
 
 

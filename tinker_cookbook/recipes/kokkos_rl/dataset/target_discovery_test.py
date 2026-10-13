@@ -61,3 +61,23 @@ def test_host_targets_only_for_files_no_serial_target_owns(tmp_path):
     assert discover(tmp_path, ['inc.hpp'])['target'] == 'KokkosCore_IncrementalTest_SERIAL'
     assert discover(tmp_path, ['alg.hpp'])['target'] == 'KokkosAlgorithms_UnitTest'
     assert discover(tmp_path, ['shared.hpp', 'alg.hpp'])['target'] is None
+
+
+def test_cuda_tasks_resolve_to_cuda_executables(tmp_path):
+    compiler = shutil.which('c++')
+    if not compiler: pytest.skip('C++ compiler required on execution host')
+    targets = {
+        'Kokkos_CoreUnitTest_Serial1': 'serial.cpp',
+        'Kokkos_CoreUnitTest_Cuda1': 'cuda.cpp',
+        'Kokkos_CoreUnitTest_HIP': 'hip.cpp',
+    }
+    reply = tmp_path/'build/.cmake/api/v1/reply'; reply.mkdir(parents=True)
+    (tmp_path/'shared.hpp').write_text('// header\n')
+    commands = []
+    for name, source in targets.items():
+        (tmp_path/source).write_text('#include "shared.hpp"\n')
+        (reply/f'target-{name}.json').write_text(json.dumps({'name': name, 'type': 'EXECUTABLE', 'sources': [{'path': source}]}))
+        commands.append({'directory': str(tmp_path), 'file': source, 'arguments': [compiler, '-I.', '-c', source, '-o', f'build/CMakeFiles/{name}.dir/{source}.o']})
+    (tmp_path/'build/compile_commands.json').write_text(json.dumps(commands))
+    assert discover(tmp_path, ['shared.hpp'])['target'] == 'Kokkos_CoreUnitTest_Serial1'
+    assert discover(tmp_path, ['shared.hpp'], toolchain='cuda')['target'] == 'Kokkos_CoreUnitTest_Cuda1'

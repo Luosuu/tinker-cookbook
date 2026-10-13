@@ -544,6 +544,10 @@ def _normalize_toolchain_annotation(
     metadata = annotation.get("metadata")
     if not isinstance(metadata, dict):
         metadata = {}
+    if instance.metadata.get("gpu_arch"):
+        # The execution lane fixed the toolchain before preflight; the model cannot change it.
+        metadata.update(toolchain="cuda", requires_gpu=True)
+        annotation["metadata"] = metadata
 
     test_paths = [
         item.filename for item in instance.changed_files if "test" in item.filename.lower()
@@ -775,7 +779,7 @@ def _normalize_toolchain_annotation(
     discovered = inventory.get("target") if isinstance(inventory, dict) else None
     if (
         discovered
-        and metadata.get("toolchain", "cpu") == "cpu"
+        and metadata.get("toolchain", "cpu") in {"cpu", "cuda"}
         and not profile.full_build_for_validation
     ):
         previous = annotation.get("build_targets")
@@ -802,10 +806,22 @@ def _normalize_toolchain_annotation(
     configure = annotation.get("configure_command")
     if not isinstance(configure, str) or not configure.lstrip().startswith("cmake "):
         return annotation
+    annotation["configure_command"] = cuda_configure(
+        configure, instance.repo, instance.metadata.get("gpu_arch")
+    )
+    return annotation
 
+
+NVIDIA_ARCH_FLAG = re.compile(
+    r"\s*-DKokkos_ARCH_(?:KEPLER|MAXWELL|PASCAL|VOLTA|TURING|AMPERE|ADA|HOPPER|BLACKWELL)\w*=\S+"
+)
+
+
+def cuda_configure(configure: str, repo: str, arch: str | None = None) -> str:
+    """CUDA build of a CPU configure line; a pinned ``arch`` replaces any chosen GPU arch."""
     wrapper = (
         "/workspace/repo/bin/nvcc_wrapper"
-        if instance.repo == "kokkos/kokkos"
+        if repo == "kokkos/kokkos"
         else "/workspace/kokkos/bin/nvcc_wrapper"
     )
     configure = re.sub(r"\s+-DCMAKE_CXX_COMPILER_LAUNCHER=\S+", "", configure)
@@ -819,10 +835,11 @@ def _normalize_toolchain_annotation(
     configure = configure.replace("-DKokkos_ENABLE_OPENMP=ON", "-DKokkos_ENABLE_OPENMP=OFF")
     if "-DKokkos_ENABLE_CUDA=" not in configure:
         configure += " -DKokkos_ENABLE_CUDA=ON"
-    if "-DKokkos_ARCH_" not in configure:
+    if arch:
+        configure = NVIDIA_ARCH_FLAG.sub("", configure) + f" -DKokkos_ARCH_{arch}=ON"
+    elif "-DKokkos_ARCH_" not in configure:
         configure += " -DKokkos_ARCH_ADA89=ON"
-    annotation["configure_command"] = configure
-    return annotation
+    return configure
 
 
 async def annotate_and_validate_instance(

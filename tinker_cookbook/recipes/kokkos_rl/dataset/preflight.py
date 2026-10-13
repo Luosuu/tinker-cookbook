@@ -92,13 +92,15 @@ async def inventory(instance: KokkosInstance, *, discovery_only: bool = False) -
             return {"passed": False, "stage": "inventory", "records": records}
         targets = re.findall(r"(?m)^([^\s:]+):", target_result.stdout)
         ctest = json.loads(ctest_result.stdout)
-        from .target_discovery import NOT_HOST_TEST
+        from .target_discovery import NOT_TASK_TEST, PRIMARY_BACKEND
 
+        toolchain = "cuda" if instance.metadata.get("toolchain") == "cuda" else "cpu"
+        primary = PRIMARY_BACKEND[toolchain]
         codemodel_result = await run(
             "python3 -c "
             + shlex.quote(
                 "import glob,json,re; ts=[json.load(open(p)) for p in glob.glob('build/.cmake/api/v1/reply/target-*.json')]; print(json.dumps([{'name':t['name'],'type':t['type'],'artifacts':t.get('artifacts',[]),'sources':[{'path':s['path']} for s in t.get('sources',[])]} for t in ts if t.get('type')=='EXECUTABLE' and not re.search("
-                + repr(NOT_HOST_TEST.pattern)
+                + repr(NOT_TASK_TEST[toolchain].pattern)
                 + ", t['name'])]))"
             )
         )
@@ -115,7 +117,7 @@ async def inventory(instance: KokkosInstance, *, discovery_only: bool = False) -
         owners = [
             t["name"]
             for t in codemodel
-            if "Serial" in t["name"]
+            if primary in t["name"]
             and changed.intersection(source["path"] for source in t.get("sources", []))
         ]
         discovery = None
@@ -135,7 +137,7 @@ async def inventory(instance: KokkosInstance, *, discovery_only: bool = False) -
                 return {"passed": False, "stage": "discovery_patch", "records": records}
             configured = await run(instance.configure_command + " -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", 180)
             if configured.exit_code == 0:
-                observed = await run("python3 /tmp/kokkos-target-discovery.py /workspace/repo " + shlex.quote(json.dumps(test_sources)), 180)
+                observed = await run("python3 /tmp/kokkos-target-discovery.py /workspace/repo " + shlex.quote(json.dumps(test_sources)) + " " + toolchain, 180)
                 if observed.exit_code == 0:
                     discovery = json.loads(observed.stdout)
             restored = await run("git apply -R --whitespace=nowarn /tmp/kokkos-discovery-tests.patch")
@@ -162,7 +164,7 @@ async def inventory(instance: KokkosInstance, *, discovery_only: bool = False) -
             }
         target = shlex.quote(requested)
         await run("ninja -C build -t commands " + target + " | wc -l")
-        result = await run("cmake --build build --target " + target + " --parallel 2", policy["build_seconds"])
+        result = await run("cmake --build build --target " + target + f" --parallel {policy['build_parallelism']}", policy["build_seconds"])
         if result.exit_code:
             return {"passed": False, "stage": "build", "target": requested, "records": records}
         binary = executables[requested]
