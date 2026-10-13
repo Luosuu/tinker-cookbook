@@ -92,7 +92,7 @@ async def inventory(instance: KokkosInstance, *, discovery_only: bool = False) -
             return {"passed": False, "stage": "inventory", "records": records}
         targets = re.findall(r"(?m)^([^\s:]+):", target_result.stdout)
         ctest = json.loads(ctest_result.stdout)
-        from .target_discovery import DISCOVERY_SECONDS, NOT_TASK_TEST, PRIMARY_BACKEND
+        from .target_discovery import DISCOVERY_SECONDS, NOT_TASK_TEST, PRIMARY_BACKEND, built_for
 
         toolchain = "cuda" if instance.metadata.get("toolchain") == "cuda" else "cpu"
         primary = PRIMARY_BACKEND[toolchain]
@@ -121,7 +121,12 @@ async def inventory(instance: KokkosInstance, *, discovery_only: bool = False) -
             and changed.intersection(source["path"] for source in t.get("sources", []))
         ]
         discovery = None
-        test_sources = sorted(path for path in changed if Path(path).suffix in {".h", ".hpp", ".hh", ".hxx", ".c", ".cpp", ".cc", ".cxx"})
+        test_sources = sorted(
+            path
+            for path in changed
+            if Path(path).suffix in {".h", ".hpp", ".hh", ".hxx", ".c", ".cpp", ".cc", ".cxx"}
+            and built_for(path, toolchain)
+        )
         # Direct sources alone cannot establish ownership of headers or newly added tests.
         if test_sources:
             from . import target_discovery

@@ -49,6 +49,15 @@ NOT_HOST_TEST = NOT_TASK_TEST["cpu"]
 # Test executables of the backend a task exercises, e.g. KokkosCore_UnitTest_Serial1.
 PRIMARY_BACKEND = {"cpu": "Serial", "cuda": "Cuda"}
 DISCOVERY_SECONDS = {"cpu": 150, "cuda": 600}
+# Backend-specific test directories (core/unit_test/hip/...) are not compiled in this build.
+OTHER_BACKEND_DIRECTORY = {
+    "cpu": re.compile(r"(?i)(^|/)(cuda|hip|sycl|openmptarget|openacc|hpx|threads)/"),
+    "cuda": re.compile(r"(?i)(^|/)(hip|sycl|openmptarget|openacc|hpx|threads|openmp)/"),
+}
+
+
+def built_for(path: str, toolchain: str) -> bool:
+    return not OTHER_BACKEND_DIRECTORY[toolchain].search(path)
 
 
 def host_test_executable(name: str, toolchain: str = "cpu") -> bool:
@@ -132,7 +141,7 @@ def _translation_unit(root, target, source, directory, arguments, changed, deadl
     unit = str(source.relative_to(root))
     try:
         if Path(arguments[0]).name in PREPROCESS_ONLY:
-            completed = subprocess.run(preprocess_arguments(arguments), cwd=directory, capture_output=True, text=True, timeout=min(60, remaining))
+            completed = subprocess.run(preprocess_arguments(arguments), cwd=directory, capture_output=True, text=True, timeout=min(120, remaining))
             if completed.returncode:
                 return "failed", {"target": target, "translation_unit": unit, "exit_code": completed.returncode, "stderr": completed.stderr[-2000:]}
             dependencies = {(directory / value).resolve() for value in LINE_MARKER.findall(completed.stdout)}

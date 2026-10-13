@@ -102,3 +102,14 @@ def test_nvcc_wrapper_units_are_preprocessed_in_parallel(tmp_path):
     found = discover(tmp_path, ['shared.hpp'], toolchain='cuda')
     assert found['target'] == 'Kokkos_CoreUnitTest_Cuda2' and not found['failures']
     assert len(found['observations']) == 4
+
+
+def test_other_backend_test_directories_are_not_built():
+    from .target_discovery import built_for
+
+    assert built_for('core/unit_test/TestReducers.hpp', 'cuda')
+    assert built_for('core/unit_test/cuda/TestCuda_Init.cpp', 'cuda')
+    assert not built_for('core/unit_test/hip/TestHIP_AsyncLauncher.cpp', 'cuda')
+    assert not built_for('core/unit_test/openmp/TestOpenMP.hpp', 'cuda')
+    assert built_for('core/unit_test/openmp/TestOpenMP.hpp', 'cpu')
+    assert not built_for('core/unit_test/cuda/TestCuda_Init.cpp', 'cpu')
