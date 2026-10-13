@@ -86,7 +86,7 @@ class RivannaBridge:
         self.base_sif, self.partition = base_sif, partition
 
     def allocation(self, instance: KokkosInstance) -> dict:
-        """CPU jobs on the configured partition; CUDA jobs on one A6000 with an era image."""
+        """CPU jobs on the configured partition; CUDA jobs on one Ampere GPU with an era image."""
         if instance.metadata.get("toolchain") != "cuda":
             return {
                 "base_sif": self.base_sif,
@@ -100,10 +100,12 @@ class RivannaBridge:
         base = self.cuda_base_sifs.get(instance.era, "")
         if not base:
             raise ValueError(f"No CUDA base image for era {instance.era}")
+        # AMPERE80/VOLTA70 builds run on any Ampere GPU; Kokkos refuses them on Blackwell.
         return {
             "base_sif": base,
             "partition": "gpu",
-            "gres": "gpu:a6000:1",
+            "gres": "gpu:1",
+            "constraint": "a6000|a40|a100",
             "cpus": 8,
             "memory": "64G",
             "time": "03:00:00",
@@ -138,7 +140,11 @@ class RivannaBridge:
                 raise ValueError("Stale remote result")
             return result
         if not job_path.exists():
-            gres_line = f"#SBATCH --gres={resources['gres']}\n" if resources["gres"] else ""
+            gres_line = (
+                f"#SBATCH --gres={resources['gres']}\n#SBATCH --constraint={resources['constraint']}\n"
+                if resources["gres"]
+                else ""
+            )
             script = f"""#!/bin/bash
 #SBATCH --partition={resources["partition"]}
 #SBATCH --account=lia-lab-members

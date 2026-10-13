@@ -31,8 +31,11 @@ if [ "$NCPU" -gt 0 ]; then
   jobs="$jobs, \"cpu\": \"$cpu\""
 fi
 if [ "$NGPU" -gt 0 ]; then
-  gpu=$(sbatch --parsable --dependency=afterok:$freeze --partition=gpu-mig "${TIME_ARGS[@]}" \
-    --gres=gpu:1g.24gb:1 --array=0-$((NGPU - 1))%$GPU_CONC \
+  # Tasks built for Kokkos_ARCH_AMPERE80/VOLTA70 run on any Ampere GPU. Kokkos refuses them on
+  # the RTX PRO 6000 (compute capability 12.0); ADA89 tasks need an Ada GPU Rivanna lacks.
+  read -r -a GPU_ARGS <<< "${DSH_GPU_ARGS:---partition=gpu --gres=gpu:1 --constraint=a6000|a40|a100}"
+  gpu=$(sbatch --parsable --dependency=afterok:$freeze "${GPU_ARGS[@]}" "${TIME_ARGS[@]}" \
+    --array=0-$((NGPU - 1))%$GPU_CONC \
     --output="$BLOCK/logs/gpu-%A_%a.log" \
     --export=ALL,DSH_BLOCK=$BLOCK,DSH_POOL=gpu "$HERE/block.sbatch")
   jobs="$jobs, \"gpu\": \"$gpu\""

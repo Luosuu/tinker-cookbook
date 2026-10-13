@@ -21,5 +21,5 @@ compute capability 8.0 on device with compute capability 12.0 is not supported b
 
 The GPU execution tier in `dataset/qualification.py` therefore allows 1800 s per target build
 (over 3x the slowest probe at the same parallelism) and 8 build jobs, and the Rivanna bridge
-requests `gpu:a6000:1` with 8 CPUs and 64 GB (16 GB and 32 GB ran out of memory while
+requests one Ampere GPU (`--gres=gpu:1 --constraint=a6000|a40|a100`) with 8 CPUs and 64 GB (16 GB and 32 GB ran out of memory while
 squashing CUDA images).

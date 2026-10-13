@@ -234,7 +234,7 @@ def test_cuda_lane_pins_toolchain_arch_and_resources(tmp_path):
     gpu = bridge.allocation(instance)
     assert (gpu["partition"], gpu["gres"], gpu["base_sif"]) == (
         "gpu",
-        "gpu:a6000:1",
+        "gpu:1",
         "/scratch/cuda.sif",
     )
     cpu = bridge.allocation(KokkosInstance.from_dict(candidate(2)))
