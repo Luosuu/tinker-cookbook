@@ -81,3 +81,24 @@ def test_cuda_tasks_resolve_to_cuda_executables(tmp_path):
     (tmp_path/'build/compile_commands.json').write_text(json.dumps(commands))
     assert discover(tmp_path, ['shared.hpp'])['target'] == 'Kokkos_CoreUnitTest_Serial1'
     assert discover(tmp_path, ['shared.hpp'], toolchain='cuda')['target'] == 'Kokkos_CoreUnitTest_Cuda1'
+
+
+def test_nvcc_wrapper_units_are_preprocessed_in_parallel(tmp_path):
+    compiler = shutil.which('c++')
+    if not compiler: pytest.skip('C++ compiler required on execution host')
+    wrapper = tmp_path/'bin/nvcc_wrapper'; wrapper.parent.mkdir()
+    # Like nvcc_wrapper, refuse -M; preprocessing still works.
+    wrapper.write_text(f'#!/bin/sh\ncase " $* " in *" -M "*) exit 0;; esac\nexec {compiler} "$@"\n')
+    wrapper.chmod(0o755)
+    reply = tmp_path/'build/.cmake/api/v1/reply'; reply.mkdir(parents=True)
+    (tmp_path/'shared.hpp').write_text('// header\n')
+    commands = []
+    for i in range(4):
+        name, source = f'Kokkos_CoreUnitTest_Cuda{i}', f'cuda{i}.cpp'
+        (tmp_path/source).write_text('#include "shared.hpp"\n' if i == 2 else '\n')
+        (reply/f'target-{name}.json').write_text(json.dumps({'name': name, 'type': 'EXECUTABLE', 'sources': [{'path': source}]}))
+        commands.append({'directory': str(tmp_path), 'file': source, 'arguments': [str(wrapper), '-I.', '-c', source, '-o', f'build/CMakeFiles/{name}.dir/{source}.o']})
+    (tmp_path/'build/compile_commands.json').write_text(json.dumps(commands))
+    found = discover(tmp_path, ['shared.hpp'], toolchain='cuda')
+    assert found['target'] == 'Kokkos_CoreUnitTest_Cuda2' and not found['failures']
+    assert len(found['observations']) == 4

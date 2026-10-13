@@ -92,7 +92,7 @@ async def inventory(instance: KokkosInstance, *, discovery_only: bool = False) -
             return {"passed": False, "stage": "inventory", "records": records}
         targets = re.findall(r"(?m)^([^\s:]+):", target_result.stdout)
         ctest = json.loads(ctest_result.stdout)
-        from .target_discovery import NOT_TASK_TEST, PRIMARY_BACKEND
+        from .target_discovery import DISCOVERY_SECONDS, NOT_TASK_TEST, PRIMARY_BACKEND
 
         toolchain = "cuda" if instance.metadata.get("toolchain") == "cuda" else "cpu"
         primary = PRIMARY_BACKEND[toolchain]
@@ -137,7 +137,7 @@ async def inventory(instance: KokkosInstance, *, discovery_only: bool = False) -
                 return {"passed": False, "stage": "discovery_patch", "records": records}
             configured = await run(instance.configure_command + " -DCMAKE_EXPORT_COMPILE_COMMANDS=ON", 180)
             if configured.exit_code == 0:
-                observed = await run("python3 /tmp/kokkos-target-discovery.py /workspace/repo " + shlex.quote(json.dumps(test_sources)) + " " + toolchain, 180)
+                observed = await run("python3 /tmp/kokkos-target-discovery.py /workspace/repo " + shlex.quote(json.dumps(test_sources)) + " " + toolchain, DISCOVERY_SECONDS[toolchain] + 30)
                 if observed.exit_code == 0:
                     discovery = json.loads(observed.stdout)
             restored = await run("git apply -R --whitespace=nowarn /tmp/kokkos-discovery-tests.patch")
