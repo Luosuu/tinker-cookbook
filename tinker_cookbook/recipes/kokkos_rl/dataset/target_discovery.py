@@ -233,4 +233,10 @@ def _translation_unit(root, target, source, directory, arguments, changed, deadl
 if __name__ == "__main__":
     import sys
     toolchain = sys.argv[3] if len(sys.argv) > 3 else "cpu"
-    print(json.dumps(discover(Path(sys.argv[1]), json.loads(sys.argv[2]), toolchain=toolchain)))
+    found = discover(Path(sys.argv[1]), json.loads(sys.argv[2]), toolchain=toolchain)
+    # The sandbox caps command output at 128 KiB; a CUDA build has hundreds of units.
+    found["units_without_changed_dependencies"] = sum(not row["changed_dependencies"] for row in found["observations"])
+    found["observations"] = [row for row in found["observations"] if row["changed_dependencies"]]
+    found["failure_count"] = len(found["failures"])
+    found["failures"] = found["failures"][:20]
+    print(json.dumps(found))
