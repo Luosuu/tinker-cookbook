@@ -73,3 +73,30 @@ async def test_discovery_only_unsupported_input_never_falls_through_to_build():
     assert result['stage'] == 'unsupported_discovery_input'
     assert not result['passed']
     assert result['target_builds'] == result['runtime_tests_executed'] == 0
+
+
+def test_each_regression_command_is_checked_against_its_own_target():
+    from dataclasses import replace
+
+    import pytest
+
+    from .models_test import _instance
+    from .preflight import require_baseline_selection
+
+    finder = '"$(find build -type f -name {} -perm -111 -print -quit)" --gtest_filter={}'
+    inventory = {"targets": {
+        "KokkosCore_UnitTest_Serial1": {"binary": "a", "test_names": ["serial.reduce"]},
+        "KokkosAlgorithms_UnitTest": {"binary": "b", "test_names": ["serial.sort"]},
+    }}
+
+    def check(*commands):
+        instance = replace(_instance(), p2p_commands=commands,
+                           metadata={"runtime_test_inventory": inventory})
+        require_baseline_selection(instance)
+
+    check(finder.format("KokkosCore_UnitTest_Serial1", "serial.reduce"),
+          finder.format("KokkosAlgorithms_UnitTest", "serial.sort"))
+    with pytest.raises(ValueError, match="matches no"):
+        check(finder.format("KokkosAlgorithms_UnitTest", "serial.reduce"))
+    with pytest.raises(ValueError, match="not bound"):
+        check(finder.format("KokkosCore_UnitTest_Serial2", "serial.reduce"))

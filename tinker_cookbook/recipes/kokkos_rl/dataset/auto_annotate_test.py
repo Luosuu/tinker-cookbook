@@ -427,3 +427,21 @@ def test_preflight_target_binds_build_and_test_commands() -> None:
     assert normalized["build_targets"] == ["KokkosCore_UnitTest_Serial1"]
     assert normalized["f2p_commands"] == [finder.format("KokkosCore_UnitTest_Serial1")]
     assert normalized["p2p_commands"] == [finder.format("KokkosCore_UnitTest_Serial1")]
+
+
+def test_several_preflight_targets_bind_build_and_misnamed_commands() -> None:
+    discovered = {"KokkosCore_UnitTest_Serial1": {"binary": "a", "test_names": ["serial.a"]},
+                  "KokkosAlgorithms_UnitTest": {"binary": "b", "test_names": ["serial.b"]}}
+    instance = replace(_instance(), metadata={"runtime_test_inventory": {"targets": discovered}})
+    finder = '"$(find build -type f -name {} -perm -111 -print -quit)" --gtest_filter=serial.a'
+    annotation = {
+        "build_command": "",
+        "build_targets": ["Kokkos_CoreUnitTest_Serial1", "KokkosAlgorithms_UnitTest"],
+        "f2p_commands": [finder.format("Kokkos_CoreUnitTest_Serial1")],
+        "p2p_commands": [finder.format("KokkosAlgorithms_UnitTest")],
+        "metadata": {"toolchain": "cpu"},
+    }
+    normalized = _normalize_toolchain_annotation(annotation, instance)
+    assert normalized["build_targets"] == ["KokkosAlgorithms_UnitTest", "KokkosCore_UnitTest_Serial1"]
+    assert normalized["f2p_commands"] == [finder.format("KokkosCore_UnitTest_Serial1")]
+    assert normalized["p2p_commands"] == [finder.format("KokkosAlgorithms_UnitTest")]

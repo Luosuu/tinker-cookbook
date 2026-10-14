@@ -142,8 +142,21 @@ def resolve_ownership(changed: list[str], observations: list[dict], failures: li
     ambiguous = [path for path, targets in owners.items() if len(targets) != 1]
     targets = sorted({target for values in owners.values() for target in values})
     unique = targets[0] if len(targets) == 1 and not ambiguous and not failures else None
-    return {"target": unique, "owners": owners, "unresolved": unresolved, "ambiguous": ambiguous,
+    cover = None if unresolved or failures or not owners else _cover(owners)
+    return {"target": unique, "targets": cover, "owners": owners, "unresolved": unresolved, "ambiguous": ambiguous,
             "observations": observations, "failures": failures, "method": "compiler_preprocessor_dependencies", "objects_compiled": 0}
+
+
+def _cover(owners: dict[str, list[str]]) -> list[str]:
+    """Fewest targets that together build every changed file; ties go to the earlier name."""
+    remaining = set(owners)
+    chosen: list[str] = []
+    while remaining:
+        candidates = sorted({t for path in remaining for t in owners[path]})
+        best = min(candidates, key=lambda t: (-sum(t in owners[path] for path in remaining), t))
+        chosen.append(best)
+        remaining = {path for path in remaining if best not in owners[path]}
+    return sorted(chosen)
 
 
 def discover(root: Path, changed: list[str], max_seconds: int | None = None, toolchain: str = "cpu") -> dict:

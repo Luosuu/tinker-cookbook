@@ -35,20 +35,35 @@ def selected_tests(names: list[str], selector: str) -> list[str]:
     ]
 
 
-def require_baseline_selection(instance: KokkosInstance) -> None:
+# Each extra target is another build in every agent turn and every grading run.
+MAX_TARGETS = {"cpu": 3, "cuda": 2}
+
+
+def inventories(instance: KokkosInstance) -> dict[str, dict]:
+    """Per-target runtime test inventory from preflight; legacy single-target form included."""
     inventory = instance.metadata.get("runtime_test_inventory")
     if not isinstance(inventory, dict):
+        return {}
+    if isinstance(inventory.get("targets"), dict):
+        return inventory["targets"]
+    if inventory.get("target"):
+        return {inventory["target"]: {"binary": inventory.get("binary"), "test_names": inventory.get("test_names", [])}}
+    return {}
+
+
+def require_baseline_selection(instance: KokkosInstance) -> None:
+    if not isinstance(instance.metadata.get("runtime_test_inventory"), dict):
         return
-    names = inventory.get("test_names", [])
-    target = inventory.get("target", "")
-    if not names or not target or not instance.p2p_commands:
+    by_target = inventories(instance)
+    if not by_target or not all(row.get("test_names") for row in by_target.values()) or not instance.p2p_commands:
         raise ValueError("Preflight inventory/P2P selection is empty")
     for command in instance.p2p_commands:
         match = re.search(r"--gtest_filter(?:=|\s+)(?:'([^']*)'|\"([^\"]*)\"|(\S+))", command)
-        if target not in command or not match:
+        bound = [name for name in by_target if re.search(r"(?<![\w])" + re.escape(name) + r"(?![\w])", command)]
+        if len(bound) != 1 or not match:
             raise ValueError("P2P command is not bound to the discovered target and selector")
         selector = next(part for part in match.groups() if part is not None)
-        if not selected_tests(names, selector):
+        if not selected_tests(by_target[bound[0]]["test_names"], selector):
             raise ValueError("P2P selector matches no discovered runtime tests")
 
 
@@ -154,10 +169,16 @@ async def inventory(instance: KokkosInstance, *, discovery_only: bool = False) -
             if restored_config.exit_code:
                 return {"passed": False, "stage": "baseline_reconfigure", "records": records}
             # Hints cannot override missing, failed, or ambiguous dependency evidence.
-            requested = discovery.get("target") if discovery else None
-        elif requested is None and len(owners) == 1:
-            requested = owners[0]
-        if requested not in targets or requested not in executables:
+            chosen = list((discovery or {}).get("targets") or [])
+        else:
+            if requested is None and len(owners) == 1:
+                requested = owners[0]
+            chosen = [requested] if requested else []
+        if (
+            not chosen
+            or len(chosen) > MAX_TARGETS[toolchain]
+            or any(name not in targets or name not in executables for name in chosen)
+        ):
             return {
                 "passed": False,
                 "stage": "target_resolution",
@@ -167,24 +188,28 @@ async def inventory(instance: KokkosInstance, *, discovery_only: bool = False) -
                 "codemodel": codemodel,
                 "records": records,
             }
-        target = shlex.quote(requested)
-        await run("ninja -C build -t commands " + target + " | wc -l")
-        result = await run("cmake --build build --target " + target + f" --parallel {policy['build_parallelism']}", policy["build_seconds"])
-        if result.exit_code:
-            return {"passed": False, "stage": "build", "target": requested, "records": records}
-        binary = executables[requested]
-        result = await run(shlex.quote(binary) + " --gtest_list_tests")
-        names = gtest_names(result.stdout) if result.exit_code == 0 else []
-        return {
-            "passed": bool(names),
+        inventory = {}
+        for name in chosen:
+            target = shlex.quote(name)
+            await run("ninja -C build -t commands " + target + " | wc -l")
+            result = await run("cmake --build build --target " + target + f" --parallel {policy['build_parallelism']}", policy["build_seconds"])
+            if result.exit_code:
+                return {"passed": False, "stage": "build", "target": name, "records": records}
+            result = await run(shlex.quote(executables[name]) + " --gtest_list_tests")
+            names = gtest_names(result.stdout) if result.exit_code == 0 else []
+            inventory[name] = {"binary": executables[name], "test_names": names}
+        found = {
+            "passed": all(row["test_names"] for row in inventory.values()),
             "stage": "runtime_inventory",
             "discovery": discovery,
-            "target": requested,
-            "binary": binary,
-            "test_names": names,
+            "build_targets": chosen,
+            "inventory": inventory,
             "ctest": ctest,
             "codemodel": codemodel,
             "records": records,
         }
+        if len(chosen) == 1:
+            found.update(target=chosen[0], **inventory[chosen[0]])
+        return found
     finally:
         await sandbox.cleanup()

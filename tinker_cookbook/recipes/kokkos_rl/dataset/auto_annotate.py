@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import difflib
 import hashlib
 import json
 import math
@@ -775,8 +776,9 @@ def _normalize_toolchain_annotation(
                 for command in commands
             ]
 
-    inventory = instance.metadata.get("runtime_test_inventory")
-    discovered = inventory.get("target") if isinstance(inventory, dict) else None
+    from .preflight import inventories
+
+    discovered = sorted(inventories(instance))
     if (
         discovered
         and metadata.get("toolchain", "cpu") in {"cpu", "cuda"}
@@ -784,16 +786,22 @@ def _normalize_toolchain_annotation(
     ):
         previous = annotation.get("build_targets")
         for old in previous if isinstance(previous, list) else []:
-            if not isinstance(old, str) or old == discovered:
+            if not isinstance(old, str) or old in discovered:
+                continue
+            # A misnamed target maps to the discovered one it most resembles; with no close
+            # match the command stays unbound and the baseline selection check rejects it.
+            close = difflib.get_close_matches(old, discovered, n=1, cutoff=0.6)
+            replacement = discovered[0] if len(discovered) == 1 else (close[0] if close else None)
+            if replacement is None:
                 continue
             pattern = re.compile(r"(?<![\w])" + re.escape(old) + r"(?![\w])")
             for key in ("f2p_commands", "p2p_commands"):
                 commands = annotation.get(key)
                 if isinstance(commands, list):
                     annotation[key] = [
-                        pattern.sub(discovered, c) if isinstance(c, str) else c for c in commands
+                        pattern.sub(replacement, c) if isinstance(c, str) else c for c in commands
                     ]
-        annotation["build_targets"] = [discovered]
+        annotation["build_targets"] = discovered
         annotation["build_command"] = ""
 
     if instance.metadata.get("toolchain_compat") == "include-cstdint":

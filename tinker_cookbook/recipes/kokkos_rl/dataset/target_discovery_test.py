@@ -118,3 +118,15 @@ def test_other_backend_test_directories_are_not_built():
     assert not built_for('core/unit_test/openmp/TestOpenMP.hpp', 'cuda')
     assert built_for('core/unit_test/openmp/TestOpenMP.hpp', 'cpu')
     assert not built_for('core/unit_test/cuda/TestCuda_Init.cpp', 'cpu')
+
+
+def test_tests_in_several_targets_resolve_to_the_fewest_covering_targets():
+    rows = [
+        {'target': 'Serial1', 'changed_dependencies': ['a.hpp', 'b.hpp']},
+        {'target': 'Serial2', 'changed_dependencies': ['b.hpp']},
+        {'target': 'Algorithms', 'changed_dependencies': ['c.hpp']},
+    ]
+    found = resolve_ownership(['a.hpp', 'b.hpp', 'c.hpp'], rows, [])
+    assert found['target'] is None and found['targets'] == ['Algorithms', 'Serial1']
+    assert resolve_ownership(['a.hpp', 'new.hpp'], rows, [])['targets'] is None
+    assert resolve_ownership(['a.hpp'], rows, [{'error': 'timeout'}])['targets'] is None

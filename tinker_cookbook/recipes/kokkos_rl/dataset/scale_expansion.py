@@ -169,12 +169,17 @@ async def process(instance: KokkosInstance, *, directory: Path, bridge, complete
         )
         atomic_json(compat_path, result)
     found = result.get("preflight") or {}
-    if result.get("error") or not found.get("passed") or not found.get("test_names"):
+    if result.get("error") or not found.get("passed") or not (
+        found.get("test_names") or found.get("inventory")
+    ):
         raise ValueError(
             f"preflight {found.get('stage', 'environment_error')}: {result.get('error', '')}"
         )
     metadata = dict(instance.metadata)
-    metadata["runtime_test_inventory"] = {k: found[k] for k in ("target", "binary", "test_names")}
+    if found.get("target"):
+        metadata["runtime_test_inventory"] = {k: found[k] for k in ("target", "binary", "test_names")}
+    else:
+        metadata["runtime_test_inventory"] = {"targets": found["inventory"]}
     metadata["preflight_evidence_sha256"] = digest(result)
     instance = replace(instance, metadata=metadata)
 
