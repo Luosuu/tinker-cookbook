@@ -23,6 +23,7 @@ SSH_OPTIONS = (
     "-o",
     "ControlPersist=600",
 )
+MAX_QUEUE_SECONDS = 4 * 24 * 3600
 # Refusals during the handshake, before any remote command runs, so a retry cannot repeat one.
 HANDSHAKE_REFUSAL = re.compile(
     r"kex_exchange_identification|Connection (?:closed|reset) by \S+ port 22"
@@ -191,8 +192,16 @@ export OMP_NUM_THREADS=2
             atomic_json(job_path, {"job_id": job, "remote": remote, "request_sha256": identity})
             print("Rivanna submitted", job, instance.instance_id, action, flush=True)
         job = json.loads(job_path.read_text())["job_id"]
-        started = time.monotonic()
-        while time.monotonic() - started < resources["poll_seconds"]:
+        # Only running time counts against the job's limit: after a maintenance window the GPU
+        # queue can hold jobs for more than a day, and a queued job is not evidence about a task.
+        queued = time.monotonic()
+        running = None
+        while True:
+            now = time.monotonic()
+            if running is None and now - queued > MAX_QUEUE_SECONDS:
+                break
+            if running is not None and now - running > resources["poll_seconds"]:
+                break
             state = (
                 (
                     await _command(
@@ -205,6 +214,8 @@ export OMP_NUM_THREADS=2
                 .splitlines()
             )
             status = state[0].split("|")[0] if state else ""
+            if running is None and status in {"RUNNING", "COMPLETING", "COMPLETED"}:
+                running = now
             if status == "COMPLETED":
                 await _command("scp", self.host + ":" + remote + "/result.json", str(output))
                 # Fetch only evidence, not images or environments.
@@ -242,7 +253,7 @@ export OMP_NUM_THREADS=2
                     "scp", self.host + ":" + remote + "/slurm.log", str(local / "slurm.log")
                 )
                 raise RuntimeError("Rivanna job " + job + ": " + status)
-            await asyncio.sleep(15)
+            await asyncio.sleep(15 if running is not None else 60)
         raise TimeoutError("Rivanna job remains pending/running; retained job receipt for resume")
 
     async def validate(self, instance: KokkosInstance, **kwargs: object) -> ValidationReport:

@@ -1,3 +1,7 @@
+import hashlib
+import json
+from pathlib import Path
+
 import pytest
 
 from .expansion_batch import failure_class, source_digest
@@ -189,3 +193,37 @@ async def test_bridge_retries_only_handshake_refusals(monkeypatch):
     with pytest.raises(RuntimeError, match="invalid partition"):
         await rivanna_bridge._command("ssh", "host", "sbatch run.sbatch")
     assert len(calls) == 3
+
+
+@pytest.mark.asyncio
+async def test_bridge_queue_wait_does_not_count_against_the_job(tmp_path, monkeypatch):
+    from . import rivanna_bridge
+    from .models_test import _instance
+
+    clock = [0.0]
+    states = ["PENDING"] * 5 + ["RUNNING", "COMPLETED"]
+
+    async def fake(*args, timeout=60):
+        command = " ".join(args)
+        if "sacct" in command:
+            return states.pop(0) + "\n"
+        if "sbatch" in command:
+            return "123\n"
+        if args[0] == "scp" and args[-1].endswith("result.json"):
+            request = tmp_path / "local"
+            path = next(request.rglob("request.json"))
+            Path(args[-1]).write_text(json.dumps({"request_sha256": hashlib.sha256(path.read_bytes()).hexdigest()}))
+        return ""
+
+    async def sleep(seconds):
+        clock[0] += 3 * 3600 if seconds == 60 else seconds
+
+    monkeypatch.setattr(rivanna_bridge, "_command", fake)
+    monkeypatch.setattr(rivanna_bridge.asyncio, "sleep", sleep)
+    monkeypatch.setattr(rivanna_bridge.time, "monotonic", lambda: clock[0])
+    bridge = RivannaBridge(
+        tmp_path / "local", host="host", remote_root="/scratch/run", source_sha256="x",
+        base_sif="/scratch/base.sif", partition="bii-largemem",
+    )
+    result = await bridge.execute(_instance(), "preflight")
+    assert "request_sha256" in result and clock[0] > 3600
