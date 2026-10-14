@@ -99,9 +99,14 @@ def test_nvcc_wrapper_units_are_preprocessed_in_parallel(tmp_path):
         (reply/f'target-{name}.json').write_text(json.dumps({'name': name, 'type': 'EXECUTABLE', 'sources': [{'path': source}]}))
         commands.append({'directory': str(tmp_path), 'file': source, 'arguments': [str(wrapper), '-I.', '-c', source, '-o', f'build/CMakeFiles/{name}.dir/{source}.o']})
     (tmp_path/'build/compile_commands.json').write_text(json.dumps(commands))
+    (tmp_path/'cuda3.cpp').write_text('#define HEADER "other.hpp"\n#include HEADER\n')
+    (tmp_path/'other.hpp').write_text('// other\n')
     found = discover(tmp_path, ['shared.hpp'], toolchain='cuda')
     assert found['target'] == 'Kokkos_CoreUnitTest_Cuda2' and not found['failures']
-    assert len(found['observations']) == 4
+    methods = {row['translation_unit']: row.get('method') for row in found['observations']}
+    # Units that cannot reach the header textually are not preprocessed; computed includes are.
+    assert methods == {'cuda0.cpp': 'textual_include_closure', 'cuda1.cpp': 'textual_include_closure',
+                       'cuda2.cpp': None, 'cuda3.cpp': None}
 
 
 def test_other_backend_test_directories_are_not_built():

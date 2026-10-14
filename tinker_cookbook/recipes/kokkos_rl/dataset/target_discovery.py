@@ -18,6 +18,74 @@ PREPROCESS_ONLY = {"nvcc_wrapper"}
 LINE_MARKER = re.compile(r'^# \d+ "([^"<][^"]*)"', re.M)
 
 
+INCLUDE = re.compile(r'^\s*#\s*include\s*(?:"([^"]+)"|<([^>]+)>|(\S+))', re.M)
+
+
+def _include_directories(directory: Path, arguments: list[str]) -> list[Path]:
+    found = []
+    for i, word in enumerate(arguments):
+        for flag in ("-I", "-isystem"):
+            if word == flag and i + 1 < len(arguments):
+                found.append(directory / arguments[i + 1])
+            elif word.startswith(flag) and len(word) > len(flag) and flag == "-I":
+                found.append(directory / word[2:])
+    return found
+
+
+_closure_cache: dict[tuple, frozenset | None] = {}
+
+
+def _may_include(source: Path, directory: Path, arguments: list[str], changed: list[str], root: Path) -> bool:
+    """Whether the textual #include closure (every branch of every #if) reaches a changed file.
+
+    A superset of what the preprocessor includes, so a False here is exact; a computed
+    include (#include MACRO) makes the unit a candidate.
+    """
+    search = tuple(_include_directories(directory, arguments))
+    targets = {(root / path).resolve() for path in changed}
+    seen: set[Path] = set()
+    stack = [source]
+    while stack:
+        path = stack.pop()
+        if path in seen:
+            continue
+        seen.add(path)
+        if path in targets:
+            return True
+        key = (path, search)
+        if key not in _closure_cache:
+            try:
+                text = path.read_text(errors="replace")
+            except OSError:
+                _closure_cache[key] = frozenset()
+                continue
+            names = []
+            computed = False
+            for quoted, angled, macro in INCLUDE.findall(text):
+                if macro:
+                    computed = True
+                elif quoted:
+                    names.append((quoted, True))
+                else:
+                    names.append((angled, False))
+            if computed:
+                _closure_cache[key] = None
+            else:
+                resolved = set()
+                for name, quoted in names:
+                    for base in ((path.parent,) if quoted else ()) + search:
+                        candidate = base / name
+                        if candidate.is_file():
+                            resolved.add(candidate.resolve())
+                            break
+                _closure_cache[key] = frozenset(resolved)
+        includes = _closure_cache[key]
+        if includes is None:
+            return True
+        stack.extend(includes)
+    return False
+
+
 def preprocess_arguments(arguments: list[str]) -> list[str]:
     return dependency_arguments(arguments, "")[:-5] + ["-E"]
 
@@ -115,6 +183,9 @@ def _observe(root, models, commands, changed, observations, failures, start, max
             # The actual object path binds a command to its CMake target when a TU is shared.
             output = next((arguments[i + 1] for i, a in enumerate(arguments[:-1]) if a == "-o"), "")
             if f"CMakeFiles/{target['name']}.dir/" not in output.replace(os.sep, "/"):
+                continue
+            if Path(arguments[0]).name in PREPROCESS_ONLY and not _may_include(source, directory, arguments, changed, root):
+                observations.append({"target": target["name"], "translation_unit": str(source.relative_to(root)), "changed_dependencies": [], "exit_code": 0, "method": "textual_include_closure"})
                 continue
             jobs.append((root, target["name"], source, directory, arguments, changed, start + max_seconds))
     if workers == 1:
