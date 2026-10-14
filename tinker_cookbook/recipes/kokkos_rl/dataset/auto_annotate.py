@@ -418,8 +418,14 @@ def _prompt(
     ]
 
 
-def parse_annotation(text: str, instance_id: str) -> dict[str, object]:
-    """Parse and strictly validate a model-produced annotation object."""
+def parse_annotation(
+    text: str, instance_id: str, pinned_metadata: dict[str, object] | None = None
+) -> dict[str, object]:
+    """Parse and strictly validate a model-produced annotation object.
+
+    ``pinned_metadata`` (fixed by the execution lane, e.g. the CUDA toolchain) overrides the
+    model's choice before validation.
+    """
 
     stripped = text.strip()
     if stripped.startswith("```"):
@@ -447,6 +453,8 @@ def parse_annotation(text: str, instance_id: str) -> dict[str, object]:
         raise ValueError(
             f"annotation instance_id {output_instance_id!r} does not match {instance_id!r}"
         )
+    if pinned_metadata and isinstance(value.setdefault("metadata", {}), dict):
+        value["metadata"].update(pinned_metadata)
 
     for key in (
         "build_targets",
@@ -880,7 +888,13 @@ async def annotate_and_validate_instance(
                 )
             )
             attempt.raw_output = get_text_content(message)
-            annotation = parse_annotation(attempt.raw_output, instance.instance_id)
+            annotation = parse_annotation(
+                attempt.raw_output,
+                instance.instance_id,
+                {"toolchain": "cuda", "requires_gpu": True}
+                if instance.metadata.get("gpu_arch")
+                else None,
+            )
             annotation = _normalize_toolchain_annotation(
                 annotation,
                 instance,

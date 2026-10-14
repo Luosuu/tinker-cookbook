@@ -445,3 +445,14 @@ def test_several_preflight_targets_bind_build_and_misnamed_commands() -> None:
     assert normalized["build_targets"] == ["KokkosAlgorithms_UnitTest", "KokkosCore_UnitTest_Serial1"]
     assert normalized["f2p_commands"] == [finder.format("KokkosCore_UnitTest_Serial1")]
     assert normalized["p2p_commands"] == [finder.format("KokkosAlgorithms_UnitTest")]
+
+
+def test_pinned_toolchain_overrides_the_model_before_validation() -> None:
+    value = json.loads(_annotation("GoodTarget"))
+    value["metadata"] = {"f2p_stage": "build", "toolchain": "cpu", "requires_gpu": True}
+    with pytest.raises(ValueError, match="cuda toolchain"):
+        parse_annotation(json.dumps(value), "kokkos__kokkos-1")
+    parsed = parse_annotation(
+        json.dumps(value), "kokkos__kokkos-1", {"toolchain": "cuda", "requires_gpu": True}
+    )
+    assert parsed["metadata"]["toolchain"] == "cuda"
