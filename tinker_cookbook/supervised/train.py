@@ -151,6 +151,8 @@ class Config:
     # checkpoint always blocks regardless of this setting.
     async_periodic_saves: bool = False
 
+    # Optimizer selection. "adam" uses Adam; "dimuon" uses the Dimuon optimizer.
+    optimizer: str = "adam"
     # Adam optimizer parameters
     adam_beta1: float = 0.9
     adam_beta2: float = 0.95
@@ -351,10 +353,16 @@ async def main(config: Config):
         )
         logger.info(f"Loaded weights from {config.load_checkpoint_path}")
     else:
+        optimizer = (
+            tinker.DimuonOptimizerConfig()
+            if config.optimizer.lower() == "dimuon"
+            else None
+        )
         training_client = await service_client.create_lora_training_client_async(
             base_model=config.model_name,
             rank=config.lora_rank,
             user_metadata=user_metadata,
+            optimizer=optimizer,
         )
 
     checkpoint_mgr = checkpoint_utils.CheckpointManager(
@@ -407,12 +415,15 @@ async def main(config: Config):
         )
         metrics["learning_rate"] = learning_rate
 
-        adam_params = tinker.AdamParams(
-            learning_rate=learning_rate,
-            beta1=config.adam_beta1,
-            beta2=config.adam_beta2,
-            eps=config.adam_eps,
-        )
+        if config.optimizer.lower() == "dimuon":
+            optim_params = tinker.DimuonParams(learning_rate=learning_rate)
+        else:
+            optim_params = tinker.AdamParams(
+                learning_rate=learning_rate,
+                beta1=config.adam_beta1,
+                beta2=config.adam_beta2,
+                eps=config.adam_eps,
+            )
 
         async with trace.scope_span("get_batch"):
             data = dataset.get_batch(batch_idx)
@@ -437,7 +448,7 @@ async def main(config: Config):
                 )
 
         fwd_bwd_future = await training_client.forward_backward_async(data, loss_fn="cross_entropy")
-        optim_step_future = await training_client.optim_step_async(adam_params)
+        optim_step_future = await training_client.optim_step_async(optim_params)
 
         return SubmittedBatch(
             fwd_bwd_future=fwd_bwd_future,
