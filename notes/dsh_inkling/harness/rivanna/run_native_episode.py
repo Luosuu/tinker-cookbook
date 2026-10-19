@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import sys
 import time
 from dataclasses import asdict
@@ -22,8 +23,11 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 def native_config(budget: dict):
     from tinker_cookbook.recipes.kokkos_rl.rl.eval_kokkos_openai import CLIConfig
 
+    model_name = os.environ.get(
+        "DSH_MODEL_NAME", "thinkingmachines/Inkling-Small:peft:262144"
+    )
     return CLIConfig(
-        model_name="thinkingmachines/Inkling-Small:peft:262144",
+        model_name=model_name,
         api_mode="chat",
         chat_provider="tinker",
         base_url="https://tinker.thinkingmachines.dev/services/tinker-prod/oai/api/v1",
